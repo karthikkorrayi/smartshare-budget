@@ -1,0 +1,46 @@
+<div class="container" *ngIf="plans.length; else empty">
+  <mat-toolbar color="primary" class="toolbar">
+    <span>Dashboard</span>
+    <span class="spacer"></span>
+    <button mat-stroked-button (click)="exportExcel()">Export Excel</button>
+    <button mat-stroked-button color="warn" (click)="deleteSelected()">Delete</button>
+  </mat-toolbar>
+
+  <div class="picker">
+    <mat-form-field appearance="outline">
+      <mat-label>Select Month</mat-label>
+      <mat-select [value]="selected?.id" (valueChange)="onSelect(plans.find(p=>p.id=== $event))">
+        <mat-option *ngFor="let p of plans" [value]="p.id">{{p.month}} (₹{{p.income}})</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div class="grid">
+    <mat-card>
+        <mat-card-title>Allocation (Pie)</mat-card-title>
+        <div echarts [options]="pieOptions" class="chart" style="height:320px"></div>
+    </mat-card>
+
+    <mat-card>
+        <mat-card-title>Allocation (Bar)</mat-card-title>
+        <div echarts [options]="barOptions" class="chart" style="height:360px"></div>
+    </mat-card>
+  </div>
+
+  <mat-card>
+    <mat-card-title>AI Tips</mat-card-title>
+    <mat-card-content>
+      <ul>
+        <li *ngFor="let t of tips">{{t}}</li>
+        <li *ngIf="!tips.length">Looks good! No urgent tips.</li>
+      </ul>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<ng-template #empty>
+  <div class="container">
+    <h3>No plans yet</h3>
+    <p>Create one in <strong>New Monthly Plan</strong> first.</p>
+  </div>
+</ng-template>

@@ -1,0 +1,54 @@
+<p>budget-input works!</p>
+<div class="container">
+  <h2>New Monthly Plan</h2>
+
+  <form [formGroup]="form" (ngSubmit)="generate()" class="grid">
+    <mat-form-field appearance="outline">
+      <mat-label>Month</mat-label>
+      <input matInput type="month" formControlName="month" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Income (₹)</mat-label>
+      <input matInput type="number" formControlName="income" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Priorities</mat-label>
+      <mat-select formControlName="priorities" multiple>
+        <mat-option *ngFor="let p of priorityOptions" [value]="p">{{p}}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <h3 class="full">Fixed (Lock these amounts if already known)</h3>
+
+    <mat-form-field appearance="outline">
+      <mat-label>House (₹)</mat-label>
+      <input matInput type="number" formControlName="fixed_house" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Loan/EMI (₹)</mat-label>
+      <input matInput type="number" formControlName="fixed_loan" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Personal (₹)</mat-label>
+      <input matInput type="number" formControlName="fixed_personal" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Trip/Travel (₹)</mat-label>
+      <input matInput type="number" formControlName="fixed_trip" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Others (₹)</mat-label>
+      <input matInput type="number" formControlName="fixed_others" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Savings (₹)</mat-label>
+      <input matInput type="number" formControlName="fixed_savings" />
+    </mat-form-field>
+
+    <div class="full actions">
+      <button mat-raised-button color="primary" type="submit">Generate AI Plan</button>
+    </div>
+  </form>
+</div>
