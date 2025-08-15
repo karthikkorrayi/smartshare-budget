@@ -1,18 +1,23 @@
 <div class="container" *ngIf="plans.length; else empty">
-  <mat-toolbar color="primary" class="toolbar">
+  <!-- <mat-toolbar color="primary" class="toolbar">
     <span>Dashboard</span>
     <span class="spacer"></span>
     <button mat-stroked-button (click)="exportExcel()">Export Excel</button>
     <button mat-stroked-button color="warn" (click)="deleteSelected()">Delete</button>
-  </mat-toolbar>
+  </mat-toolbar> -->
 
   <div class="picker">
     <mat-form-field appearance="outline">
       <mat-label>Select Month</mat-label>
-      <mat-select [value]="selected?.id" (valueChange)="onSelect(plans.find(p=>p.id=== $event))">
-        <mat-option *ngFor="let p of plans" [value]="p.id">{{p.month}} (₹{{p.income}})</mat-option>
+      <mat-select [value]="selected?.id" (valueChange)="onSelectById($event)">
+        <mat-option *ngFor="let p of plans" [value]="p.id">
+          {{ p.month }} (₹{{ p.income }})
+        </mat-option>
       </mat-select>
     </mat-form-field>
+
+    <button mat-stroked-button (click)="exportExcel()">Export Excel</button>
+    <!-- <button mat-stroked-button color="warn" (click)="deleteSelected()">Delete</button> -->
   </div>
 
   <div class="grid">

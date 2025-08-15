@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ChartConfiguration } from 'chart.js';
 import { StorageService } from '../../services/storage.service';
 import { AiPlannerService } from '../../services/ai-planner.service';
@@ -8,32 +9,37 @@ import * as XLSX from 'xlsx';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCardModule }    from '@angular/material/card';
 import { MatButtonModule }  from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { NgxEchartsDirective } from 'ngx-echarts';
 
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
   standalone: true,
-  imports: [MatToolbarModule, MatCardModule, MatButtonModule /* + charts */]
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatFormFieldModule, MatSelectModule, NgxEchartsDirective],
 })
 export class DashboardComponent implements OnInit {
   plans: BudgetPlan[] = [];
   selected?: BudgetPlan;
   tips: string[] = [];
+  pieOptions: any; barOptions: any;
 
   // Chart.js doughnut config
-  doughnutData?: ChartConfiguration<'doughnut'>['data'];
-  barData?: ChartConfiguration<'bar'>['data'];
+  // doughnutData?: ChartConfiguration<'doughnut'>['data'];
+  // barData?: ChartConfiguration<'bar'>['data'];
 
   constructor(private store: StorageService, private ai: AiPlannerService) {}
 
   ngOnInit() {
     this.plans = this.store.all();
-    this.onSelect(this.plans[0]);
+    if (this.plans.length) 
+      this.onSelect(this.plans[0]); 
   }
 
-  pieOptions: any;
-  barOptions: any;
+  // pieOptions: any;
+  // barOptions: any;
 
   onSelect(p?: BudgetPlan) {
     if (!p) return;
@@ -65,6 +71,11 @@ export class DashboardComponent implements OnInit {
     };
   }
 
+  onSelectById(id: string) {
+    const p = this.plans.find(plan => plan.id === id);
+    if (p) this.onSelect(p);
+  }
+
   exportExcel() {
     if (!this.selected) return;
     const p = this.selected;
@@ -94,11 +105,15 @@ export class DashboardComponent implements OnInit {
     XLSX.writeFile(wb, `BudgetPlan_${p.month}.xlsx`);
   }
 
-  deleteSelected() {
-    if (!this.selected) return;
-    const id = this.selected.id;
-    localStorage.setItem('smartshare_plans_v1', JSON.stringify(this.plans.filter(x => x.id !== id)));
-    this.plans = this.plans.filter(x => x.id !== id);
-    this.onSelect(this.plans[0]);
-  }
+  // deleteSelected() {
+  //   if (!this.selected) return;
+  //   const id = this.selected.id;
+  //   // remove from storage
+  //   const remaining = this.plans.filter(x => x.id !== id);
+  //   localStorage.setItem('smartshare_plans_v1', JSON.stringify(remaining));
+  //   // update UI
+  //   this.plans = remaining;
+  //   this.selected = this.plans[0];
+  //   if (this.selected) this.onSelect(this.selected);
+  // }
 }
