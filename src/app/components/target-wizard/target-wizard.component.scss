@@ -1,0 +1,47 @@
+.wrap { 
+    padding: 16px; 
+}
+
+.card { 
+    background:#fff; 
+    border-radius:12px; 
+    padding:16px; 
+    box-shadow:0 1px 3px rgba(0,0,0,.08);
+    margin-bottom:12px; 
+}
+
+.full { 
+    width: 100%; 
+}
+
+.actions { 
+    display:flex; 
+    gap:12px; 
+    justify-content:flex-end; 
+    margin-top:12px; 
+}
+
+.exp-list { 
+    display:flex; 
+    gap:12px; 
+    align-items:center; 
+    margin:8px 0; 
+}
+
+@media (max-width: 768px) { 
+    .exp-list { 
+        flex-direction:column; 
+        align-items:stretch; 
+    } 
+}
+
+/* Hide number input spinners */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield; /* Firefox */
+}

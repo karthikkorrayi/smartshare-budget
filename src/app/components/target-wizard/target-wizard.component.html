@@ -1,0 +1,93 @@
+<div class="wrap" [formGroup]="form">
+  <h2>🎯 Target to buy a product/thing</h2>
+
+  <!-- Step 0: What do you want to buy? -->
+  <div *ngIf="step === 0" class="card">
+    <p>What do you want to buy?</p>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Product / Thing</mat-label>
+      <input matInput formControlName="title" placeholder="e.g., Laptop" />
+    </mat-form-field>
+    <div class="actions">
+      <button mat-raised-button color="primary" (click)="next()" [disabled]="!form.get('title')?.valid">
+        Next
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 1: Target price -->
+  <div *ngIf="step === 1" class="card">
+    <p>How much does it cost?</p>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Target Price (₹)</mat-label>
+      <input matInput type="number" formControlName="price" placeholder="e.g., 50000" />
+    </mat-form-field>
+    <div class="actions">
+      <button mat-stroked-button (click)="back()">Back</button>
+      <button mat-raised-button color="primary" (click)="next()" [disabled]="!form.get('price')?.valid">
+        Next
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 2: Income range (we use the minimum) -->
+  <div *ngIf="step === 2" class="card">
+    <p>What’s your monthly income range? (We’ll plan using the minimum amount.)</p>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Income Range</mat-label>
+      <mat-select formControlName="range">
+        <mat-option *ngFor="let r of incomeRanges" [value]="r">
+          {{ r.label }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <div class="actions">
+      <button mat-stroked-button (click)="back()">Back</button>
+      <button mat-raised-button color="primary" (click)="next()">Next</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Existing payments (with defaults) + baseline toggle + Finish -->
+  <div *ngIf="step === 3" class="card">
+    <p>Any monthly amounts you already pay? (optional)</p>
+
+    <!-- Bind to the array by name, and index each group -->
+    <div formArrayName="expenses">
+      <div class="exp-list" *ngFor="let _ of expensesFA.controls; let i = index" [formGroupName]="i">
+        <mat-icon aria-hidden="true">{{ iconAt(i) }}</mat-icon>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Category</mat-label>
+          <input matInput formControlName="name" placeholder="e.g., Rent" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Amount (₹)</mat-label>
+          <input matInput formControlName="amount" placeholder="Enter amount" placeholder="e.g., 12000" />
+          <mat-hint>Optional, leave blank if none</mat-hint>
+        </mat-form-field>
+
+        <button mat-icon-button color="warn" (click)="removeExpense(i)">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <button mat-stroked-button (click)="addExpense()">+ Add Payment</button>
+
+    <div class="divider"></div>
+
+    <!-- Baseline savings toggle on the same page -->
+    <p>Do you also want to put aside general savings (10%)?</p>
+    <mat-slide-toggle formControlName="baseline">
+      Yes, keep a baseline savings
+    </mat-slide-toggle>
+
+    <div class="actions">
+      <button mat-stroked-button (click)="back()">Back</button>
+      <button mat-raised-button color="primary" (click)="finish()">
+        Create Plan
+      </button>
+    </div>
+  </div>
+</div>

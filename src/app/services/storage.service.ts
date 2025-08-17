@@ -35,4 +35,31 @@ export class StorageService {
     const plans = this.readAll().filter(p => p.id !== id);
     this.writeAll(plans);
   }
+
+  private readGoals(): any[] { 
+    try { 
+      return JSON.parse(localStorage.getItem(KEY) || '[]'); 
+    } catch { 
+      return []; 
+    } 
+  }
+
+  private writeGoals(rows: any[]) { 
+    localStorage.setItem(KEY, JSON.stringify(rows)); 
+  }
+
+  saveGoal(g: any) { 
+    const a = this.readGoals(); 
+    const i = a.findIndex(x=>x.id===g.id); 
+    i>=0? a[i]=g: a.push(g); 
+    this.writeGoals(a); 
+  }
+
+  getGoal(id: string) { 
+    return this.readGoals().find(x=>x.id===id); 
+  }
+
+  allGoals() { 
+    return this.readGoals().sort((a,b)=> b.createdAt - a.createdAt); 
+  }
 }

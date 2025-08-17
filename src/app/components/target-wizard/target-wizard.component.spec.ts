@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { BudgetInputComponent } from './budget-input.component';
+import { TargetWizardComponent } from './target-wizard.component';
 
-describe('BudgetInputComponent', () => {
-  let component: BudgetInputComponent;
-  let fixture: ComponentFixture<BudgetInputComponent>;
+describe('TargetWizardComponent', () => {
+  let component: TargetWizardComponent;
+  let fixture: ComponentFixture<TargetWizardComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [BudgetInputComponent]
+      imports: [TargetWizardComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(BudgetInputComponent);
+    fixture = TestBed.createComponent(TargetWizardComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

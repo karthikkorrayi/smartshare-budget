@@ -1,10 +1,12 @@
 import { Routes } from '@angular/router';
-import { BudgetInputComponent } from './components/budget-input/budget-input.component';
-import { DashboardComponent } from './components/dashboard/dashboard.component';
+import { TargetWizardComponent } from './components/target-wizard/target-wizard.component';
+import { TargetDashboardComponent } from './components/target-dashboard/target-dashboard.component';
+import { HomeComponent } from './components/home/home.component';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'new', pathMatch: 'full' },
-  { path: 'new', component: BudgetInputComponent },
-  { path: 'dashboard', component: DashboardComponent },
-  { path: '**', redirectTo: 'new' },
+  { path: '', component: HomeComponent },
+  { path: 'target/new', component: TargetWizardComponent },
+  { path: 'target/:id', component: TargetDashboardComponent },
+  { path: 'target/:id/edit', component: TargetWizardComponent },
+  { path: '**', redirectTo: '' }
 ];

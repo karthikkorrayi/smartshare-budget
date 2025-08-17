@@ -1,0 +1,74 @@
+<div class="wrap" *ngIf="plan as p">
+  <div class="title-row">
+    <h2>🎯 {{ p.title }} — ₹{{ p.price }}</h2>
+    <a mat-stroked-button color="primary" [routerLink]="['/target', p.id, 'edit']">Edit expenses</a>
+  </div>
+
+  <mat-card class="opts">
+    <mat-card-title>Plan Options</mat-card-title>
+    <mat-card-content>
+      <div class="row">
+        <mat-form-field appearance="outline">
+          <mat-label>Principle</mat-label>
+          <mat-select [(ngModel)]="principle" (ngModelChange)="refreshVisuals()">
+            <mat-option value="Balanced">Balanced</mat-option>
+            <mat-option value="FastTrack">Fast-Track</mat-option>
+            <mat-option value="Stepping">Stepping (+5%/mo)</mat-option>
+            <mat-option value="Custom">Custom</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" *ngIf="principle === 'Custom'">
+          <mat-label>Monthly Contribution (₹)</mat-label>
+          <input matInput type="number" [(ngModel)]="customMonthly" (ngModelChange)="refreshVisuals()">
+        </mat-form-field>
+      </div>
+      <p class="hint">Using income floor ₹{{ p.incomeMin }}. Months required: <b>{{ p.monthsRequired }}</b></p>
+      <button mat-stroked-button (click)="exportExcel()">Export Excel</button>
+    </mat-card-content>
+  </mat-card>
+
+  <div class="grid">
+    <mat-card>
+      <mat-card-title>Where your money goes (Pie)</mat-card-title>
+      <div echarts [options]="pieOptions" class="chart" style="height:320px"></div>
+
+      <!-- Simple comment-style list of existing payments -->
+      <mat-card-content *ngIf="expenseList.length; else noExpenses">
+        <p><strong>Existing payments:</strong></p>
+        <div class="comment-line" *ngFor="let e of expenseList">- {{ e }}</div>
+      </mat-card-content>
+      <ng-template #noExpenses>
+        <mat-card-content>No existing payments recorded.</mat-card-content>
+      </ng-template>
+    </mat-card>
+
+    <mat-card>
+      <mat-card-title>Reaching the target (Projection)</mat-card-title>
+      <div echarts [options]="lineOptions" class="chart" style="height:360px"></div>
+    </mat-card>
+  </div>
+
+  <mat-card>
+    <mat-card-title>AI Tips</mat-card-title>
+    <mat-card-content>
+      <ul>
+        <li *ngFor="let t of tips">{{ t }}</li>
+        <li *ngIf="!tips.length">Looks good! No urgent tips.</li>
+      </ul>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-title>Monthly Checklist</mat-card-title>
+    <mat-card-content>
+      <div class="list">
+        <div class="row" *ngFor="let s of p.schedule">
+          <mat-checkbox [checked]="s.done" (change)="toggleDone(s)">
+            {{ s.monthISO }} — ₹{{ s.amount }} (cum ₹{{ s.cum }})
+          </mat-checkbox>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

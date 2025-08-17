@@ -1,0 +1,17 @@
+.wrap { padding: 16px; }
+.grid { display:grid; gap:12px; grid-template-columns: repeat(2, minmax(0,1fr)); margin: 12px 0; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.row { display:flex; gap:12px; align-items:center; }
+.list { display:flex; flex-direction:column; gap:8px; }
+.opts { margin-top:8px; }
+.hint { margin: 8px 0; opacity:.8; }
+
+/* wider inputs in edit list */
+.name { flex: 2; }
+.amt { flex: 1; }
+
+/* Hide number input spinners / scroll increments */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+.title-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
