@@ -1,0 +1,43 @@
+<div class="wrap" *ngIf="plan as p">
+  <div class="title-row">
+    <h2>✈ {{p.title}} — ₹{{p.price}} by {{p.tripMonth}}</h2>
+    <a mat-stroked-button color="primary" [routerLink]="['/trip', p.id, 'edit']">Edit</a>
+  </div>
+
+  <div class="grid">
+    <mat-card>
+      <mat-card-title>Where your money goes (Pie)</mat-card-title>
+      <div echarts [options]="pieOptions" class="chart" style="height:320px"></div>
+
+      <mat-card-content *ngIf="nonZeroNames().length; else noExp">
+        <p><strong>Existing payments:</strong></p>
+        <div class="comment-line" *ngFor="let e of nonZeroNames()">- {{e}}</div>
+      </mat-card-content>
+      <ng-template #noExp><mat-card-content>No existing payments recorded.</mat-card-content></ng-template>
+    </mat-card>
+
+    <mat-card>
+      <mat-card-title>Saving Projection</mat-card-title>
+      <div echarts [options]="lineOptions" class="chart" style="height:360px"></div>
+    </mat-card>
+  </div>
+
+  <mat-card>
+    <mat-card-title>AI Tips</mat-card-title>
+    <mat-card-content>
+      <ul><li *ngFor="let t of tips">{{t}}</li></ul>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-title>Monthly Checklist</mat-card-title>
+    <mat-card-content>
+      <div class="list">
+        <div class="row" *ngFor="let s of p.schedule">
+          <mat-checkbox [checked]="s.done" (change)="toggleDone(s)">{{s.monthISO}} — ₹{{s.amount}} (cum ₹{{s.cum}})</mat-checkbox>
+        </div>
+      </div>
+      <button mat-stroked-button (click)="exportExcel()">Export Excel</button>
+    </mat-card-content>
+  </mat-card>
+</div>
