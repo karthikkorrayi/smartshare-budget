@@ -1,0 +1,38 @@
+.wrap { 
+    padding: 16px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+}
+
+.controls mat-card-content { 
+    display: flex; 
+    gap: 12px; 
+    align-items: center; 
+}
+
+.controls .total { 
+    margin-left: auto; 
+    font-weight: 600; 
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr 160px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+.empty { 
+    opacity: .7; 
+}
+
+@media (max-width: 900px) {
+  .row { 
+    grid-template-columns: auto 1fr; 
+}
+  .row input[type="number"], 
+  .row input[placeholder^="Note"] { 
+    grid-column: 1 / -1; 
+    }
+}

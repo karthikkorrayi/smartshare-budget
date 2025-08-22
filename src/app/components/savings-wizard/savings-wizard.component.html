@@ -1,0 +1,73 @@
+<div class="wrap" [formGroup]="form">
+  <h2>💰 Savings Plan</h2>
+
+  <div *ngIf="step===0" class="card">
+    <p>What are you saving for?</p>
+    <mat-form-field appearance="outline" class="full">
+        <mat-label>Goal Title</mat-label>
+        <input matInput formControlName="title" placeholder="e.g., Emergency Fund">
+    </mat-form-field>
+    <div class="actions">
+        <button mat-raised-button color="primary" (click)="next()" [disabled]="!form.get('title')?.valid">Next</button>
+    </div>
+  </div>
+
+  <div *ngIf="step===1" class="card">
+    <p>How much and by when?</p>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>Total Target (₹)</mat-label>
+        <input matInput type="number" formControlName="target" placeholder="e.g., 100000">
+    </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Desired Months</mat-label>
+        <input matInput type="number" formControlName="months" placeholder="e.g., 10">
+    </mat-form-field>
+    </div>
+    <div class="actions">
+        <button mat-stroked-button (click)="back()">Back</button>
+        <button mat-raised-button color="primary" (click)="next()">Next</button>
+    </div>
+  </div>
+
+  <div *ngIf="step===2" class="card">
+    <p>Your monthly income range (we plan with the minimum)</p>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Income Range</mat-label>
+      <mat-select formControlName="range">
+        <mat-option *ngFor="let r of incomeRanges" [value]="r">{{r.label}}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <div class="actions">
+        <button mat-stroked-button (click)="back()">Back</button>
+        <button mat-raised-button color="primary" (click)="next()">Next</button>
+    </div>
+  </div>
+
+  <div *ngIf="step===3" class="card">
+    <p>Any fixed monthly payments? (optional)</p>
+    <div formArrayName="expenses">
+      <div class="exp-list" *ngFor="let _ of expensesFA.controls; let i=index" [formGroupName]="i">
+        <mat-form-field appearance="outline">
+            <mat-label>Category</mat-label>
+            <input matInput formControlName="name" placeholder="e.g., Rent">
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+            <mat-label>Amount (₹)</mat-label>
+            <input matInput type="number" formControlName="amount" placeholder="e.g., 12000">
+        </mat-form-field>
+        <button mat-icon-button color="warn" (click)="removeExpense(i)"><mat-icon>delete</mat-icon></button>
+      </div>
+    </div>
+    <button mat-stroked-button (click)="addExpense()">+ Add Payment</button>
+
+    <div class="divider"></div>
+    <p>Do you want to keep a general savings baseline (10%)?</p>
+    <mat-slide-toggle formControlName="baseline">Yes, keep baseline savings</mat-slide-toggle>
+
+    <div class="actions">
+        <button mat-stroked-button (click)="back()">Back</button>
+        <button mat-raised-button color="primary" (click)="finish()">Create Plan</button>
+    </div>
+  </div>
+</div>

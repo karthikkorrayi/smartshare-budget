@@ -1,0 +1,35 @@
+<div class="wrap">
+  <h2>🧾 Expenses (This & Next Month)</h2>
+
+  <mat-card class="controls">
+    <mat-card-content>
+      <button mat-stroked-button (click)="prevMonth()">← Prev</button>
+
+      <label>
+        Month:
+        <input type="month" [(ngModel)]="monthISO" (change)="onMonthChange()">
+      </label>
+
+      <button mat-stroked-button (click)="nextMonth()">Next →</button>
+
+      <button mat-raised-button color="primary" (click)="add()">+ Add</button>
+      <button mat-stroked-button (click)="closeAndCreateNext()">Close this month & create next</button>
+
+      <span class="total">Total: ₹{{ total }}</span>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-content>
+      <div class="row" *ngFor="let r of rows; let i = index">
+        <mat-checkbox [checked]="r.done" (change)="toggle(r)"></mat-checkbox>
+        <input matInput placeholder="Name" [(ngModel)]="r.name" (blur)="save()">
+        <input matInput type="number" placeholder="Amount" [(ngModel)]="r.amount" (blur)="save()">
+        <input matInput placeholder="Note (optional)" [(ngModel)]="r.note" (blur)="save()">
+        <button mat-stroked-button color="warn" (click)="remove(i)">Delete</button>
+      </div>
+
+      <p *ngIf="!rows.length" class="empty">No expenses yet — click “+ Add”.</p>
+    </mat-card-content>
+  </mat-card>
+</div>
