@@ -31,9 +31,8 @@
   <div class="grid">
     <mat-card>
       <mat-card-title>Where your money goes (Pie)</mat-card-title>
-      <div echarts [options]="pieOptions" class="chart" style="height:320px"></div>
+      <div *ngIf="isBrowser" echarts [options]="pieOptions" class="chart" style="height:320px"></div>
 
-      <!-- Simple comment-style list of existing payments -->
       <mat-card-content *ngIf="expenseList.length; else noExpenses">
         <p><strong>Existing payments:</strong></p>
         <div class="comment-line" *ngFor="let e of expenseList">- {{ e }}</div>
@@ -45,7 +44,7 @@
 
     <mat-card>
       <mat-card-title>Reaching the target (Projection)</mat-card-title>
-      <div echarts [options]="lineOptions" class="chart" style="height:360px"></div>
+      <div *ngIf="isBrowser" echarts [options]="lineOptions" class="chart" style="height:360px"></div>
     </mat-card>
   </div>
 

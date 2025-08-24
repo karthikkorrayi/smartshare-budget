@@ -7,7 +7,7 @@
   <div class="grid">
     <mat-card>
       <mat-card-title>Where your money goes (Pie)</mat-card-title>
-      <div echarts [options]="pieOptions" class="chart" style="height:320px"></div>
+      <div *ngIf="isBrowser" echarts [options]="pieOptions" class="chart" style="height:320px"></div>
 
       <mat-card-content *ngIf="nonZeroNames().length; else noExp">
         <p><strong>Existing payments:</strong></p>
@@ -17,8 +17,8 @@
     </mat-card>
 
     <mat-card>
-      <mat-card-title>Saving Projection</mat-card-title>
-      <div echarts [options]="lineOptions" class="chart" style="height:360px"></div>
+      <mat-card-title>Trip Saving Projection</mat-card-title>
+      <div *ngIf="isBrowser" echarts [options]="lineOptions" class="chart" style="height:360px"></div>
     </mat-card>
   </div>
 

@@ -1,25 +1,23 @@
-.mt { 
-    margin: 16px; 
+.shell { height: calc(100vh - 64px); } /* below toolbar */
+.content { padding: 16px; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
 }
 
-.grid { 
-    padding: 16px; 
-    display:grid; 
-    gap:16px; 
-    grid-template-columns: repeat(3, minmax(0,1fr)); 
-}
+.empty mat-card { max-width: 680px; margin: 24px auto; }
+.empty ul { margin: 8px 0 0 18px; }
 
-@media (max-width: 992px) { 
-    .grid { 
-        grid-template-columns: 1fr; 
-    } 
+.grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+@media (max-width: 1200px) { .grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
 
-mat-card { 
-    display:flex; 
-    flex-direction:column; 
-}
-
-mat-card-actions { 
-    margin-top:auto; 
+.widget mat-card-title { font-weight: 600; }
+.mini-chart { margin-top: 8px; }
+.drawer {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px;
 }

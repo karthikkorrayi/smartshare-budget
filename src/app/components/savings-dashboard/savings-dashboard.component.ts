@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -19,12 +19,11 @@ import { PlannerService } from '../../services/planner.service';
 })
 export class SavingsDashboardComponent implements OnInit {
   plan:any; pieOptions:any; lineOptions:any; tips:string[]=[];
+  private platformId = inject(PLATFORM_ID);
+  isBrowser = isPlatformBrowser(this.platformId);
+
   constructor(private route:ActivatedRoute, private store:StorageService, private planner:PlannerService){}
-  ngOnInit(){ 
-    const id=this.route.snapshot.paramMap.get('id')!; 
-    this.plan=this.store.getGoal(id); 
-    if(this.plan) this.refresh(); 
-  }
+  ngOnInit(){ const id=this.route.snapshot.paramMap.get('id')!; this.plan=this.store.getGoal(id); if(this.plan) this.refresh(); }
 
   nonZeroNames(){
     return (this.plan.expenses||[])
@@ -44,44 +43,21 @@ export class SavingsDashboardComponent implements OnInit {
     ]}]};
 
     const schedule=this.planner.buildFlat(this.plan.price, this.plan.chosen.startMonth, monthly);
-    this.plan.schedule=schedule; 
-    this.plan.monthsRequired=schedule.length;
-
-    this.lineOptions={ 
-      tooltip:{trigger:'axis'}, 
-      xAxis:{type:'category', 
-        data:schedule.map((s:any)=>s.monthISO) 
-      }, 
-      yAxis:{type:'value'}, 
-      series:[{ 
-        type:'line', 
-        data:schedule.map((s:any)=>s.cum) 
-      }] 
-    };
+    this.plan.schedule=schedule; this.plan.monthsRequired=schedule.length;
+    this.lineOptions={ tooltip:{trigger:'axis'}, xAxis:{type:'category', data:schedule.map((s:any)=>s.monthISO) }, yAxis:{type:'value'}, series:[{ type:'line', data:schedule.map((s:any)=>s.cum) }] };
 
     this.tips=[];
     const leftover=this.planner.leftover(this.plan.incomeMin, this.plan.expenses||[], base);
-    if (monthly > leftover) 
-      this.tips.push('Savings monthly exceeds safe leftover — reduce target/extend months or trim expenses.');
-    if (!this.tips.length) 
-      this.tips.push('Savings plan looks feasible on the income floor.');
+    if (monthly > leftover) this.tips.push('Savings monthly exceeds safe leftover — reduce target/extend months or trim expenses.');
+    if (!this.tips.length) this.tips.push('Savings plan looks feasible on the income floor.');
 
     this.store.saveGoal(this.plan);
   }
 
-  toggleDone(r:any){ 
-    r.done=!r.done; 
-    this.store.saveGoal(this.plan); 
-  }
+  toggleDone(r:any){ r.done=!r.done; this.store.saveGoal(this.plan); }
   exportExcel(){
-    const rows=this.plan.schedule.map((s:any)=>({ 
-      Month:s.monthISO, 
-      Amount:s.amount, 
-      Cumulative:s.cum, 
-      Done:s.done?'Yes':'No' 
-    }));
-    const ws=XLSX.utils.json_to_sheet(rows); 
-    const wb=XLSX.utils.book_new();
+    const rows=this.plan.schedule.map((s:any)=>({ Month:s.monthISO, Amount:s.amount, Cumulative:s.cum, Done:s.done?'Yes':'No' }));
+    const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Savings Schedule');
     const meta=[[ 'Title', this.plan.title, 'Target', this.plan.price, 'Monthly', this.plan.chosen.monthly ]];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(meta), 'Meta');

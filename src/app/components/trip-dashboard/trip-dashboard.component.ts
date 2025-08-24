@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -19,14 +19,16 @@ import { PlannerService } from '../../services/planner.service';
 })
 export class TripDashboardComponent implements OnInit {
   plan:any; pieOptions:any; lineOptions:any; tips:string[]=[];
+  private platformId = inject(PLATFORM_ID);
+  isBrowser = isPlatformBrowser(this.platformId);
+
   constructor(private route:ActivatedRoute, private store:StorageService, private planner:PlannerService){}
   ngOnInit(){ const id=this.route.snapshot.paramMap.get('id')!; this.plan=this.store.getGoal(id); if(this.plan) this.refresh(); }
 
-  nonZeroNames(){ 
+  nonZeroNames(){
     return (this.plan.expenses||[])
-    .filter((e:any)=>String(e?.name||'')
-    .trim() && Number(e?.amount||0)>0)
-    .map((e:any)=>String(e.name).trim()); 
+      .filter((e:any)=> String(e?.name||'').trim() && Number(e?.amount||0)>0)
+      .map((e:any)=> String(e.name).trim());
   }
 
   refresh(){
@@ -35,23 +37,17 @@ export class TripDashboardComponent implements OnInit {
     const months=this.planner.monthsUntil(this.plan.tripMonth);
     const monthly=Math.ceil(this.plan.price / months);
 
-    // pie: existing payments + baseline + trip monthly
     this.pieOptions={ tooltip:{trigger:'item'}, series:[{ type:'pie', radius:'60%', data:[
-      { name:'Existing Payments', value:expTotal }, { name:'Baseline Savings', value:base }, { name:'Trip Contribution', value:monthly }
+      { name:'Existing Payments', value:expTotal },
+      { name:'Baseline Savings', value:base },
+      { name:'Trip Contribution', value:monthly },
     ]}]};
 
-    // projection line: cumulative monthly to reach target
     const schedule=this.planner.buildFlat(this.plan.price, this.plan.chosen.startMonth, monthly);
     this.plan.schedule=schedule; this.plan.monthsRequired=schedule.length;
-    this.lineOptions={ tooltip:{trigger:'axis'}, xAxis:{type:'category', data:schedule.map((s:any)=>s.monthISO)}, yAxis:{type:'value'},
-      series:[{ type:'line', data:schedule.map((s:any)=>s.cum) }] };
+    this.lineOptions={ tooltip:{trigger:'axis'}, xAxis:{type:'category', data:schedule.map((s:any)=>s.monthISO) }, yAxis:{type:'value'}, series:[{ type:'line', data:schedule.map((s:any)=>s.cum) }] };
 
-    // tips
     this.tips=[];
-    const leftover=this.planner.leftover(this.plan.incomeMin, this.plan.expenses||[], base);
-    if (monthly > leftover) this.tips.push('Trip monthly saving exceeds safe leftover — adjust trip date or trim expenses.');
-    if (!this.tips.length) this.tips.push('You can reach your trip goal with the current timeline.');
-
     this.store.saveGoal(this.plan);
   }
 
@@ -60,7 +56,7 @@ export class TripDashboardComponent implements OnInit {
     const rows=this.plan.schedule.map((s:any)=>({ Month:s.monthISO, Amount:s.amount, Cumulative:s.cum, Done:s.done?'Yes':'No' }));
     const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Trip Schedule');
-    const meta=[[ 'Title', this.plan.title, 'Trip Month', this.plan.tripMonth, 'Monthly', Math.ceil(this.plan.price/this.planner.monthsUntil(this.plan.tripMonth)) ]];
+    const meta=[[ 'Title', this.plan.title, 'Target', this.plan.price, 'Trip Month', this.plan.tripMonth ]];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(meta), 'Meta');
     XLSX.writeFile(wb, `Trip_${this.plan.title.replace(/\s+/g,'_')}.xlsx`);
   }

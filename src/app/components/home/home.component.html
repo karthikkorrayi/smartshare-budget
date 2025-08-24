@@ -1,44 +1,59 @@
-<h2 class="mt">What do you want to do?</h2>
-<div class="grid">
-  <mat-card>
-    <mat-card-title>🎯 Target to buy a product/thing</mat-card-title>
-    <mat-card-content>
-      Plan how to afford a specific purchase with your income range, existing payments, and a savings strategy.
-    </mat-card-content>
-    <mat-card-actions>
-      <a mat-raised-button color="primary" routerLink="/target/new">Start</a>
-    </mat-card-actions>
-  </mat-card>
+<mat-sidenav-container class="shell">
+  <mat-sidenav mode="side" position="end" [opened]="drawerOpen()">
+    <div class="drawer">
+      <h3>Add widgets</h3>
+      <button mat-stroked-button (click)="add('target')">+ Product Target</button>
+      <button mat-stroked-button (click)="add('loan')">+ Loan / EMI</button>
+      <button mat-stroked-button (click)="add('trip')">+ Trip Plan</button>
+      <button mat-stroked-button (click)="add('savings')">+ Savings</button>
+      <button mat-stroked-button (click)="add('expenses')">Open Expenses Board</button>
+      <mat-divider></mat-divider>
+      <button mat-button (click)="closeDrawer()">Close</button>
+    </div>
+  </mat-sidenav>
 
-  <mat-card>
-    <mat-card-title>🏦 Plan Loan / EMI</mat-card-title>
-    <mat-card-content>Compute EMI, see payoff projection, and fit it into your budget.</mat-card-content>
-    <mat-card-actions>
-      <a mat-raised-button color="primary" routerLink="/loan/new">Start</a>
-    </mat-card-actions>
-  </mat-card>
+  <div class="content">
+    <div class="topbar">
+      <h2>Insights Board</h2>
+      <button mat-raised-button color="primary" (click)="openDrawer()">
+        <mat-icon>add</mat-icon> Add widgets
+      </button>
+    </div>
 
-  <mat-card>
-    <mat-card-title>✈ Plan a Trip</mat-card-title>
-    <mat-card-content>Save monthly to hit your trip date & cost target.</mat-card-content>
-    <mat-card-actions>
-      <a mat-raised-button color="primary" routerLink="/trip/new">Start</a>
-    </mat-card-actions>
-  </mat-card>
+    <!-- Empty state: show when no widgets -->
+    <div *ngIf="widgets().length === 0" class="empty">
+      <mat-card>
+        <mat-card-title>Welcome 👋</mat-card-title>
+        <mat-card-content>
+          <p>Your dashboard is empty. Add a budget widget to get started:</p>
+          <ul>
+            <li>Product Target (save for a purchase)</li>
+            <li>Loan / EMI plan</li>
+            <li>Trip savings plan</li>
+            <li>General Savings goal</li>
+            <li>Set up next month’s Expenses</li>
+          </ul>
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-raised-button color="primary" (click)="openDrawer()">
+            <mat-icon>add</mat-icon> Add widgets
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
 
-  <mat-card disabled>
-    <mat-card-title>💰 Savings</mat-card-title>
-    <mat-card-content>Generic monthly saving plan.</mat-card-content>
-    <mat-card-actions>
-      <a mat-raised-button color="primary" routerLink="/savings/new">Start</a>
-    </mat-card-actions>
-  </mat-card>
+    <!-- Widgets grid -->
+    <div class="grid" *ngIf="widgets().length > 0">
+      <mat-card class="widget" *ngFor="let w of widgets()">
+        <mat-card-title>{{ w.title }}</mat-card-title>
+        <mat-card-subtitle>{{ w.subtitle }}</mat-card-subtitle>
 
-  <mat-card disabled>
-    <mat-card-title>🧾 Expenses & Next-month check</mat-card-title>
-    <mat-card-content>Track notes and preview the next month.</mat-card-content>
-    <mat-card-actions>
-      <a mat-raised-button color="primary" routerLink="/expenses">Open</a>
-    </mat-card-actions>
-  </mat-card>
-</div>
+        <div *ngIf="isBrowser" echarts [options]="w.pieOptions" class="mini-chart" style="height:200px"></div>
+
+        <mat-card-actions align="end">
+          <button mat-button *ngFor="let a of w.actions" (click)="onAction(a)">{{ a.label }}</button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+  </div>
+</mat-sidenav-container>

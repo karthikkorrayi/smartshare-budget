@@ -7,7 +7,8 @@
   <div class="grid">
     <mat-card>
       <mat-card-title>Where your money goes (Pie)</mat-card-title>
-      <div echarts [options]="pieOptions" class="chart" style="height:320px"></div>
+      <div *ngIf="isBrowser" echarts [options]="pieOptions" class="chart" style="height:320px"></div>
+
       <mat-card-content *ngIf="nonZeroNames().length; else noExp">
         <p><strong>Existing payments:</strong></p>
         <div class="comment-line" *ngFor="let e of nonZeroNames()">- {{e}}</div>
@@ -17,16 +18,14 @@
 
     <mat-card>
       <mat-card-title>EMI Projection</mat-card-title>
-      <div echarts [options]="lineOptions" class="chart" style="height:360px"></div>
+      <div *ngIf="isBrowser" echarts [options]="lineOptions" class="chart" style="height:360px"></div>
     </mat-card>
   </div>
 
   <mat-card>
     <mat-card-title>AI Tips</mat-card-title>
     <mat-card-content>
-      <ul>
-        <li *ngFor="let t of tips">{{t}}</li>
-      </ul>
+      <ul><li *ngFor="let t of tips">{{t}}</li></ul>
     </mat-card-content>
   </mat-card>
 
