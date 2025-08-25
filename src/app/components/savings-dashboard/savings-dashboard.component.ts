@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,8 +22,15 @@ export class SavingsDashboardComponent implements OnInit {
   private platformId = inject(PLATFORM_ID);
   isBrowser = isPlatformBrowser(this.platformId);
 
-  constructor(private route:ActivatedRoute, private store:StorageService, private planner:PlannerService){}
+  constructor(private route:ActivatedRoute, private router:Router, private store:StorageService, private planner:PlannerService){}
   ngOnInit(){ const id=this.route.snapshot.paramMap.get('id')!; this.plan=this.store.getGoal(id); if(this.plan) this.refresh(); }
+
+  deletePlan(){
+    if (confirm(`Delete "${this.plan.title}"? This cannot be undone.`)) {
+      this.store.removeGoal(this.plan.id);
+      this.router.navigate(['/']);
+    }
+  }
 
   nonZeroNames(){
     return (this.plan.expenses||[])

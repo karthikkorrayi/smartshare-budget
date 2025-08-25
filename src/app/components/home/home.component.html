@@ -52,6 +52,7 @@
 
         <mat-card-actions align="end">
           <button mat-button *ngFor="let a of w.actions" (click)="onAction(a)">{{ a.label }}</button>
+          <button mat-button color="warn" (click)="onDelete(w)">Delete</button>
         </mat-card-actions>
       </mat-card>
     </div>

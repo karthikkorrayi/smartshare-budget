@@ -1,7 +1,10 @@
 <div class="wrap" *ngIf="plan as p">
   <div class="title-row">
     <h2>🏦 {{p.title}} — ₹{{p.principal}} &#64; {{p.apr}}% for {{p.tenure}} months</h2>
-    <a mat-stroked-button color="primary" [routerLink]="['/loan', p.id, 'edit']">Edit</a>
+    <div class="actions">
+      <a mat-stroked-button color="primary" [routerLink]="['/loan', p.id, 'edit']">Edit</a>
+      <button mat-stroked-button color="warn" (click)="deletePlan()">Delete</button>
+    </div>
   </div>
 
   <div class="grid">

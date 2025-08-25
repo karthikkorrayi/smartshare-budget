@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
 import { MatCardModule } from '@angular/material/card';
@@ -42,7 +42,7 @@ export class TargetDashboardComponent implements OnInit {
   private platformId = inject(PLATFORM_ID);
   isBrowser = isPlatformBrowser(this.platformId);
 
-  constructor(private route: ActivatedRoute, private store: StorageService, private planner: PlannerService) {}
+  constructor(private route: ActivatedRoute, private router: Router, private store: StorageService, private planner: PlannerService) {}
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id')!;
@@ -52,6 +52,13 @@ export class TargetDashboardComponent implements OnInit {
     this.principle = this.plan.chosen.principle;
     this.customMonthly = this.plan.chosen.monthly;
     this.refreshVisuals();
+  }
+
+  deletePlan(){
+    if (confirm(`Delete "${this.plan.title}"? This cannot be undone.`)) {
+      this.store.removeGoal(this.plan.id);
+      this.router.navigate(['/']);
+    }
   }
 
   private normalizeExpenses() {

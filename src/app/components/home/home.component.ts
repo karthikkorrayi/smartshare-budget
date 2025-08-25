@@ -79,6 +79,11 @@ export class HomeComponent implements OnInit {
         { label: 'Open', route: ['/expenses'] },
         { label: 'Next →', click: () => { this.store.copyToNextMonth(monthISO); this.router.navigate(['/expenses']); } }
       ],
+      deleteAction: {
+        label: 'Clear',
+        confirm: `Clear all expenses for ${monthISO}?`,
+        run: () => { this.store.clearMonthExpenses(monthISO); this.refresh(); }
+      },
       pieOptions
     };
   }
@@ -136,6 +141,11 @@ export class HomeComponent implements OnInit {
         { label: 'Open', route: openRoute },
         { label: 'Edit', route: editRoute }
       ],
+      deleteAction: {
+        label: 'Delete',
+        confirm: `Delete "${g.title}"? This cannot be undone.`,
+        run: () => { this.store.removeGoal(g.id); this.refresh(); }
+      },
       pieOptions
     };
   }
@@ -162,5 +172,10 @@ export class HomeComponent implements OnInit {
   onAction(a: { label: string; route?: any[]; click?: () => void }) {
     if (a?.route) this.router.navigate(a.route);
     else if (a?.click) a.click();
+  }
+
+  onDelete(w: any) {
+    const q = w.deleteAction?.confirm || 'Delete?';
+    if (confirm(q)) w.deleteAction.run();
   }
 }

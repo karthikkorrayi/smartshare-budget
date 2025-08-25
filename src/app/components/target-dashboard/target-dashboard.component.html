@@ -1,7 +1,10 @@
 <div class="wrap" *ngIf="plan as p">
   <div class="title-row">
     <h2>🎯 {{ p.title }} — ₹{{ p.price }}</h2>
-    <a mat-stroked-button color="primary" [routerLink]="['/target', p.id, 'edit']">Edit expenses</a>
+    <div class="actions">
+      <a mat-stroked-button color="primary" [routerLink]="['/target', p.id, 'edit']">Edit expenses</a>
+      <button mat-stroked-button color="warn" (click)="deletePlan()">Delete</button>
+    </div>
   </div>
 
   <mat-card class="opts">

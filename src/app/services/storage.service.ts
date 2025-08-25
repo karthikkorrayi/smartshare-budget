@@ -75,6 +75,10 @@ export class StorageService {
     return this.readGoals().sort((a, b) => b.createdAt - a.createdAt);
   }
 
+  removeGoal(id: string) { 
+    this.writeGoals(this.readGoals().filter(x=>x.id!==id)); 
+  } 
+
   private readMonthMap(): Record<string, MonthExpense[]> {
     try {
       return JSON.parse(localStorage.getItem(KEY_EXPENSES) || '{}');
@@ -112,5 +116,9 @@ export class StorageService {
     }));
     this.saveMonthExpenses(nextISO, cloned);
     return nextISO;
+  }
+  
+  clearMonthExpenses(monthISO: string): void {
+    const m = this.readMonthMap(); delete m[monthISO]; this.writeMonthMap(m);
   }
 }
