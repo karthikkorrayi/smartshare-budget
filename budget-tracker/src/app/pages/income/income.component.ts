@@ -9,7 +9,7 @@ import { IncomeService } from '../../services/income.service';
   standalone: true,
   selector: 'app-income',
   imports: [CommonModule, FormsModule, MatInputModule, MatButtonModule],
-  templateUrl: `
+  template: `
     <h2>Add Income</h2>
 
     <input matInput placeholder="Source" [(ngModel)]="source">
