@@ -22,11 +22,10 @@ export class DashboardComponent {
   // Month stats
   completionPercent = 0;
   remainingDays = 0;
-  weekdaysLeft = 0;
-  weekendsLeft = 0;
 
   totalIncome = 0;
   totalExpenses = 0;
+  availableBalance = 0;
   incomeService: IncomeService;
   expenseService: ExpenseService;
 
@@ -52,7 +51,8 @@ export class DashboardComponent {
     this.generateMonths();
       this.selectedMonth = this.getCurrentMonth();
       this.calculateMonthStats();
-    this.loadData();
+      this.loadData();
+      this.loadMonthlyFinance();
   }
 
   generateMonths() {
@@ -105,17 +105,46 @@ export class DashboardComponent {
 
   onMonthChange() {
     this.calculateMonthStats();
+    this.loadMonthlyFinance();
   }
 
-loadData() {
-  this.incomeService.getIncomeByMonth(this.selectedMonth)
-    .subscribe((data: any[]) => {
-      this.totalIncome = data.reduce((a, b) => a + b.amount, 0);
-    });
+  loadData() {
+    this.incomeService.getIncomeByMonth(this.selectedMonth)
+      .subscribe((data: any[]) => {
+        this.totalIncome = data.reduce((a, b) => a + b.amount, 0);
+      });
 
-  this.expenseService.getExpensesByMonth(this.selectedMonth)
-    .subscribe((data: any[]) => {
-      this.totalExpenses = data.reduce((a, b) => a + b.amount, 0);
-    });
-}
+    this.expenseService.getExpensesByMonth(this.selectedMonth)
+      .subscribe((data: any[]) => {
+        this.totalExpenses = data.reduce((a, b) => a + b.amount, 0);
+      });
+  }
+
+  getSelectedMonthKey(): string {
+    const monthIndex = this.months.findIndex(m => m.value === this.selectedMonth);
+    return monthIndex !== -1 ? this.months[monthIndex].value : this.selectedMonth;
+  }
+
+  loadMonthlyFinance() {
+    const monthKey = this.getSelectedMonthKey();
+
+    // Income
+    this.incomeService.getIncomeByMonth(monthKey)
+      .subscribe((data: any[]) => {
+        this.totalIncome = data.reduce((sum, i) => sum + i.amount, 0);
+        this.calculateBalance();
+      });
+
+    // Expenses
+    this.expenseService.getExpensesByMonth(monthKey)
+      .subscribe((data: any[]) => {
+        this.totalExpenses = data.reduce((sum, e) => sum + e.amount, 0);
+        this.calculateBalance();
+      });
+  }
+
+  calculateBalance() {
+    this.availableBalance = this.totalIncome - this.totalExpenses;
+  }
+
 }

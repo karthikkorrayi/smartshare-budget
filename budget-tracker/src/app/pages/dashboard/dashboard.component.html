@@ -64,17 +64,17 @@
     <div class="stats-row">
       <mat-card class="card stat-card income">
         <p>Total Income</p>
-        <h2>₹3140.74</h2>
+        <h2>₹{{ totalIncome | number:'1.2-2' }}</h2>
       </mat-card>
 
       <mat-card class="card stat-card expense">
         <p>Total Spending</p>
-        <h2>₹42.040</h2>
+        <h2>₹{{ totalExpenses | number:'1.2-2' }}</h2>
       </mat-card>
 
       <mat-card class="card stat-card balance">
         <p>Available</p>
-        <h2>₹501.074</h2>
+        <h2>₹{{ availableBalance | number:'1.2-2' }}</h2>
       </mat-card>
     </div>
 
