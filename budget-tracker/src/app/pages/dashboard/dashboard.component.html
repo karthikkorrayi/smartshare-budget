@@ -145,8 +145,25 @@
 
     <!-- Upcoming Expense -->
     <mat-card class="card upcoming">
-      <p>Upcoming Expense</p>
-      <h2>₹501.074</h2>
+      <h3>Upcoming Payments</h3>
+
+      <div *ngFor="let pay of upcomingPayments" class="upcoming-item">
+        <div>
+          <input
+            type="checkbox"
+            (change)="markAsPaid(pay)"
+          />
+          <strong>{{ pay.description }}</strong>
+          <p class="due-text">
+            Due in {{ pay.dueIn }} day{{ pay.dueIn > 1 ? 's' : '' }}
+          </p>
+        </div>
+
+        <div class="right">
+          <span class="amount">₹{{ pay.amount }}</span>
+          <span class="delete" (click)="deleteUpcoming(pay.id)">🗑️</span>
+        </div>
+      </div>
     </mat-card>
 
   </div>

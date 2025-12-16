@@ -10,6 +10,8 @@ import { Chart, registerables } from 'chart.js';
 import { MatDialog } from '@angular/material/dialog';
 import { AddExpenseComponent } from '../../dialogs/add-expense/add-expense.component';
 import { AddIncomeComponent } from '../../dialogs/add-income/add-income.component';
+import { UpcomingPaymentService } from '../../services/upcoming-payment.service';
+import { combineLatest } from 'rxjs';
 Chart.register(...registerables);
 
 @Component({
@@ -33,13 +35,18 @@ export class DashboardComponent {
   availableBalance = 0;
   incomeService: IncomeService;
   expenseService: ExpenseService;
+  upcomingService: UpcomingPaymentService;
 
   barChart!: Chart;
   dailyTotals: number[] = [];
 
   recentIncome: any[] = [];
 
+  upcomingPayments: any[] = [];
+
   fabOpen = false;
+
+  isLoading = true;
 
   gaugeChart!: Chart;
   gaugeCategory = '';
@@ -62,10 +69,12 @@ export class DashboardComponent {
   constructor(
     incomeService: IncomeService,
     expenseService: ExpenseService,
+    upcomingService: UpcomingPaymentService,
     private dialog: MatDialog
   ) {
     this.incomeService = incomeService;
     this.expenseService = expenseService;
+    this.upcomingService = upcomingService;
     incomeService.getIncome().subscribe((data: any[]) => {
       this.totalIncome = data.reduce((sum, i) => sum + i.amount, 0);
     });
@@ -80,10 +89,22 @@ export class DashboardComponent {
 
   ngOnInit() {
     this.generateMonths();
-      this.selectedMonth = this.getCurrentMonth();
-      this.calculateMonthStats();
-      this.loadData();
-      this.loadMonthlyFinance();
+    this.selectedMonth = this.getCurrentMonth();
+    this.calculateMonthStats();
+    this.loadData();
+    this.loadMonthlyFinance();
+    this.upcomingService.getAll().subscribe(data => {
+    this.upcomingPayments = data.map(p => ({
+        ...p,
+        dueIn: this.calculateDueInDays(p['dueDate'])
+      })).filter(p => p.dueIn >= 0)
+        .sort((a, b) => a.dueIn - b.dueIn);
+    });
+  }
+  calculateDueInDays(dueDate: any): number {
+    const due = new Date(dueDate.seconds * 1000);
+    const today = new Date();
+    return Math.ceil((due.getTime() - today.getTime()) / 86400000);
   }
 
   generateMonths() {
@@ -189,7 +210,7 @@ export class DashboardComponent {
 
         this.renderLineChart();
       });
-  }
+}
 
   calculateBalance() {
     this.availableBalance = this.totalIncome - this.totalExpenses;
@@ -475,6 +496,26 @@ export class DashboardComponent {
   deleteIncome(id: string) {
     if (confirm('Delete this income?')) {
       this.incomeService.deleteIncome(id);
+    }
+  }
+
+  markAsPaid(payment: any) {
+    // Add to expenses
+    this.expenseService.addExpense({
+      description: payment.description,
+      amount: payment.amount,
+      category: payment.category,
+      date: new Date(),
+      month: this.getSelectedMonthKey()
+    });
+
+    // Remove from upcoming list
+    this.upcomingService.delete(payment.id);
+  }
+
+  deleteUpcoming(id: string) {
+    if (confirm('Delete this upcoming payment?')) {
+      this.upcomingService.delete(id);
     }
   }
 
