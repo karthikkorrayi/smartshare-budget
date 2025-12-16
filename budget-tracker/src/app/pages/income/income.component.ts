@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { IncomeService } from '../../services/income.service';
+import { getCurrentMonth } from '../../utils/date.util';
 
 @Component({
   standalone: true,
@@ -29,8 +30,12 @@ export class IncomeComponent {
     this.incomeService.addIncome({
       source: this.source,
       amount: this.amount,
-      date: new Date()
+      date: new Date(),
+      month: getCurrentMonth()
     });
+
+  this.source = '';
+  this.amount = 0;
   }
 
 }

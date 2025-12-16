@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, collection, addDoc, collectionData } from '@angular/fire/firestore';
+import { query, where } from "firebase/firestore";
 
 @Injectable({ providedIn: 'root' })
 export class IncomeService {
@@ -14,4 +15,15 @@ export class IncomeService {
       idField: 'id'
     });
   }
+
+  getIncomeByMonth(month: string) {
+  return collectionData(
+    query(
+      collection(this.firestore, 'income'),
+      where('month', '==', month)
+    ),
+    { idField: 'id' }
+  );
+}
+
 }
