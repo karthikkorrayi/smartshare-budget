@@ -62,6 +62,20 @@
 
   <!-- CENTER COLUMN -->
   <div class="center-column">
+    <mat-card class="card">
+      <h3>Recent Income</h3>
+
+      <table class="spending-table-ui">
+        <tr *ngFor="let inc of recentIncome">
+          <td>{{ inc.source }}</td>
+          <td>₹{{ inc.amount }}</td>
+          <td>
+            <span class="action" (click)="editIncome(inc)">✏️</span>
+            <span class="action" (click)="deleteIncome(inc.id)">🗑️</span>
+          </td>
+        </tr>
+      </table>
+    </mat-card>
 
     <!-- Top Stats -->
     <div class="stats-row">
@@ -80,21 +94,6 @@
         <h2>₹{{ availableBalance | number:'1.2-2' }}</h2>
       </mat-card>
     </div>
-
-    <mat-card class="card">
-      <h3>Recent Income</h3>
-
-      <table class="spending-table-ui">
-        <tr *ngFor="let inc of recentIncome">
-          <td>{{ inc.source }}</td>
-          <td>₹{{ inc.amount }}</td>
-          <td>
-            <span class="action" (click)="editIncome(inc)">✏️</span>
-            <span class="action" (click)="deleteIncome(inc.id)">🗑️</span>
-          </td>
-        </tr>
-      </table>
-    </mat-card>
 
 
     <!-- Monthly Bar Chart -->
