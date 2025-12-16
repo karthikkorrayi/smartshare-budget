@@ -34,6 +34,12 @@ export class DashboardComponent {
   barChart!: Chart;
   dailyTotals: number[] = [];
 
+  categorySummary: {
+    name: string;
+    amount: number;
+    percentage: number;
+  }[] = [];
+
   constructor(
     incomeService: IncomeService,
     expenseService: ExpenseService
@@ -146,6 +152,7 @@ export class DashboardComponent {
         this.totalExpenses = data.reduce((sum, e) => sum + e.amount, 0);
         this.calculateBalance();
         this.prepareDailyExpenses(data);
+        this.prepareCategorySummary(data);
       });
   }
 
@@ -214,6 +221,23 @@ export class DashboardComponent {
         }
       }
     });
+  }
+
+  prepareCategorySummary(expenses: any[]) {
+    const categoryMap: any = {};
+
+    expenses.forEach(exp => {
+      const cat = exp.category || 'Others';
+      categoryMap[cat] = (categoryMap[cat] || 0) + exp.amount;
+    });
+
+    const maxAmount = Math.max(...(Object.values(categoryMap) as number[]));
+
+    this.categorySummary = Object.keys(categoryMap).map(cat => ({
+      name: cat,
+      amount: categoryMap[cat],
+      percentage: Math.round((categoryMap[cat] / maxAmount) * 100)
+    }));
   }
 
 }

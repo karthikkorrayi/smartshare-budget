@@ -9,18 +9,15 @@ import { getCurrentMonth } from "../../utils/date.util";
 @Component({
   standalone: true,
   imports: [CommonModule, FormsModule, MatInputModule, MatButtonModule],
-  template: `
-    <h2>Add Expense</h2>
-
-    <input matInput placeholder="Description" [(ngModel)]="description">
-    <input matInput type="number" placeholder="Amount" [(ngModel)]="amount">
-
-    <button mat-raised-button color="warn" (click)="save()">Add</button>
-  `
+  templateUrl: './expenses.component.html',
+  styleUrl: './expenses.component.scss',
 })
 export class ExpensesComponent {
   description = '';
   amount = 0;
+  category = 'Food';
+  categories = ['Food', 'Shopping', 'Transport', 'Bills'];
+
 
   constructor(private expenseService: ExpenseService) {}
 
@@ -28,6 +25,7 @@ export class ExpensesComponent {
     this.expenseService.addExpense({
       description: this.description,
       amount: this.amount,
+      category: this.category,
       date: new Date(),
       month: getCurrentMonth()
     });

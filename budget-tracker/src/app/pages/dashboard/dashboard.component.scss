@@ -91,3 +91,14 @@ canvas {
   width: 100% !important;
   height: 220px !important;
 }
+
+.category-row {
+  margin-bottom: 14px;
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 4px;
+}

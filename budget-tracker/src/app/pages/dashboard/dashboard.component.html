@@ -41,17 +41,18 @@
     </mat-card>
 
     <!-- Category Summary -->
-    <mat-card class="card category-summary">
+   <mat-card class="card category-summary">
       <h3>Category Summary</h3>
 
-      <div class="category-row">
-        <span>Shopping</span>
-        <mat-progress-bar value="70"></mat-progress-bar>
-      </div>
-
-      <div class="category-row">
-        <span>Food</span>
-        <mat-progress-bar value="40"></mat-progress-bar>
+      <div *ngFor="let cat of categorySummary" class="category-row">
+        <div class="category-header">
+          <span>{{ cat.name }}</span>
+          <span>₹{{ cat.amount }}</span>
+        </div>
+        <mat-progress-bar
+          mode="determinate"
+          [value]="cat.percentage">
+        </mat-progress-bar>
       </div>
     </mat-card>
 
