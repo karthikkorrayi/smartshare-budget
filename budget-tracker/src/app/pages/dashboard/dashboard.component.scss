@@ -134,3 +134,22 @@ canvas {
   margin-top: 8px;
   font-size: 14px;
 }
+
+.fab {
+  position: fixed;
+  right: 30px;
+  bottom: 30px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #1e88e5;
+  color: white;
+  font-size: 28px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+.fab:hover {
+  background: #1565c0;
+}

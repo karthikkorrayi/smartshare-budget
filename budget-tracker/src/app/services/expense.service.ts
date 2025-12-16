@@ -1,4 +1,4 @@
-import { addDoc, collection, collectionData } from '@angular/fire/firestore';
+import { addDoc, collection, collectionData, doc, updateDoc, deleteDoc } from '@angular/fire/firestore';
 import { Firestore } from '@angular/fire/firestore';
 import { Injectable, inject } from '@angular/core';
 import { query, where } from "firebase/firestore";
@@ -18,14 +18,24 @@ export class ExpenseService {
   }
 
   getExpensesByMonth(month: string) {
-  return collectionData(
-    query(
-      collection(this.firestore, 'expenses'),
-      where('month', '==', month)
-    ),
-    { idField: 'id' }
-  );
-}
+    return collectionData(
+      query(
+        collection(this.firestore, 'expenses'),
+        where('month', '==', month)
+      ),
+      { idField: 'id' }
+    );
+  }
+
+  updateExpense(expense: any) {
+    const ref = doc(this.firestore, 'expenses', expense.id);
+    return updateDoc(ref, expense);
+  }
+
+  deleteExpense(id: string) {
+    const ref = doc(this.firestore, 'expenses', id);
+    return deleteDoc(ref);
+  }
 
 }
 

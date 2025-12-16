@@ -103,6 +103,10 @@
           <td>{{ exp.category }}</td>
           <td>{{ exp.date.toDate() | date:'dd MMM' }}</td>
           <td>₹{{ exp.amount }}</td>
+          <td>
+            <span class="action" (click)="editExpense(exp)">✏️</span>
+            <span class="action" (click)="deleteExpense(exp.id)">🗑️</span>
+          </td>
         </tr>
       </table>
     </mat-card>
@@ -133,3 +137,7 @@
   </div>
 
 </div>
+
+<button class="fab" (click)="openAddExpense()">
+  +
+</button>

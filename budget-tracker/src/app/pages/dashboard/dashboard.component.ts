@@ -7,6 +7,8 @@ import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Chart, registerables } from 'chart.js';
+import { MatDialog } from '@angular/material/dialog';
+import { AddExpenseComponent } from '../../dialogs/add-expense/add-expense.component';
 Chart.register(...registerables);
 
 @Component({
@@ -54,7 +56,8 @@ export class DashboardComponent {
 
   constructor(
     incomeService: IncomeService,
-    expenseService: ExpenseService
+    expenseService: ExpenseService,
+    private dialog: MatDialog
   ) {
     this.incomeService = incomeService;
     this.expenseService = expenseService;
@@ -402,6 +405,31 @@ export class DashboardComponent {
         }
       }
     });
+  }
+
+  openAddExpense() {
+    this.dialog.open(AddExpenseComponent, {
+      width: '320px',
+      data: {
+        month: this.getSelectedMonthKey()
+      }
+    });
+  }
+
+  editExpense(expense: any) {
+    this.dialog.open(AddExpenseComponent, {
+      width: '320px',
+      data: {
+        expense,
+        month: this.getSelectedMonthKey()
+      }
+    });
+  }
+
+  deleteExpense(id: string) {
+    if (confirm('Delete this expense?')) {
+      this.expenseService.deleteExpense(id);
+    }
   }
 
 }
