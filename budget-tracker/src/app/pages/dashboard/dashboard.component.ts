@@ -15,6 +15,16 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
   styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent {
+  // Basic info
+  username = 'Karthik';
+  today = new Date();
+
+  // Month stats
+  completionPercent = 0;
+  remainingDays = 0;
+  weekdaysLeft = 0;
+  weekendsLeft = 0;
+
   totalIncome = 0;
   totalExpenses = 0;
   incomeService: IncomeService;
@@ -35,20 +45,67 @@ export class DashboardComponent {
     });
   }
 
-  selectedMonth = getCurrentMonth();
-  months: string[] = [];
+  months: { label: string; value: string }[] = [];
+  selectedMonth!: string;
 
-ngOnInit() {
-  this.generateMonths();
-  this.loadData();
-}
-
-generateMonths() {
-  const currentYear = new Date().getFullYear();
-  for (let m = 1; m <= 12; m++) {
-    this.months.push(`${currentYear}-${String(m).padStart(2, '0')}`);
+  ngOnInit() {
+    this.generateMonths();
+      this.selectedMonth = this.getCurrentMonth();
+      this.calculateMonthStats();
+    this.loadData();
   }
-}
+
+  generateMonths() {
+    const currentYear = this.today.getFullYear();
+
+    for (let y = currentYear - 1; y <= currentYear + 1; y++) {
+      for (let m = 0; m < 12; m++) {
+        const date = new Date(y, m);
+        this.months.push({
+          label: date.toLocaleString('default', { month: 'long', year: 'numeric' }),
+          value: `${y}-${String(m + 1).padStart(2, '0')}`
+        });
+      }
+    }
+  }
+
+  getCurrentMonth(): string {
+    const y = this.today.getFullYear();
+    const m = String(this.today.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+
+
+  calculateMonthStats() {
+    const [year, month] = this.selectedMonth.split('-').map(Number);
+
+    const totalDays = new Date(year, month, 0).getDate();
+    const today = new Date();
+
+    const isCurrentMonth =
+      year === today.getFullYear() &&
+      month === today.getMonth() + 1;
+
+    if (isCurrentMonth) {
+      const todayDate = today.getDate();
+      this.completionPercent = Math.round((todayDate / totalDays) * 100);
+      this.remainingDays = totalDays - todayDate;
+    } else if (
+      new Date(year, month - 1) < new Date(today.getFullYear(), today.getMonth())
+    ) {
+      // Past month
+      this.completionPercent = 100;
+      this.remainingDays = 0;
+    } else {
+      // Future month
+      this.completionPercent = 0;
+      this.remainingDays = totalDays;
+    }
+  }
+
+  onMonthChange() {
+    this.calculateMonthStats();
+  }
 
 loadData() {
   this.incomeService.getIncomeByMonth(this.selectedMonth)
