@@ -1,1 +1,112 @@
-<p>dashboard works!</p>
+<div class="dashboard">
+
+  <!-- LEFT COLUMN -->
+  <div class="left-column">
+
+    <!-- Greeting Card -->
+    <mat-card class="card greeting-card">
+      <h3>Good Morning,</h3>
+      <h1>Karthik</h1>
+
+      <p class="date">16 December, Tuesday</p>
+
+      <label>
+        Month:
+        <select>
+          <option>December</option>
+        </select>
+      </label>
+
+      <div class="progress-section">
+        <div class="progress-info">
+          <strong>71% Completed</strong>
+          <span>Remaining 15 Days</span>
+        </div>
+        <mat-progress-bar value="71"></mat-progress-bar>
+      </div>
+
+      <div class="remaining-days">
+        <p><span class="dot blue"></span> 05 Weekdays</p>
+        <p><span class="dot green"></span> 04 Weekends & Holidays</p>
+      </div>
+    </mat-card>
+
+    <!-- Category Gauge -->
+    <mat-card class="card category-gauge">
+      <h3>Category</h3>
+      <p class="amount">₹8,630 of ₹12,000</p>
+      <div class="gauge-placeholder">[ Gauge Chart ]</div>
+    </mat-card>
+
+    <!-- Category Summary -->
+    <mat-card class="card category-summary">
+      <h3>Category Summary</h3>
+
+      <div class="category-row">
+        <span>Shopping</span>
+        <mat-progress-bar value="70"></mat-progress-bar>
+      </div>
+
+      <div class="category-row">
+        <span>Food</span>
+        <mat-progress-bar value="40"></mat-progress-bar>
+      </div>
+    </mat-card>
+
+  </div>
+
+  <!-- CENTER COLUMN -->
+  <div class="center-column">
+
+    <!-- Top Stats -->
+    <div class="stats-row">
+      <mat-card class="card stat-card income">
+        <p>Total Income</p>
+        <h2>₹3140.74</h2>
+      </mat-card>
+
+      <mat-card class="card stat-card expense">
+        <p>Total Spending</p>
+        <h2>₹42.040</h2>
+      </mat-card>
+
+      <mat-card class="card stat-card balance">
+        <p>Available</p>
+        <h2>₹501.074</h2>
+      </mat-card>
+    </div>
+
+    <!-- Monthly Bar Chart -->
+    <mat-card class="card bar-chart">
+      <h3>December 2025</h3>
+      <div class="chart-placeholder">[ Monthly Bar Chart ]</div>
+    </mat-card>
+
+    <!-- Spending Table -->
+    <mat-card class="card spending-table">
+      <h3>Spending Summary</h3>
+      <div class="table-placeholder">[ Table ]</div>
+    </mat-card>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-column">
+
+    <!-- Spending Fulfillment -->
+    <mat-card class="card fulfillment">
+      <h3>Spending Fulfillment</h3>
+      <div class="chart-placeholder">[ Line Chart ]</div>
+      <p>This Month: ₹5,506</p>
+      <p>Last Month: ₹4,087</p>
+    </mat-card>
+
+    <!-- Upcoming Expense -->
+    <mat-card class="card upcoming">
+      <p>Upcoming Expense</p>
+      <h2>₹501.074</h2>
+    </mat-card>
+
+  </div>
+
+</div>

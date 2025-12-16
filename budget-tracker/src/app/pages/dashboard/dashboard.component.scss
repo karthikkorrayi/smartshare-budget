@@ -1,0 +1,82 @@
+.dashboard {
+  display: grid;
+  grid-template-columns: 300px 1fr 260px;
+  gap: 20px;
+  padding: 20px;
+  background: #eefbfb;
+}
+
+.card {
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.left-column,
+.center-column,
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Greeting Card */
+.greeting-card h1 {
+  margin: 0;
+}
+
+.progress-section {
+  margin-top: 12px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.remaining-days {
+  margin-top: 10px;
+}
+
+.dot {
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot.blue {
+  background: #2196f3;
+}
+
+.dot.green {
+  background: #2ecc71;
+}
+
+/* Stats */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.stat-card {
+  text-align: center;
+}
+
+.stat-card.income {
+  background: #dff2ff;
+}
+
+/* Placeholders */
+.chart-placeholder,
+.table-placeholder,
+.gauge-placeholder {
+  height: 160px;
+  background: #e3f2fd;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+}

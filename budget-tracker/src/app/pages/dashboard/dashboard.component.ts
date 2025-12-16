@@ -4,24 +4,15 @@ import { IncomeService } from '../../services/income.service';
 import { ExpenseService } from '../../services/expense.service';
 import { getCurrentMonth } from '../../utils/date.util';
 import { FormsModule } from '@angular/forms';
+import { MatCardModule } from '@angular/material/card';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
-  template: `
-    <h2>Dashboard</h2>
-
-    <select [(ngModel)]="selectedMonth" (change)="loadData()">
-      <option *ngFor="let m of months" [value]="m">
-        {{ m }}
-      </option>
-    </select>
-
-    <p>Total Income: ₹{{ totalIncome }}</p>
-    <p>Total Expenses: ₹{{ totalExpenses }}</p>
-    <p>Balance: ₹{{ totalIncome - totalExpenses }}</p>
-  `
+  imports: [CommonModule, FormsModule, MatCardModule, MatProgressBarModule],
+  templateUrl: './dashboard.component.html',
+  styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent {
   totalIncome = 0;
