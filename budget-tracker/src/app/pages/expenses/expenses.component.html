@@ -1,0 +1,10 @@
+<input matInput placeholder="Description" [(ngModel)]="description">
+<input matInput type="number" placeholder="Amount" [(ngModel)]="amount">
+
+<select [(ngModel)]="category">
+  <option *ngFor="let c of categories" [value]="c">
+    {{ c }}
+  </option>
+</select>
+
+<button mat-raised-button color="warn" (click)="save()">Add</button>

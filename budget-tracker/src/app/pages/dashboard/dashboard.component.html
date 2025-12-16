@@ -1,0 +1,206 @@
+<div class="dashboard">
+
+  <!-- LEFT COLUMN -->
+  <div class="left-column">
+
+    <!-- Greeting Card -->
+    <mat-card class="card greeting-card">
+      <h3>Good Morning,</h3>
+      <h1>{{ username }}</h1>
+
+
+      <p class="date">
+        {{ today | date: 'dd MMMM, EEEE' }}
+      </p>
+
+      <label>
+        Month:
+        <select [(ngModel)]="selectedMonth" (change)="onMonthChange()">
+          <option *ngFor="let m of months" [value]="m.value">
+            {{ m.label }}
+          </option>
+        </select>
+      </label>
+
+      <div class="progress-section">
+        <div class="progress-info">
+          <strong>{{ completionPercent }}% Completed</strong>
+          <span *ngIf="completionPercent < 100">
+            Remaining {{ remainingDays }} Days
+          </span>
+        </div>
+        <mat-progress-bar [value]="completionPercent"></mat-progress-bar>
+      </div>
+    </mat-card>
+
+    <!-- Category Gauge -->
+    <mat-card class="card receivable-card">
+      <h3>Amount to Receive</h3>
+
+      <h2 class="total">₹{{ totalReceivable }}</h2>
+
+      <!-- ADD ROW -->
+      <div class="add-row">
+        <input
+          placeholder="Title"
+          [(ngModel)]="newReceivable.title"
+        />
+        <input
+          type="number"
+          placeholder="Amount"
+          [(ngModel)]="newReceivable.amount"
+        />
+        <button (click)="addReceivable()">+</button>
+      </div>
+
+      <!-- LIST -->
+      <div *ngFor="let r of receivables" class="receivable-row">
+        <input
+          type="checkbox"
+          (change)="markReceivableReceived(r)"
+        />
+
+        <span class="title">{{ r.title }}</span>
+        <span class="amount">₹{{ r.amount }}</span>
+
+        <span class="delete" (click)="deleteReceivable(r.id)">🗑️</span>
+      </div>
+    </mat-card>
+
+    <!-- Category Summary -->
+   <mat-card class="card category-summary">
+      <h3>Category Summary</h3>
+
+      <div *ngFor="let cat of categorySummary" class="category-row">
+        <div class="category-header">
+          <span>{{ cat.name }}</span>
+          <span>₹{{ cat.amount }}</span>
+        </div>
+        <mat-progress-bar
+          mode="determinate"
+          [value]="cat.percentage">
+        </mat-progress-bar>
+      </div>
+    </mat-card>
+
+  </div>
+
+  <!-- CENTER COLUMN -->
+  <div class="center-column">
+    <mat-card class="card">
+      <h3>Recent Income</h3>
+
+      <table class="spending-table-ui">
+        <tr *ngFor="let inc of recentIncome">
+          <td>{{ inc.source }}</td>
+          <td>₹{{ inc.amount }}</td>
+          <td>
+            <span class="action" (click)="editIncome(inc)">✏️</span>
+            <span class="action" (click)="deleteIncome(inc.id)">🗑️</span>
+          </td>
+        </tr>
+      </table>
+    </mat-card>
+
+    <!-- Top Stats -->
+    <div class="stats-row">
+      <mat-card class="card stat-card income">
+        <p>Total Income</p>
+        <h2>₹{{ totalIncome | number:'1.2-2' }}</h2>
+      </mat-card>
+
+      <mat-card class="card stat-card expense">
+        <p>Total Spending</p>
+        <h2>₹{{ totalExpenses | number:'1.2-2' }}</h2>
+      </mat-card>
+
+      <mat-card class="card stat-card balance">
+        <p>Available</p>
+        <h2>₹{{ availableBalance | number:'1.2-2' }}</h2>
+      </mat-card>
+    </div>
+
+
+    <!-- Monthly Bar Chart -->
+    <mat-card class="card bar-chart">
+      <h3>December 2025</h3>
+        <canvas id="monthlyBarChart"></canvas>
+    </mat-card>
+
+    <!-- Spending Table -->
+    <mat-card class="card spending-table">
+      <h3>Spending Summary</h3>
+      <table class="spending-table-ui">
+        <tr>
+          <th>Description</th>
+          <th>Category</th>
+          <th>Date</th>
+          <th>Amount</th>
+        </tr>
+
+        <tr *ngFor="let exp of recentExpenses">
+          <td>{{ exp.description }}</td>
+          <td>{{ exp.category }}</td>
+          <td>{{ exp.date.toDate() | date:'dd MMM' }}</td>
+          <td>₹{{ exp.amount }}</td>
+          <td>
+            <span class="action" (click)="editExpense(exp)">✏️</span>
+            <span class="action" (click)="deleteExpense(exp.id)">🗑️</span>
+          </td>
+        </tr>
+      </table>
+    </mat-card>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-column">
+
+    <!-- Spending Fulfillment -->
+    <mat-card class="card fulfillment">
+      <h3>Spending Fulfillment</h3>
+      <canvas id="spendingLineChart"></canvas>
+
+      <div class="line-info">
+        <p>This Month: ₹{{ totalExpenses }}</p>
+        <p>Last Month: ₹{{ lastMonthCumulative.at(-1) || 0 }}</p>
+      </div>
+
+    </mat-card>
+
+    <!-- Upcoming Expense -->
+    <mat-card class="card upcoming">
+      <h3>Upcoming Payments</h3>
+
+      <div *ngFor="let pay of upcomingPayments" class="upcoming-item">
+        <div>
+          <input
+            type="checkbox"
+            (change)="markAsPaid(pay)"
+          />
+          <strong>{{ pay.description }}</strong>
+          <p class="due-text">
+            Due in {{ pay.dueIn }} day{{ pay.dueIn > 1 ? 's' : '' }}
+          </p>
+        </div>
+
+        <div class="right">
+          <span class="amount">₹{{ pay.amount }}</span>
+          <span class="delete" (click)="deleteUpcoming(pay.id)">🗑️</span>
+        </div>
+      </div>
+    </mat-card>
+
+  </div>
+
+</div>
+
+<div class="fab-container">
+  <button class="fab" (click)="toggleFab()">+</button>
+
+  <div class="fab-menu" *ngIf="fabOpen">
+    <button (click)="openAddExpense()">Add Expense</button>
+    <button (click)="openAddIncome()">Add Income</button>
+  </div>
+</div>
+
