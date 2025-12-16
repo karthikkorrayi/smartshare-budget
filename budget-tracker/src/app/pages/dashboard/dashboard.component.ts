@@ -9,6 +9,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Chart, registerables } from 'chart.js';
 import { MatDialog } from '@angular/material/dialog';
 import { AddExpenseComponent } from '../../dialogs/add-expense/add-expense.component';
+import { AddIncomeComponent } from '../../dialogs/add-income/add-income.component';
 Chart.register(...registerables);
 
 @Component({
@@ -35,6 +36,10 @@ export class DashboardComponent {
 
   barChart!: Chart;
   dailyTotals: number[] = [];
+
+  recentIncome: any[] = [];
+
+  fabOpen = false;
 
   gaugeChart!: Chart;
   gaugeCategory = '';
@@ -159,6 +164,7 @@ export class DashboardComponent {
     this.incomeService.getIncomeByMonth(monthKey)
       .subscribe((data: any[]) => {
         this.totalIncome = data.reduce((sum, i) => sum + i.amount, 0);
+        this.prepareRecentIncome(data);
         this.calculateBalance();
       });
 
@@ -429,6 +435,46 @@ export class DashboardComponent {
   deleteExpense(id: string) {
     if (confirm('Delete this expense?')) {
       this.expenseService.deleteExpense(id);
+    }
+  }
+
+  toggleFab() {
+    this.fabOpen = !this.fabOpen;
+  }
+
+  openAddIncome() {
+    this.fabOpen = false;
+    this.dialog.open(AddIncomeComponent, {
+      width: '320px',
+      data: {
+        month: this.getSelectedMonthKey()
+      }
+    });
+  }
+
+  prepareRecentIncome(income: any[]) {
+    this.recentIncome = [...income]
+      .sort((a, b) => {
+        const da = new Date(a.date.seconds * 1000).getTime();
+        const db = new Date(b.date.seconds * 1000).getTime();
+        return db - da;
+      })
+      .slice(0, 3);
+  }
+
+  editIncome(income: any) {
+    this.dialog.open(AddIncomeComponent, {
+      width: '320px',
+      data: {
+        income,
+        month: this.getSelectedMonthKey()
+      }
+    });
+  }
+
+  deleteIncome(id: string) {
+    if (confirm('Delete this income?')) {
+      this.incomeService.deleteIncome(id);
     }
   }
 

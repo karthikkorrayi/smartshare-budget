@@ -81,6 +81,22 @@
       </mat-card>
     </div>
 
+    <mat-card class="card">
+      <h3>Recent Income</h3>
+
+      <table class="spending-table-ui">
+        <tr *ngFor="let inc of recentIncome">
+          <td>{{ inc.source }}</td>
+          <td>₹{{ inc.amount }}</td>
+          <td>
+            <span class="action" (click)="editIncome(inc)">✏️</span>
+            <span class="action" (click)="deleteIncome(inc.id)">🗑️</span>
+          </td>
+        </tr>
+      </table>
+    </mat-card>
+
+
     <!-- Monthly Bar Chart -->
     <mat-card class="card bar-chart">
       <h3>December 2025</h3>
@@ -138,6 +154,12 @@
 
 </div>
 
-<button class="fab" (click)="openAddExpense()">
-  +
-</button>
+<div class="fab-container">
+  <button class="fab" (click)="toggleFab()">+</button>
+
+  <div class="fab-menu" *ngIf="fabOpen">
+    <button (click)="openAddExpense()">Add Expense</button>
+    <button (click)="openAddIncome()">Add Income</button>
+  </div>
+</div>
+
