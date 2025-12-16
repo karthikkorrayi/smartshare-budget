@@ -35,9 +35,11 @@
 
     <!-- Category Gauge -->
     <mat-card class="card category-gauge">
-      <h3>Category</h3>
-      <p class="amount">₹8,630 of ₹12,000</p>
-      <div class="gauge-placeholder">[ Gauge Chart ]</div>
+      <h4>{{ gaugeCategory }}</h4>
+      <p class="amount">₹{{ gaugeSpent }} of ₹{{ gaugeLimit }}</p>
+
+      <canvas id="categoryGauge"></canvas>
+
     </mat-card>
 
     <!-- Category Summary -->
@@ -88,7 +90,21 @@
     <!-- Spending Table -->
     <mat-card class="card spending-table">
       <h3>Spending Summary</h3>
-      <div class="table-placeholder">[ Table ]</div>
+      <table class="spending-table-ui">
+        <tr>
+          <th>Description</th>
+          <th>Category</th>
+          <th>Date</th>
+          <th>Amount</th>
+        </tr>
+
+        <tr *ngFor="let exp of recentExpenses">
+          <td>{{ exp.description }}</td>
+          <td>{{ exp.category }}</td>
+          <td>{{ exp.date.toDate() | date:'dd MMM' }}</td>
+          <td>₹{{ exp.amount }}</td>
+        </tr>
+      </table>
     </mat-card>
 
   </div>
@@ -99,9 +115,13 @@
     <!-- Spending Fulfillment -->
     <mat-card class="card fulfillment">
       <h3>Spending Fulfillment</h3>
-      <div class="chart-placeholder">[ Line Chart ]</div>
-      <p>This Month: ₹5,506</p>
-      <p>Last Month: ₹4,087</p>
+      <canvas id="spendingLineChart"></canvas>
+
+      <div class="line-info">
+        <p>This Month: ₹{{ totalExpenses }}</p>
+        <p>Last Month: ₹{{ lastMonthCumulative.at(-1) || 0 }}</p>
+      </div>
+
     </mat-card>
 
     <!-- Upcoming Expense -->

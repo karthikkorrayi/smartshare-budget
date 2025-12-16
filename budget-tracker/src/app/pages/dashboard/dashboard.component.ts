@@ -30,9 +30,21 @@ export class DashboardComponent {
   availableBalance = 0;
   incomeService: IncomeService;
   expenseService: ExpenseService;
-  
+
   barChart!: Chart;
   dailyTotals: number[] = [];
+
+  gaugeChart!: Chart;
+  gaugeCategory = '';
+  gaugeSpent = 0;
+  gaugeLimit = 50000; // static for now
+
+  recentExpenses: any[] = [];
+
+  lineChart!: Chart;
+
+  thisMonthCumulative: number[] = [];
+  lastMonthCumulative: number[] = [];
 
   categorySummary: {
     name: string;
@@ -138,6 +150,7 @@ export class DashboardComponent {
 
   loadMonthlyFinance() {
     const monthKey = this.getSelectedMonthKey();
+    const lastMonthKey = this.getLastMonthKey();
 
     // Income
     this.incomeService.getIncomeByMonth(monthKey)
@@ -153,6 +166,19 @@ export class DashboardComponent {
         this.calculateBalance();
         this.prepareDailyExpenses(data);
         this.prepareCategorySummary(data);
+        this.prepareRecentExpenses(data);
+        this.thisMonthCumulative =
+          this.prepareCumulativeData(data, monthKey);
+
+        this.renderLineChart();
+      });
+
+      this.expenseService.getExpensesByMonth(lastMonthKey)
+      .subscribe((data: any[]) => {
+        this.lastMonthCumulative =
+          this.prepareCumulativeData(data, lastMonthKey);
+
+        this.renderLineChart();
       });
   }
 
@@ -238,6 +264,144 @@ export class DashboardComponent {
       amount: categoryMap[cat],
       percentage: Math.round((categoryMap[cat] / maxAmount) * 100)
     }));
+    this.categorySummary.sort((a, b) => b.amount - a.amount);
+    this.prepareCategoryGauge();
+
+  }
+
+  prepareCategoryGauge() {
+    if (!this.categorySummary.length) return;
+
+    // pick highest spending category
+    const topCategory = this.categorySummary[0];
+    this.gaugeCategory = topCategory.name;
+    this.gaugeSpent = topCategory.amount;
+
+    this.renderGaugeChart();
+  }
+
+  renderGaugeChart() {
+    const used = this.gaugeSpent;
+    const remaining = Math.max(this.gaugeLimit - used, 0);
+
+    if (this.gaugeChart) {
+      this.gaugeChart.destroy();
+    }
+
+    this.gaugeChart = new Chart('categoryGauge', {
+      type: 'doughnut',
+      data: {
+        datasets: [{
+          data: [used, remaining],
+          backgroundColor: ['#1e88e5', '#e0e0e0'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        circumference: 180,
+        rotation: -90,
+        cutout: '75%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `₹ ${ctx.raw}`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  prepareRecentExpenses(expenses: any[]) {
+    this.recentExpenses = [...expenses]
+      .sort((a, b) => {
+        const da = new Date(a.date.seconds * 1000).getTime();
+        const db = new Date(b.date.seconds * 1000).getTime();
+        return db - da;
+      })
+      .slice(0, 5);
+  }
+
+  getLastMonthKey(): string {
+    const year = this.today.getFullYear();
+    const monthIndex = this.months.findIndex(m => m.value === this.selectedMonth);
+
+    const date = new Date(year, monthIndex - 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  prepareCumulativeData(expenses: any[], monthKey: string): number[] {
+    const [year, month] = monthKey.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const dailyTotals = new Array(daysInMonth).fill(0);
+
+    expenses.forEach(exp => {
+      const day = new Date(exp.date.seconds * 1000).getDate();
+      dailyTotals[day - 1] += exp.amount;
+    });
+
+    // convert to cumulative
+    for (let i = 1; i < dailyTotals.length; i++) {
+      dailyTotals[i] += dailyTotals[i - 1];
+    }
+
+    return dailyTotals;
+  }
+
+  renderLineChart() {
+    if (!this.thisMonthCumulative.length) return;
+
+    const days = this.thisMonthCumulative.length;
+    const labels = Array.from({ length: days }, (_, i) => i + 1);
+
+    if (this.lineChart) {
+      this.lineChart.destroy();
+    }
+
+    this.lineChart = new Chart('spendingLineChart', {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'This Month',
+            data: this.thisMonthCumulative,
+            borderColor: '#1e88e5',
+            backgroundColor: 'rgba(30,136,229,0.1)',
+            tension: 0.4,
+            fill: true
+          },
+          {
+            label: 'Last Month',
+            data: this.lastMonthCumulative,
+            borderColor: '#90caf9',
+            borderDash: [6, 4],
+            tension: 0.4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `₹ ${ctx.raw}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false }
+          },
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
   }
 
 }
