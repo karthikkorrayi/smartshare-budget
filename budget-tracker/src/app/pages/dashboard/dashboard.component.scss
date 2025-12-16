@@ -228,3 +228,40 @@ canvas {
   font-size: 18px;
   color: #777;
 }
+
+.receivable-card .total {
+  margin: 8px 0 12px;
+  color: #1e88e5;
+}
+
+.add-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.add-row input {
+  flex: 1;
+  padding: 4px 6px;
+}
+
+.receivable-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.receivable-row .title {
+  flex: 1;
+}
+
+.receivable-row .amount {
+  font-weight: bold;
+}
+
+.delete {
+  cursor: pointer;
+  color: #e53935;
+}

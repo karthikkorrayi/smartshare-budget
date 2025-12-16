@@ -34,12 +34,37 @@
     </mat-card>
 
     <!-- Category Gauge -->
-    <mat-card class="card category-gauge">
-      <h4>{{ gaugeCategory }}</h4>
-      <p class="amount">₹{{ gaugeSpent }} of ₹{{ gaugeLimit }}</p>
+    <mat-card class="card receivable-card">
+      <h3>Amount to Receive</h3>
 
-      <canvas id="categoryGauge"></canvas>
+      <h2 class="total">₹{{ totalReceivable }}</h2>
 
+      <!-- ADD ROW -->
+      <div class="add-row">
+        <input
+          placeholder="Title"
+          [(ngModel)]="newReceivable.title"
+        />
+        <input
+          type="number"
+          placeholder="Amount"
+          [(ngModel)]="newReceivable.amount"
+        />
+        <button (click)="addReceivable()">+</button>
+      </div>
+
+      <!-- LIST -->
+      <div *ngFor="let r of receivables" class="receivable-row">
+        <input
+          type="checkbox"
+          (change)="markReceivableReceived(r)"
+        />
+
+        <span class="title">{{ r.title }}</span>
+        <span class="amount">₹{{ r.amount }}</span>
+
+        <span class="delete" (click)="deleteReceivable(r.id)">🗑️</span>
+      </div>
     </mat-card>
 
     <!-- Category Summary -->

@@ -12,6 +12,7 @@ import { AddExpenseComponent } from '../../dialogs/add-expense/add-expense.compo
 import { AddIncomeComponent } from '../../dialogs/add-income/add-income.component';
 import { UpcomingPaymentService } from '../../services/upcoming-payment.service';
 import { combineLatest } from 'rxjs';
+import { ReceivableService } from '../../services/receivable.service';
 Chart.register(...registerables);
 
 @Component({
@@ -36,6 +37,7 @@ export class DashboardComponent {
   incomeService: IncomeService;
   expenseService: ExpenseService;
   upcomingService: UpcomingPaymentService;
+  receivableService: ReceivableService;
 
   barChart!: Chart;
   dailyTotals: number[] = [];
@@ -66,15 +68,26 @@ export class DashboardComponent {
     percentage: number;
   }[] = [];
 
+  receivables: any[] = [];
+  totalReceivable = 0;
+
+  // input model
+  newReceivable = {
+    title: '',
+    amount: 0
+  };
+
   constructor(
     incomeService: IncomeService,
     expenseService: ExpenseService,
     upcomingService: UpcomingPaymentService,
+    receivableService: ReceivableService,
     private dialog: MatDialog
   ) {
     this.incomeService = incomeService;
     this.expenseService = expenseService;
     this.upcomingService = upcomingService;
+    this.receivableService = receivableService;
     incomeService.getIncome().subscribe((data: any[]) => {
       this.totalIncome = data.reduce((sum, i) => sum + i.amount, 0);
     });
@@ -100,7 +113,57 @@ export class DashboardComponent {
       })).filter(p => p.dueIn >= 0)
         .sort((a, b) => a.dueIn - b.dueIn);
     });
+    this.receivableService.getAll().subscribe(data => {
+      this.receivables = data;
+      this.totalReceivable = data.reduce(
+        (sum: number, r: any) => sum + r.amount,
+        0
+      );
+    });
   }
+
+  addReceivable() {
+    if (!this.newReceivable.title || this.newReceivable.amount <= 0) return;
+
+    // Save receivable
+    this.receivableService.add({
+      title: this.newReceivable.title,
+      amount: this.newReceivable.amount,
+      createdAt: new Date()
+    });
+
+    // Add as EXPENSE (money given)
+    this.expenseService.addExpense({
+      description: `Lent: ${this.newReceivable.title}`,
+      amount: this.newReceivable.amount,
+      category: 'Lent',
+      date: new Date(),
+      month: this.getSelectedMonthKey()
+    });
+
+    // reset input
+    this.newReceivable = { title: '', amount: 0 };
+  }
+
+  markReceivableReceived(item: any) {
+    // Add to INCOME
+    this.incomeService.addIncome({
+      source: `Received from ${item.title}`,
+      amount: item.amount,
+      date: new Date(),
+      month: this.getSelectedMonthKey()
+    });
+
+    // Remove from receivables
+    this.receivableService.delete(item.id);
+  }
+
+  deleteReceivable(id: string) {
+    if (confirm('Delete this receivable?')) {
+      this.receivableService.delete(id);
+    }
+  }
+
   calculateDueInDays(dueDate: any): number {
     const due = new Date(dueDate.seconds * 1000);
     const today = new Date();
