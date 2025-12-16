@@ -6,6 +6,8 @@ import { getCurrentMonth } from '../../utils/date.util';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { Chart, registerables } from 'chart.js';
+Chart.register(...registerables);
 
 @Component({
   selector: 'app-dashboard',
@@ -28,6 +30,9 @@ export class DashboardComponent {
   availableBalance = 0;
   incomeService: IncomeService;
   expenseService: ExpenseService;
+  
+  barChart!: Chart;
+  dailyTotals: number[] = [];
 
   constructor(
     incomeService: IncomeService,
@@ -140,11 +145,75 @@ export class DashboardComponent {
       .subscribe((data: any[]) => {
         this.totalExpenses = data.reduce((sum, e) => sum + e.amount, 0);
         this.calculateBalance();
+        this.prepareDailyExpenses(data);
       });
   }
 
   calculateBalance() {
     this.availableBalance = this.totalIncome - this.totalExpenses;
+  }
+
+  prepareDailyExpenses(expenses: any[]) {
+    const year = this.today.getFullYear();
+    const monthIndex = this.months.findIndex(m => m.value === this.selectedMonth);
+
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    this.dailyTotals = new Array(daysInMonth).fill(0);
+
+    expenses.forEach(exp => {
+      const day = new Date(exp.date.seconds * 1000).getDate();
+      this.dailyTotals[day - 1] += exp.amount;
+    });
+
+    this.renderBarChart(daysInMonth);
+  }
+
+  renderBarChart(daysInMonth: number) {
+    const labels = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
+    const todayDate = this.today.getDate();
+
+    const backgroundColors = this.dailyTotals.map((_, index) =>
+      index + 1 === todayDate ? '#1e88e5' : '#bbdefb'
+    );
+
+    if (this.barChart) {
+      this.barChart.destroy();
+    }
+
+    this.barChart = new Chart('monthlyBarChart', {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: this.dailyTotals,
+          backgroundColor: backgroundColors,
+          borderRadius: 6,
+          maxBarThickness: 20
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `₹ ${ctx.raw}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false }
+          },
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: '#e0e0e0'
+            }
+          }
+        }
+      }
+    });
   }
 
 }
