@@ -24,4 +24,22 @@ export class PinLockComponent {
     this.pin = '';
   }
 
+  addDigit(digit: string) {
+    if (this.pin.length < 4) {
+      this.pin += digit;
+      if(this.pin.length === 4){
+        setTimeout(() => this.submitPin, 150);
+      }
+    }
+  }
+
+  removeDigit() {
+    this.pin = this.pin.slice(0, -1);
+  }
+
+  submitPin() {
+    if (this.pin.length !== 4) return;
+    this.unlock();
+  }
+
 }

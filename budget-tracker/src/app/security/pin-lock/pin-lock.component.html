@@ -1,16 +1,26 @@
 <div class="lock-screen" *ngIf="pinService.isLocked">
-      <div class="lock-box">
-        <h2>Enter 4-Digit PIN</h2>
+  <div class="lock-box">
+    <h2>Enter 4-Digit PIN</h2>
 
-        <input
-          type="password"
-          maxlength="4"
-          [(ngModel)]="pin"
-          (keyup.enter)="unlock()"
-        />
+    <!-- PIN INPUT -->
+    <input
+      type="password"
+      maxlength="4"
+      [value]="pin"
+      readonly
+    />
 
-        <p class="error" *ngIf="error">Invalid PIN</p>
+    <p class="error" *ngIf="error">Invalid PIN</p>
 
-        <button (click)="unlock()">Unlock</button>
-      </div>
+    <!-- DIAL PAD -->
+    <div class="dial-pad">
+      <button *ngFor="let n of [1,2,3]" (click)="addDigit(n.toString())">{{n}}</button>
+      <button *ngFor="let n of [4,5,6]" (click)="addDigit(n.toString())">{{n}}</button>
+      <button *ngFor="let n of [7,8,9]" (click)="addDigit(n.toString())">{{n}}</button>
+
+      <button class="action" (click)="removeDigit()">⌫</button>
+      <button (click)="addDigit('0')">0</button>
+      <button class="action confirm" (click)="submitPin()">✔</button>
     </div>
+  </div>
+</div>
