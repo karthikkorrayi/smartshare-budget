@@ -1,0 +1,16 @@
+<div class="lock-screen" *ngIf="pinService.isLocked">
+      <div class="lock-box">
+        <h2>Enter 4-Digit PIN</h2>
+
+        <input
+          type="password"
+          maxlength="4"
+          [(ngModel)]="pin"
+          (keyup.enter)="unlock()"
+        />
+
+        <p class="error" *ngIf="error">Invalid PIN</p>
+
+        <button (click)="unlock()">Unlock</button>
+      </div>
+    </div>
