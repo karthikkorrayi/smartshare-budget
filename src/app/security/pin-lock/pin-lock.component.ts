@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PinLockService } from '../../services/pin-lock.service';
 
@@ -15,31 +15,50 @@ export class PinLockComponent {
   
   error = false;
 
+  numbers = [1,2,3,4,5,6,7,8,9];
+
   constructor(public pinService: PinLockService){
     this.pinService.setPin('1234');
   }
 
-  unlock(){
-    this.error = !this.pinService.verifyPin(this.pin);
-    this.pin = '';
+  @HostListener('window:keydown', ['$event'])
+  handleKeyboard(event: KeyboardEvent) {
+    this.onKey(event);
   }
 
-  addDigit(digit: string) {
-    if (this.pin.length < 4) {
-      this.pin += digit;
-      if(this.pin.length === 4){
-        setTimeout(() => this.submitPin, 150);
-      }
-    }
+  // Dial pad press
+  press(num: number) {
+    if (this.pin.length >= 4) return;
+    this.pin += num;
+    this.checkAutoUnlock();
   }
 
-  removeDigit() {
+  // Backspace
+  remove() {
     this.pin = this.pin.slice(0, -1);
   }
 
-  submitPin() {
-    if (this.pin.length !== 4) return;
-    this.unlock();
+  // Auto verify when 4 digits entered
+  checkAutoUnlock() {
+    if (this.pin.length === 4) {
+      setTimeout(() => {
+        const ok = this.pinService.verifyPin(this.pin);
+        if (!ok) {
+          this.error = true;
+          this.pin = '';
+          setTimeout(() => this.error = false, 1200);
+        }
+      }, 150);
+    }
   }
 
+  // Keyboard support
+  onKey(event: KeyboardEvent) {
+    if (event.key >= '0' && event.key <= '9') {
+      this.press(Number(event.key));
+    }
+    if (event.key === 'Backspace') {
+      this.remove();
+    }
+  }
 }

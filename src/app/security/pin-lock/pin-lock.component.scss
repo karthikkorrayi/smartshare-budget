@@ -1,32 +1,84 @@
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #0f172a, #020617);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.lock-box {
+  background: #ffffff;
+  padding: 30px 26px;
+  border-radius: 18px;
+  width: 280px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+}
+
+.lock-box h2 {
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.pin-dots {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pin-dots span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #94a3b8;
+}
+
+.pin-dots span.filled {
+  background: #1e88e5;
+  border-color: #1e88e5;
+}
+
+.error {
+  color: #e53935;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+/* Dial Pad */
 .dial-pad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 12px;
   margin-top: 16px;
 }
 
 .dial-pad button {
-  height: 48px;
-  font-size: 18px;
-  border-radius: 8px;
+  height: 52px;
+  border-radius: 14px;
   border: none;
+  font-size: 18px;
+  background: #e3f2fd;
   cursor: pointer;
-  background: #e5e7eb;
+  transition: 0.2s;
 }
 
 .dial-pad button:hover {
-  background: #d1d5db;
+  background: #bbdefb;
 }
 
-.dial-pad .action {
-  background: #f3f4f6;
+.dial-pad .clear {
+  background: #ffebee;
+  color: #c62828;
 }
 
-.dial-pad .confirm {
-  background: #1e88e5;
-  color: white;
+.dial-pad .clear:hover {
+  background: #ffcdd2;
 }
 
-.dial-pad .confirm:hover {
-  background: #1565c0;
+.dial-pad .empty {
+  background: transparent;
+  pointer-events: none;
 }

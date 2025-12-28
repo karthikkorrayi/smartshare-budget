@@ -3,24 +3,25 @@
     <h2>Enter 4-Digit PIN</h2>
 
     <!-- PIN INPUT -->
-    <input
-      type="password"
-      maxlength="4"
-      [value]="pin"
-      readonly
-    />
+    <div class="pin-dots">
+      <span *ngFor="let d of [0,1,2,3]; let i = index"
+            [class.filled]="i < pin.length">
+      </span>
+    </div>
 
     <p class="error" *ngIf="error">Invalid PIN</p>
 
     <!-- DIAL PAD -->
     <div class="dial-pad">
-      <button *ngFor="let n of [1,2,3]" (click)="addDigit(n.toString())">{{n}}</button>
-      <button *ngFor="let n of [4,5,6]" (click)="addDigit(n.toString())">{{n}}</button>
-      <button *ngFor="let n of [7,8,9]" (click)="addDigit(n.toString())">{{n}}</button>
+      <button *ngFor="let n of numbers" (click)="press(n)">
+        {{ n }}
+      </button>
 
-      <button class="action" (click)="removeDigit()">⌫</button>
-      <button (click)="addDigit('0')">0</button>
-      <button class="action confirm" (click)="submitPin()">✔</button>
+      <button class="empty"></button>
+
+      <button (click)="press(0)">0</button>
+
+      <button class="clear" (click)="remove()">⌫</button>
     </div>
   </div>
 </div>
