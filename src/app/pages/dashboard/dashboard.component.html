@@ -152,20 +152,22 @@
 
     <!-- Top Stats -->
     <div class="stats-row">
-      <mat-card class="card stat-card income">
-        <p>Total Income</p>
-        <h2>₹{{ totalIncome | number:'1.2-2' }}</h2>
-      </mat-card>
+      <div class="kpi-card income" [class.active]="availableBalance > 0">
+        <p class="kpi-label">Total Income</p>
+        <h2 class="kpi-value">₹{{ totalIncome | number:'1.0-0' }}</h2>
+      </div>
 
-      <mat-card class="card stat-card expense">
-        <p>Total Spending</p>
-        <h2>₹{{ totalExpenses | number:'1.2-2' }}</h2>
-      </mat-card>
+      <div class="kpi-card expense">
+        <p class="kpi-label">Total Spending</p>
+        <h2 class="kpi-value">₹{{ totalExpenses | number:'1.0-0' }}</h2>
+      </div>
 
-      <mat-card class="card stat-card balance">
-        <p>Available</p>
-        <h2>₹{{ availableBalance | number:'1.2-2' }}</h2>
-      </mat-card>
+      <div class="kpi-card balance" [class.active]="availableBalance > totalIncome * 0.5">
+        <p class="kpi-label">Available Balance</p>
+        <h2 class="kpi-value" [class.positive]="availableBalance > 0" [class.negative]="availableBalance < 0">
+          ₹{{ availableBalance | number:'1.0-0' }}
+        </h2>
+      </div>
     </div>
 
 
