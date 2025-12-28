@@ -457,6 +457,184 @@ canvas {
   color: #e53935;
 }
 
+/* ===== Recent Income Card ===== */
+
+.recent-income-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.income-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.income-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.income-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.entry-count {
+  font-size: 12px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+/* Empty State */
+.income-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: #64748b;
+}
+
+.income-empty .empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.income-empty p {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.income-empty span {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Income List */
+.income-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.income-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f8fafc;
+  transition: all 0.2s ease;
+}
+
+.income-entry:last-child {
+  border-bottom: none;
+}
+
+.income-entry:hover {
+  background: #f8fafc;
+  margin: 0 -16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+/* Left Side */
+.entry-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.entry-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e88e5;
+  background: #e3f2fd;
+  padding: 4px 8px;
+  border-radius: 6px;
+  min-width: 48px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.entry-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entry-source {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.entry-time {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+/* Right Side */
+.entry-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.entry-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #059669;
+  line-height: 1.2;
+}
+
+.entry-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.income-entry:hover .entry-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.action-btn.edit:hover {
+  background: #fef3c7;
+}
+
+.action-btn.delete:hover {
+  background: #fecaca;
+}
+
 
 /* ===== Greeting Card – Modern Style ===== */
 
