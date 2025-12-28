@@ -1,880 +1,301 @@
-.dashboard {
-  display: grid;
-  grid-template-columns: 300px 1fr 260px;
-  gap: 20px;
-  padding: 20px;
-  background: #eefbfb;
-}
-
-.card {
-  border-radius: 18px;
-  padding: 16px;
-}
-
-.left-column,
-.center-column,
-.right-column {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* Greeting Card */
-.greeting-card h1 {
-  margin: 0;
-}
-
-.progress-section {
-  margin-top: 12px;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.remaining-days {
-  margin-top: 10px;
-}
-
-.dot {
-  height: 8px;
-  width: 8px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.dot.blue {
-  background: #2196f3;
-}
-
-.dot.green {
-  background: #2ecc71;
-}
-
-/* Stats */
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-/* KPI Cards */
-.kpi-card {
-  height: 110px;
-  border-radius: 18px;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.25s ease;
-  border: 1px solid transparent;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Label (small, muted) */
-.kpi-label {
-  font-size: 12px;
-  color: #64748b;
-  margin: 0 0 6px 0;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-  font-weight: 500;
-}
-
-/* Value (strong hierarchy) */
-.kpi-value {
-  font-size: 28px;
-  font-weight: 700;
-  margin: 0;
-  color: #0f172a;
-  line-height: 1.1;
-}
-
-/* Color variations for balance */
-.kpi-value.positive {
-  color: #059669;
-}
-
-.kpi-value.negative {
-  color: #dc2626;
-}
-
-/* Pastel accents */
-.kpi-card.income {
-  border-left: 4px solid #34d399;
-}
-
-.kpi-card.income::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #34d399, #10b981);
-  opacity: 0.1;
-  border-radius: 0 18px 0 40px;
-}
-
-.kpi-card.expense {
-  border-left: 4px solid #f87171;
-}
-
-.kpi-card.expense::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #f87171, #ef4444);
-  opacity: 0.1;
-  border-radius: 0 18px 0 40px;
-}
-
-.kpi-card.balance {
-  border-left: 4px solid #60a5fa;
-}
-
-.kpi-card.balance::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #60a5fa, #3b82f6);
-  opacity: 0.1;
-  border-radius: 0 18px 0 40px;
-}
-
-/* Active card (soft blue highlight) */
-.kpi-card.active {
-  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-  border: 1px solid #bae6fd;
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
-  transform: translateY(-2px);
-}
-
-.kpi-card.active .kpi-label {
-  color: #0369a1;
-}
-
-.kpi-card.active .kpi-value {
-  color: #0c4a6e;
-}
-
-/* Hover polish */
-.kpi-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-}
-
-.kpi-card.active:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(59, 130, 246, 0.2);
-}
-
-/* Placeholders */
-.chart-placeholder,
-.table-placeholder,
-.gauge-placeholder {
-  height: 160px;
-  background: #e3f2fd;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #555;
-}
-
-select {
-  margin-top: 6px;
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-canvas {
-  width: 100% !important;
-  height: 220px !important;
-}
-
-.category-row {
-  margin-bottom: 14px;
-}
-
-.category-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-
-#categoryGauge {
-  max-height: 160px;
-}
-
-.spending-table-ui {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.spending-table-ui th {
-  text-align: left;
-  padding-bottom: 8px;
-  color: #555;
-}
-
-.spending-table-ui td {
-  padding: 6px 0;
-  border-bottom: 1px solid #eee;
-}
-
-#lineChart {
-  max-height: 180px;
-}
-
-.line-info {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 8px;
-  font-size: 14px;
-}
-
-.fab {
-  position: fixed;
-  right: 30px;
-  bottom: 30px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: #1e88e5;
-  color: white;
-  font-size: 28px;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
-}
-
-.fab:hover {
-  background: #1565c0;
-}
-
-.fab-container {
-  position: fixed;
-  right: 30px;
-  bottom: 30px;
-}
-
-.fab-menu {
-  margin-bottom: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.fab-menu button {
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: none;
-  background: #ffffff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  cursor: pointer;
-}
-
-.upcoming {
-  background: #ffffff;
-}
-
-.upcoming-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.calendar-icon {
-  font-size: 18px;
-  opacity: 0.7;
-}
-
-/* Empty state */
-.upcoming-empty {
-  text-align: center;
-  padding: 24px 12px;
-  color: #777;
-}
-
-.empty-illustration {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.upcoming-empty span {
-  font-size: 12px;
-  color: #aaa;
-}
-
-/* Payment row */
-.upcoming-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px dashed #eee;
-}
-
-.upcoming-item:last-child {
-  border-bottom: none;
-}
-
-.upcoming-item .left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.upcoming-item input[type="checkbox"] {
-  accent-color: #1e88e5;
-  cursor: pointer;
-}
-
-.details {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* Due badge */
-.due-badge {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: #e3f2fd;
-  color: #1565c0;
-  width: fit-content;
-}
-
-.due-badge.urgent {
-  background: #ffebee;
-  color: #c62828;
-}
-
-/* Right side */
-.upcoming-item .right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.upcoming-item .amount {
-  font-weight: 600;
-  color: #374151;
-}
-
-.upcoming-item .delete {
-  cursor: pointer;
-  font-size: 14px;
-  color: #bbb;
-}
-
-.upcoming-item .delete:hover {
-  color: #e53935;
-}
-
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    #e0e0e0 25%,
-    #f5f5f5 37%,
-    #e0e0e0 63%
-  );
-  background-size: 400% 100%;
-  animation: shimmer 1.4s ease infinite;
-  border-radius: 12px;
-}
-
-@keyframes shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
-}
-
-.skeleton-card {
-  height: 120px;
-  margin-bottom: 16px;
-}
-
-.loading-screen {
-  height: 80vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  color: #777;
-}
-
-.receivable-card .total {
-  margin: 8px 0 12px;
-  color: #1e88e5;
-}
-
-.add-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.add-row input {
-  flex: 1;
-  padding: 4px 6px;
-}
-
-.receivable-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.receivable-row .title {
-  flex: 1;
-}
-
-.receivable-row .amount {
-  font-weight: bold;
-}
-
-.delete {
-  cursor: pointer;
-  color: #e53935;
-}
-
-
-/* ===== Greeting Card – Modern Style ===== */
-
-.greeting-modern {
-  background: linear-gradient(135deg, #ffffff, #e8f4ff);
-  box-shadow: 0 6px 18px rgba(30, 136, 229, 0.12);
-}
-
-.greeting-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.greet-text {
-  margin: 0;
-  font-size: 14px;
-  color: #1e88e5;
-  font-weight: 500;
-}
-
-.username {
-  margin: 2px 0;
-  font-size: 26px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.date-text {
-  margin: 0;
-  font-size: 13px;
-  color: #64748b;
-}
-
-.month-select {
-  display: flex;
-  flex-direction: column;
-  font-size: 12px;
-  color: #475569;
-}
-
-.month-select select {
-  margin-top: 4px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid #cfe6ff;
-  background: #ffffff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.progress-section {
-  margin-top: 18px;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 6px;
-  font-size: 13px;
-}
-
-.progress-label {
-  color: #1e293b;
-  font-weight: 500;
-}
-
-.remaining {
-  color: #64748b;
-}
-
-mat-progress-bar {
-  height: 8px;
-  border-radius: 8px;
-}
-
-/* Modern Line Chart Card */
-.modern-line-card {
-  background: #f9fbfd;
-  padding: 18px;
-}
-
-.line-header h3 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.subtitle {
-  font-size: 12px;
-  color: #777;
-  margin-top: 2px;
-}
-
-.line-chart-wrapper {
-  height: 220px;
-  margin-top: 10px;
-}
-
-.line-info.modern {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-  font-size: 13px;
-  color: #555;
-}
-
-.line-info.modern div {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.line-info.modern strong {
-  margin-left: 4px;
-  font-weight: 600;
-}
-
-.dot.this {
-  width: 8px;
-  height: 8px;
-  background: #1e88e5;
-  border-radius: 50%;
-}
-
-.dot.last {
-  width: 8px;
-  height: 8px;
-  background: #9ecbff;
-  border-radius: 50%;
-}
-
-/* ===== Amount to Receive Card ===== */
-
-.receivable-card {
-  background: #ffffff;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-}
-
-.receivable-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.receivable-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #444;
-}
-
-.receivable-header .total {
-  margin: 0;
-  font-size: 26px;
-  font-weight: 700;
-  color: #1e88e5;
-}
-
-.divider {
-  height: 1px;
-  background: #eee;
-  margin: 12px 0;
-}
-
-/* Form */
-
-.receivable-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group label {
-  font-size: 12px;
-  margin-bottom: 4px;
-  color: #666;
-}
-
-.form-group input {
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  font-size: 14px;
-}
-
-.amount-group {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
-}
-
-.amount-group input {
-  flex: 1;
-}
-
-/* Add Button */
-
-.add-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: #1e88e5;
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(30, 136, 229, 0.4);
-}
-
-.add-btn:hover {
-  background: #1565c0;
-}
-
-/* Rows */
-
-.receivable-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-}
-
-.row-content {
-  flex: 1;
-  display: flex;
-  justify-content: space-between;
-}
-
-.receivable-row .title {
-  font-size: 14px;
-}
-
-.row-amount {
-  font-weight: 600;
-}
-
-.delete {
-  cursor: pointer;
-  color: #e53935;
-  font-size: 14px;
-}
-
-/* ===== Category Summary (Enhanced) ===== */
-
-.category-summary {
-  padding-bottom: 8px;
-}
-
-.category-row-advanced {
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.category-row-advanced:last-child {
-  border-bottom: none;
-}
-
-.category-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.category-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.category-icon {
-  font-size: 18px;
-}
-
-.category-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.category-amount {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e88e5;
-}
-
-.category-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.category-progress mat-progress-bar {
-  flex: 1;
-  height: 6px;
-  border-radius: 6px;
-}
-
-.category-percent {
-  font-size: 12px;
-  color: #666;
-  min-width: 36px;
-  text-align: right;
-}
-
-/* Hover – future drill-down friendly */
-.category-row-advanced:hover {
-  background: rgba(30, 136, 229, 0.04);
-  cursor: pointer;
-}
-
-
-/* ===== Monthly Bar Chart – Modern Style ===== */
-
-.bar-chart {
-  background: #ffffff;
-  border-radius: 20px;
-  padding: 18px 20px 20px;
-}
-
-.bar-chart-header {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 10px;
-}
-
-.bar-chart-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.bar-chart-header .subtitle {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 2px;
-}
-
-.bar-chart-wrapper {
-  margin-top: 10px;
-}
-
-/* Override canvas size ONLY for this chart */
-.bar-chart canvas {
-  height: 240px !important;
-}
-
-/* ===== Recent Income Card ===== */
-
-.recent-income-card {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f1f5f9;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.income-icon {
-    <!-- Recent Income Card -->
-    <mat-card class="card recent-income-card">
-      <div class="income-header">
-        <h3>Recent Income</h3>
-        <div class="income-summary">
-          <span class="entry-count">{{ recentIncome.length }} entries</span>
+<div class="dashboard">
+
+  <!-- LEFT COLUMN -->
+  <div class="left-column">
+
+    <!-- Greeting Card -->
+    <mat-card class="card greeting-card greeting-modern">
+
+    <!-- Header -->
+    <div class="greeting-header">
+      <div>
+        <h4 class="greet-text">Hello 👋</h4>
+        <h1 class="username">{{ username }}</h1>
+        <p class="date-text">
+          {{ today | date: 'dd MMMM, EEEE' }}
+        </p>
+      </div>
+
+      <div class="month-select">
+        <label>Month</label>
+        <select [(ngModel)]="selectedMonth" (change)="onMonthChange()">
+          <option *ngFor="let m of months" [value]="m.value">
+            {{ m.label }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-section">
+      <div class="progress-info">
+        <span class="progress-label">
+          {{ completionPercent }}% completed
+        </span>
+        <span class="remaining" *ngIf="completionPercent < 100">
+          {{ remainingDays }} days left
+        </span>
+      </div>
+
+      <mat-progress-bar
+        mode="determinate"
+        [value]="completionPercent">
+      </mat-progress-bar>
+    </div>
+
+  </mat-card>
+
+    <!-- Category Gauge -->
+    <mat-card class="card receivable-card">
+
+      <!-- Header -->
+      <div class="receivable-header">
+        <h3>Amount to Receive</h3>
+        <h1 class="total">₹{{ totalReceivable }}</h1>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Data Entry -->
+      <div class="receivable-form">
+        <div class="form-group">
+          <label>Title</label>
+          <input
+            type="text"
+            placeholder="Friend / Reason"
+            [(ngModel)]="newReceivable.title"
+          />
+        </div>
+
+        <div class="form-group amount-group">
+          <label>Amount</label>
+          <input
+            type="number"
+            placeholder="0"
+            [(ngModel)]="newReceivable.amount"
+          />
+          <button class="add-btn" (click)="addReceivable()">+</button>
         </div>
       </div>
 
-      <!-- Empty State -->
-      <div *ngIf="recentIncome.length === 0" class="income-empty">
-        <div class="empty-icon">💰</div>
-        <p>No income recorded yet</p>
-        <span>Add your first income entry</span>
+      <div class="divider"></div>
+
+      <!-- List -->
+      <div *ngFor="let r of receivables" class="receivable-row">
+        <input
+          type="checkbox"
+          (change)="markReceivableReceived(r)"
+        />
+
+        <div class="row-content">
+          <span class="title">{{ r.title }}</span>
+          <span class="row-amount">₹{{ r.amount }}</span>
+        </div>
+
+        <span class="delete" (click)="deleteReceivable(r.id)">🗑️</span>
       </div>
 
-      <!-- Income List -->
-      <div class="income-list">
-        <div *ngFor="let inc of recentIncome" class="income-entry">
-          <div class="entry-left">
-            <div class="entry-date">
-              {{ inc.date.toDate() | date:'dd MMM' }}
-            </div>
-            <div class="entry-details">
-              <span class="entry-source">{{ inc.source }}</span>
-              <span class="entry-time">{{ inc.date.toDate() | date:'HH:mm' }}</span>
-            </div>
+    </mat-card>
+
+    <!-- Category Summary -->
+   <mat-card class="card category-summary">
+      <h3>Category Summary</h3>
+
+      <div
+        *ngFor="let cat of categorySummary"
+        class="category-row-advanced"
+      >
+        <!-- Top Row -->
+        <div class="category-top">
+          <div class="category-left">
+            <span class="category-icon">{{ cat.icon }}</span>
+            <span class="category-name">{{ cat.name }}</span>
           </div>
-          
-          <div class="entry-right">
-            <div class="entry-amount">₹{{ inc.amount | number:'1.0-0' }}</div>
-            <div class="entry-actions">
-              <button class="action-btn edit" (click)="editIncome(inc)" title="Edit">
-                ✏️
-              </button>
-              <button class="action-btn delete" (click)="deleteIncome(inc.id)" title="Delete">
-                🗑️
-              </button>
-            </div>
+
+          <div class="category-right">
+            <span class="category-amount">₹{{ cat.amount }}</span>
           </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="category-progress">
+          <mat-progress-bar
+            mode="determinate"
+            [value]="cat.percentage"
+          ></mat-progress-bar>
+
+          <span class="category-percent">
+            {{ cat.percentage }}%
+          </span>
         </div>
       </div>
     </mat-card>
+
+  </div>
+
+  <!-- CENTER COLUMN -->
+  <div class="center-column">
+    <mat-card class="card">
+      <h3>Recent Income</h3>
+
+      <table class="spending-table-ui">
+        <tr *ngFor="let inc of recentIncome">
+          <td>{{ inc.source }}</td>
+          <td>₹{{ inc.amount }}</td>
+          <td>
+            <span class="action" (click)="editIncome(inc)">✏️</span>
+            <span class="action" (click)="deleteIncome(inc.id)">🗑️</span>
+          </td>
+        </tr>
+      </table>
+    </mat-card>
+
+    <!-- Top Stats -->
+    <div class="stats-row">
+      <div class="kpi-card income" [class.active]="availableBalance > 0">
+        <p class="kpi-label">Total Income</p>
+        <h2 class="kpi-value">₹{{ totalIncome | number:'1.0-0' }}</h2>
+      </div>
+
+      <div class="kpi-card expense">
+        <p class="kpi-label">Total Spending</p>
+        <h2 class="kpi-value">₹{{ totalExpenses | number:'1.0-0' }}</h2>
+      </div>
+
+      <div class="kpi-card balance" [class.active]="availableBalance > totalIncome * 0.5">
+        <p class="kpi-label">Available Balance</p>
+        <h2 class="kpi-value" [class.positive]="availableBalance > 0" [class.negative]="availableBalance < 0">
+          ₹{{ availableBalance | number:'1.0-0' }}
+        </h2>
+      </div>
+    </div>
+
+
+    <!-- Monthly Bar Chart -->
+    <!-- Monthly Bar Chart -->
+    <mat-card class="card bar-chart">
+      <div class="bar-chart-header">
+        <h3>{{ selectedMonthLabel }}</h3>
+        <span class="subtitle">Daily spending trend</span>
+      </div>
+
+      <div class="bar-chart-wrapper">
+        <canvas id="monthlyBarChart"></canvas>
+      </div>
+    </mat-card>
+
+    <!-- Spending Table -->
+    <mat-card class="card spending-table">
+      <h3>Spending Summary</h3>
+      <table class="spending-table-ui">
+        <tr>
+          <th>Description</th>
+          <th>Category</th>
+          <th>Date</th>
+          <th>Amount</th>
+        </tr>
+
+        <tr *ngFor="let exp of recentExpenses">
+          <td>{{ exp.description }}</td>
+          <td>{{ exp.category }}</td>
+          <td>{{ exp.date.toDate() | date:'dd MMM' }}</td>
+          <td>₹{{ exp.amount }}</td>
+          <td>
+            <span class="action" (click)="editExpense(exp)">✏️</span>
+            <span class="action" (click)="deleteExpense(exp.id)">🗑️</span>
+          </td>
+        </tr>
+      </table>
+    </mat-card>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-column">
+
+    <!-- Spending Fulfillment -->
+    <mat-card class="card fulfillment modern-line-card">
+      <div class="line-header">
+        <div>
+          <h3>Monthly Spending Trend</h3>
+          <p class="subtitle">
+            {{ selectedMonth | date:'MMMM yyyy' }} vs previous month
+          </p>
+        </div>
+      </div>
+
+      <div class="line-chart-wrapper">
+        <canvas id="spendingLineChart"></canvas>
+      </div>
+
+      <div class="line-info modern">
+        <div>
+          <span class="dot this"></span>
+          <span>This Month</span>
+          <strong>₹{{ totalExpenses }}</strong>
+        </div>
+        <div>
+          <span class="dot last"></span>
+          <span>Last Month</span>
+          <strong>₹{{ lastMonthCumulative.at(-1) || 0 }}</strong>
+        </div>
+      </div>
+    </mat-card>
+
+    <!-- Upcoming Payments -->
+    <mat-card class="card upcoming">
+      <div class="upcoming-header">
+        <h3>Upcoming Payments</h3>
+        <span class="calendar-icon">📅</span>
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div *ngIf="upcomingPayments.length === 0" class="upcoming-empty">
+        <div class="empty-illustration">📭</div>
+        <p>No upcoming payments</p>
+        <span>You're all clear for now</span>
+      </div>
+
+      <!-- LIST -->
+      <div *ngFor="let pay of upcomingPayments" class="upcoming-item">
+        <div class="left">
+          <input
+            type="checkbox"
+            (change)="markAsPaid(pay)"
+          />
+
+          <div class="details">
+            <strong>{{ pay.description }}</strong>
+
+            <span
+              class="due-badge"
+              [class.urgent]="pay.dueIn <= 3"
+            >
+              Due in {{ pay.dueIn }} day{{ pay.dueIn > 1 ? 's' : '' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="right">
+          <span class="amount">₹{{ pay.amount }}</span>
+          <span
+            class="delete"
+            title="Remove"
+            (click)="deleteUpcoming(pay.id)"
+          >
+            ✕
+          </span>
+        </div>
+      </div>
+    </mat-card>
+
+</div>
+
+<div class="fab-container">
+  <button class="fab" (click)="toggleFab()">+</button>
+
+  <div class="fab-menu" *ngIf="fabOpen">
+    <button (click)="openAddExpense()">Add Expense</button>
+    <button (click)="openAddIncome()">Add Income</button>
+  </div>
+</div>
