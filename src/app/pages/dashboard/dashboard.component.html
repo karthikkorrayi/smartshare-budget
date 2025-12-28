@@ -135,19 +135,39 @@
 
   <!-- CENTER COLUMN -->
   <div class="center-column">
-    <mat-card class="card">
-      <h3>Recent Income</h3>
+    <!-- Recent Income Card -->
+    <mat-card class="card recent-income-card">
+      <div class="card-header">
+        <h3>Recent Income</h3>
+        <span class="income-icon">💰</span>
+      </div>
 
-      <table class="spending-table-ui">
-        <tr *ngFor="let inc of recentIncome">
-          <td>{{ inc.source }}</td>
-          <td>₹{{ inc.amount }}</td>
-          <td>
-            <span class="action" (click)="editIncome(inc)">✏️</span>
-            <span class="action" (click)="deleteIncome(inc.id)">🗑️</span>
-          </td>
-        </tr>
-      </table>
+      <!-- Empty State -->
+      <div *ngIf="recentIncome.length === 0" class="empty-state">
+        <div class="empty-icon">📈</div>
+        <p>No income recorded yet</p>
+        <span>Add your first income entry</span>
+      </div>
+
+      <!-- Income List -->
+      <div *ngFor="let inc of recentIncome" class="income-item">
+        <div class="income-main">
+          <div class="income-details">
+            <span class="income-source">{{ inc.source }}</span>
+            <span class="income-date">{{ inc.date.toDate() | date:'dd MMM, yyyy' }}</span>
+          </div>
+          <div class="income-amount">₹{{ inc.amount | number:'1.0-0' }}</div>
+        </div>
+        
+        <div class="income-actions">
+          <button class="action-btn edit" (click)="editIncome(inc)" title="Edit">
+            <span>✏️</span>
+          </button>
+          <button class="action-btn delete" (click)="deleteIncome(inc.id)" title="Delete">
+            <span>🗑️</span>
+          </button>
+        </div>
+      </div>
     </mat-card>
 
     <!-- Top Stats -->
