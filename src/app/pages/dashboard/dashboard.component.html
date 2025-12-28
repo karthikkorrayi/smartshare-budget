@@ -4,82 +4,130 @@
   <div class="left-column">
 
     <!-- Greeting Card -->
-    <mat-card class="card greeting-card">
-      <h3>Good Morning,</h3>
-      <h1>{{ username }}</h1>
+    <mat-card class="card greeting-card greeting-modern">
 
+    <!-- Header -->
+    <div class="greeting-header">
+      <div>
+        <h4 class="greet-text">Hello 👋</h4>
+        <h1 class="username">{{ username }}</h1>
+        <p class="date-text">
+          {{ today | date: 'dd MMMM, EEEE' }}
+        </p>
+      </div>
 
-      <p class="date">
-        {{ today | date: 'dd MMMM, EEEE' }}
-      </p>
-
-      <label>
-        Month:
+      <div class="month-select">
+        <label>Month</label>
         <select [(ngModel)]="selectedMonth" (change)="onMonthChange()">
           <option *ngFor="let m of months" [value]="m.value">
             {{ m.label }}
           </option>
         </select>
-      </label>
-
-      <div class="progress-section">
-        <div class="progress-info">
-          <strong>{{ completionPercent }}% Completed</strong>
-          <span *ngIf="completionPercent < 100">
-            Remaining {{ remainingDays }} Days
-          </span>
-        </div>
-        <mat-progress-bar [value]="completionPercent"></mat-progress-bar>
       </div>
-    </mat-card>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-section">
+      <div class="progress-info">
+        <span class="progress-label">
+          {{ completionPercent }}% completed
+        </span>
+        <span class="remaining" *ngIf="completionPercent < 100">
+          {{ remainingDays }} days left
+        </span>
+      </div>
+
+      <mat-progress-bar
+        mode="determinate"
+        [value]="completionPercent">
+      </mat-progress-bar>
+    </div>
+
+  </mat-card>
 
     <!-- Category Gauge -->
     <mat-card class="card receivable-card">
-      <h3>Amount to Receive</h3>
 
-      <h2 class="total">₹{{ totalReceivable }}</h2>
-
-      <!-- ADD ROW -->
-      <div class="add-row">
-        <input
-          placeholder="Title"
-          [(ngModel)]="newReceivable.title"
-        />
-        <input
-          type="number"
-          placeholder="Amount"
-          [(ngModel)]="newReceivable.amount"
-        />
-        <button (click)="addReceivable()">+</button>
+      <!-- Header -->
+      <div class="receivable-header">
+        <h3>Amount to Receive</h3>
+        <h1 class="total">₹{{ totalReceivable }}</h1>
       </div>
 
-      <!-- LIST -->
+      <div class="divider"></div>
+
+      <!-- Data Entry -->
+      <div class="receivable-form">
+        <div class="form-group">
+          <label>Title</label>
+          <input
+            type="text"
+            placeholder="Friend / Reason"
+            [(ngModel)]="newReceivable.title"
+          />
+        </div>
+
+        <div class="form-group amount-group">
+          <label>Amount</label>
+          <input
+            type="number"
+            placeholder="0"
+            [(ngModel)]="newReceivable.amount"
+          />
+          <button class="add-btn" (click)="addReceivable()">+</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- List -->
       <div *ngFor="let r of receivables" class="receivable-row">
         <input
           type="checkbox"
           (change)="markReceivableReceived(r)"
         />
 
-        <span class="title">{{ r.title }}</span>
-        <span class="amount">₹{{ r.amount }}</span>
+        <div class="row-content">
+          <span class="title">{{ r.title }}</span>
+          <span class="row-amount">₹{{ r.amount }}</span>
+        </div>
 
         <span class="delete" (click)="deleteReceivable(r.id)">🗑️</span>
       </div>
+
     </mat-card>
 
     <!-- Category Summary -->
    <mat-card class="card category-summary">
       <h3>Category Summary</h3>
 
-      <div *ngFor="let cat of categorySummary" class="category-row">
-        <div class="category-header">
-          <span>{{ cat.name }}</span>
-          <span>₹{{ cat.amount }}</span>
+      <div
+        *ngFor="let cat of categorySummary"
+        class="category-row-advanced"
+      >
+        <!-- Top Row -->
+        <div class="category-top">
+          <div class="category-left">
+            <span class="category-icon">{{ cat.icon }}</span>
+            <span class="category-name">{{ cat.name }}</span>
+          </div>
+
+          <div class="category-right">
+            <span class="category-amount">₹{{ cat.amount }}</span>
+          </div>
         </div>
-        <mat-progress-bar
-          mode="determinate"
-          [value]="cat.percentage">
-        </mat-progress-bar>
+
+        <!-- Progress -->
+        <div class="category-progress">
+          <mat-progress-bar
+            mode="determinate"
+            [value]="cat.percentage"
+          ></mat-progress-bar>
+
+          <span class="category-percent">
+            {{ cat.percentage }}%
+          </span>
+        </div>
       </div>
     </mat-card>
 
@@ -122,9 +170,16 @@
 
 
     <!-- Monthly Bar Chart -->
+    <!-- Monthly Bar Chart -->
     <mat-card class="card bar-chart">
-      <h3>December 2025</h3>
+      <div class="bar-chart-header">
+        <h3>{{ selectedMonthLabel }}</h3>
+        <span class="subtitle">Daily spending trend</span>
+      </div>
+
+      <div class="bar-chart-wrapper">
         <canvas id="monthlyBarChart"></canvas>
+      </div>
     </mat-card>
 
     <!-- Spending Table -->
@@ -157,41 +212,80 @@
   <div class="right-column">
 
     <!-- Spending Fulfillment -->
-    <mat-card class="card fulfillment">
-      <h3>Spending Fulfillment</h3>
-      <canvas id="spendingLineChart"></canvas>
-
-      <div class="line-info">
-        <p>This Month: ₹{{ totalExpenses }}</p>
-        <p>Last Month: ₹{{ lastMonthCumulative.at(-1) || 0 }}</p>
+    <mat-card class="card fulfillment modern-line-card">
+      <div class="line-header">
+        <div>
+          <h3>Monthly Spending Trend</h3>
+          <p class="subtitle">
+            {{ selectedMonth | date:'MMMM yyyy' }} vs previous month
+          </p>
+        </div>
       </div>
 
+      <div class="line-chart-wrapper">
+        <canvas id="spendingLineChart"></canvas>
+      </div>
+
+      <div class="line-info modern">
+        <div>
+          <span class="dot this"></span>
+          <span>This Month</span>
+          <strong>₹{{ totalExpenses }}</strong>
+        </div>
+        <div>
+          <span class="dot last"></span>
+          <span>Last Month</span>
+          <strong>₹{{ lastMonthCumulative.at(-1) || 0 }}</strong>
+        </div>
+      </div>
     </mat-card>
 
-    <!-- Upcoming Expense -->
+    <!-- Upcoming Payments -->
     <mat-card class="card upcoming">
-      <h3>Upcoming Payments</h3>
+      <div class="upcoming-header">
+        <h3>Upcoming Payments</h3>
+        <span class="calendar-icon">📅</span>
+      </div>
 
+      <!-- EMPTY STATE -->
+      <div *ngIf="upcomingPayments.length === 0" class="upcoming-empty">
+        <div class="empty-illustration">📭</div>
+        <p>No upcoming payments</p>
+        <span>You're all clear for now</span>
+      </div>
+
+      <!-- LIST -->
       <div *ngFor="let pay of upcomingPayments" class="upcoming-item">
-        <div>
+        <div class="left">
           <input
             type="checkbox"
             (change)="markAsPaid(pay)"
           />
-          <strong>{{ pay.description }}</strong>
-          <p class="due-text">
-            Due in {{ pay.dueIn }} day{{ pay.dueIn > 1 ? 's' : '' }}
-          </p>
+
+          <div class="details">
+            <strong>{{ pay.description }}</strong>
+
+            <span
+              class="due-badge"
+              [class.urgent]="pay.dueIn <= 3"
+            >
+              Due in {{ pay.dueIn }} day{{ pay.dueIn > 1 ? 's' : '' }}
+            </span>
+          </div>
         </div>
 
         <div class="right">
           <span class="amount">₹{{ pay.amount }}</span>
-          <span class="delete" (click)="deleteUpcoming(pay.id)">🗑️</span>
+          <span
+            class="delete"
+            title="Remove"
+            (click)="deleteUpcoming(pay.id)"
+          >
+            ✕
+          </span>
         </div>
       </div>
     </mat-card>
-
-  </div>
 
 </div>
 

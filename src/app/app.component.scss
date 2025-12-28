@@ -1,0 +1,50 @@
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  height: 64px;
+  padding: 0 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  /* Soft premium gradient */
+  background: linear-gradient(
+    135deg,
+    #baddff,
+    #7cb7ff
+  );
+
+  /* Light, elegant separation */
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+
+  backdrop-filter: blur(6px);
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+}
+
+.app-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+
+  color: #0f172a; /* slate-900 */
+
+  /* calm premium feel */
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-btn:hover {
+  background: rgba(15, 23, 42, 0.05);
+}

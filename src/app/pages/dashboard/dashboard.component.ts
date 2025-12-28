@@ -46,6 +46,8 @@ export class DashboardComponent {
 
   upcomingPayments: any[] = [];
 
+  cumulativeTotals: number[] = [];
+
   fabOpen = false;
 
   isLoading = true;
@@ -66,6 +68,7 @@ export class DashboardComponent {
     name: string;
     amount: number;
     percentage: number;
+    icon: string;
   }[] = [];
 
   receivables: any[] = [];
@@ -291,56 +294,117 @@ export class DashboardComponent {
       this.dailyTotals[day - 1] += exp.amount;
     });
 
+    // 🔥 cumulative calculation
+    this.cumulativeTotals = [...this.dailyTotals];
+    for (let i = 1; i < this.cumulativeTotals.length; i++) {
+      this.cumulativeTotals[i] += this.cumulativeTotals[i - 1];
+    }
+
     this.renderBarChart(daysInMonth);
   }
 
-  renderBarChart(daysInMonth: number) {
-    const labels = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
-    const todayDate = this.today.getDate();
+ renderBarChart(daysInMonth: number) {
+  const labels = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
+  const todayDate = this.today.getDate();
 
-    const backgroundColors = this.dailyTotals.map((_, index) =>
-      index + 1 === todayDate ? '#1e88e5' : '#bbdefb'
-    );
+  const canvas = document.getElementById('monthlyBarChart') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d')!;
 
-    if (this.barChart) {
-      this.barChart.destroy();
-    }
+  // Gradient for bars
+  const barGradient = ctx.createLinearGradient(0, 0, 0, 240);
+  barGradient.addColorStop(0, 'rgba(59, 130, 246, 0.9)');
+  barGradient.addColorStop(1, 'rgba(59, 130, 246, 0.2)');
 
-    this.barChart = new Chart('monthlyBarChart', {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
+  const barColors = this.dailyTotals.map((_, index) =>
+    index + 1 === todayDate ? '#2563eb' : barGradient
+  );
+
+  if (this.barChart) {
+    this.barChart.destroy();
+  }
+
+  this.barChart = new Chart(ctx, {
+    data: {
+      labels,
+      datasets: [
+        // BAR DATASET – Daily spending
+        {
+          type: 'bar',
           data: this.dailyTotals,
-          backgroundColor: backgroundColors,
-          borderRadius: 6,
-          maxBarThickness: 20
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => `₹ ${ctx.raw}`
-            }
-          }
+          backgroundColor: barColors,
+          borderRadius: 12,
+          maxBarThickness: 18
         },
-        scales: {
-          x: {
-            grid: { display: false }
-          },
-          y: {
-            beginAtZero: true,
-            grid: {
-              color: '#e0e0e0'
+
+        // LINE DATASET – Cumulative total
+        {
+          type: 'line',
+          data: this.cumulativeTotals,
+          borderColor: '#68d2ffff',
+          borderWidth: 2,
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#68d2ffff',
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#111827',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          cornerRadius: 8,
+          padding: 10,
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.type === 'line') {
+                return `Total: ₹${ctx.raw}`;
+              }
+              return `Spent: ₹${ctx.raw}`;
             }
           }
         }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#9ca3af',
+            font: { size: 11 }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(21, 173, 255, 0.3)',
+            drawOnChartArea: true,
+            drawTicks: false
+          },
+          ticks: {
+            color: '#9ca3af',
+            font: { size: 11 },
+            callback: value => `₹${value}`
+          }
+        }
       }
-    });
+    }
+  });
+}
+
+  get selectedMonthLabel(): string {
+    const found = this.months.find(m => m.value === this.selectedMonth);
+    return found ? found.label : '';
   }
+  
 
   prepareCategorySummary(expenses: any[]) {
     const categoryMap: any = {};
@@ -355,11 +419,22 @@ export class DashboardComponent {
     this.categorySummary = Object.keys(categoryMap).map(cat => ({
       name: cat,
       amount: categoryMap[cat],
-      percentage: Math.round((categoryMap[cat] / maxAmount) * 100)
+      percentage: Math.round((categoryMap[cat] / maxAmount) * 100),
+      icon: this.getCategoryIcon(cat)
     }));
     this.categorySummary.sort((a, b) => b.amount - a.amount);
     this.prepareCategoryGauge();
-
+  }
+  
+  getCategoryIcon(category: string): string {
+    switch (category.toLowerCase()) {
+      case 'food': return '🍔';
+      case 'shopping': return '🛍️';
+      case 'transport': return '🚕';
+      case 'bills': return '💡';
+      case 'lent': return '🤝';
+      default: return '📦';
+    }
   }
 
   prepareCategoryGauge() {
@@ -443,17 +518,24 @@ export class DashboardComponent {
     return dailyTotals;
   }
 
-  renderLineChart() {
+ renderLineChart() {
     if (!this.thisMonthCumulative.length) return;
 
     const days = this.thisMonthCumulative.length;
     const labels = Array.from({ length: days }, (_, i) => i + 1);
 
+    const ctx = document
+      .getElementById('spendingLineChart') as HTMLCanvasElement;
+
+    const gradient = ctx.getContext('2d')!.createLinearGradient(0, 0, 0, 220);
+    gradient.addColorStop(0, 'rgba(30,136,229,0.25)');
+    gradient.addColorStop(1, 'rgba(30,136,229,0.02)');
+
     if (this.lineChart) {
       this.lineChart.destroy();
     }
 
-    this.lineChart = new Chart('spendingLineChart', {
+    this.lineChart = new Chart(ctx, {
       type: 'line',
       data: {
         labels,
@@ -462,24 +544,37 @@ export class DashboardComponent {
             label: 'This Month',
             data: this.thisMonthCumulative,
             borderColor: '#1e88e5',
-            backgroundColor: 'rgba(30,136,229,0.1)',
-            tension: 0.4,
-            fill: true
+            backgroundColor: gradient,
+            borderWidth: 3,
+            tension: 0.45,
+            fill: true,
+            pointRadius: 0,
+            pointHoverRadius: 5
           },
           {
             label: 'Last Month',
             data: this.lastMonthCumulative,
-            borderColor: '#90caf9',
-            borderDash: [6, 4],
-            tension: 0.4
+            borderColor: '#9ecbff',
+            borderWidth: 2,
+            tension: 0.45,
+            borderDash: [6, 6],
+            fill: false,
+            pointRadius: 0
           }
         ]
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
           tooltip: {
+            backgroundColor: '#ffffff',
+            titleColor: '#333',
+            bodyColor: '#555',
+            borderColor: '#e0e0e0',
+            borderWidth: 1,
+            padding: 10,
             callbacks: {
               label: ctx => `₹ ${ctx.raw}`
             }
@@ -487,10 +582,25 @@ export class DashboardComponent {
         },
         scales: {
           x: {
-            grid: { display: false }
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: '#888',
+              font: { size: 11 }
+            }
           },
           y: {
-            beginAtZero: true
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(0,0,0,0.04)',
+              drawOnChartArea: true,
+              drawTicks: false
+            },
+            ticks: {
+              color: '#888',
+              font: { size: 11 }
+            }
           }
         }
       }

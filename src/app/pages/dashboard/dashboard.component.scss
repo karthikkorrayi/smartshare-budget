@@ -60,12 +60,60 @@
   gap: 16px;
 }
 
-.stat-card {
-  text-align: center;
+/* KPI Cards */
+.kpi-card {
+  height: 120px;
+  border-radius: 18px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  transition: all 0.25s ease;
+  border: 1px solid transparent;
 }
 
-.stat-card.income {
-  background: #dff2ff;
+/* Label (small, muted) */
+.kpi-label {
+  font-size: 13px;
+  color: #6b7280; /* muted gray */
+  margin: 0 0 6px 0;
+  letter-spacing: 0.3px;
+}
+
+/* Value (strong hierarchy) */
+.kpi-value {
+  font-size: 26px;
+  font-weight: 600;
+  margin: 0;
+  color: #111827;
+}
+
+/* Pastel accents */
+.kpi-card.income {
+  border-left: 4px solid #7dd3fc;
+}
+
+.kpi-card.expense {
+  border-left: 4px solid #fca5a5;
+}
+
+.kpi-card.balance {
+  border-left: 4px solid #86efac;
+}
+
+/* Active card (soft blue highlight) */
+.kpi-card.active {
+  background: #eef6ff;
+  border: 1px solid #cfe6ff;
+  box-shadow: 0 8px 22px rgba(30, 136, 229, 0.18);
+}
+
+/* Hover polish */
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
 }
 
 /* Placeholders */
@@ -176,25 +224,103 @@ canvas {
   cursor: pointer;
 }
 
+.upcoming {
+  background: #ffffff;
+}
+
+.upcoming-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.calendar-icon {
+  font-size: 18px;
+  opacity: 0.7;
+}
+
+/* Empty state */
+.upcoming-empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: #777;
+}
+
+.empty-illustration {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.upcoming-empty span {
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* Payment row */
 .upcoming-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+  border-bottom: 1px dashed #eee;
 }
 
 .upcoming-item:last-child {
   border-bottom: none;
 }
 
-.due-text {
-  font-size: 12px;
-  color: #888;
+.upcoming-item .left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.amount {
-  font-weight: bold;
+.upcoming-item input[type="checkbox"] {
+  accent-color: #1e88e5;
+  cursor: pointer;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Due badge */
+.due-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #e3f2fd;
+  color: #1565c0;
+  width: fit-content;
+}
+
+.due-badge.urgent {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* Right side */
+.upcoming-item .right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.upcoming-item .amount {
+  font-weight: 600;
+  color: #374151;
+}
+
+.upcoming-item .delete {
+  cursor: pointer;
+  font-size: 14px;
+  color: #bbb;
+}
+
+.upcoming-item .delete:hover {
   color: #e53935;
 }
 
@@ -264,4 +390,357 @@ canvas {
 .delete {
   cursor: pointer;
   color: #e53935;
+}
+
+
+/* ===== Greeting Card – Modern Style ===== */
+
+.greeting-modern {
+  background: linear-gradient(135deg, #ffffff, #e8f4ff);
+  box-shadow: 0 6px 18px rgba(30, 136, 229, 0.12);
+}
+
+.greeting-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.greet-text {
+  margin: 0;
+  font-size: 14px;
+  color: #1e88e5;
+  font-weight: 500;
+}
+
+.username {
+  margin: 2px 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.date-text {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.month-select {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: #475569;
+}
+
+.month-select select {
+  margin-top: 4px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #cfe6ff;
+  background: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.progress-section {
+  margin-top: 18px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.progress-label {
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.remaining {
+  color: #64748b;
+}
+
+mat-progress-bar {
+  height: 8px;
+  border-radius: 8px;
+}
+
+/* Modern Line Chart Card */
+.modern-line-card {
+  background: #f9fbfd;
+  padding: 18px;
+}
+
+.line-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #777;
+  margin-top: 2px;
+}
+
+.line-chart-wrapper {
+  height: 220px;
+  margin-top: 10px;
+}
+
+.line-info.modern {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #555;
+}
+
+.line-info.modern div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.line-info.modern strong {
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+.dot.this {
+  width: 8px;
+  height: 8px;
+  background: #1e88e5;
+  border-radius: 50%;
+}
+
+.dot.last {
+  width: 8px;
+  height: 8px;
+  background: #9ecbff;
+  border-radius: 50%;
+}
+
+/* ===== Amount to Receive Card ===== */
+
+.receivable-card {
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.receivable-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.receivable-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #444;
+}
+
+.receivable-header .total {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: #1e88e5;
+}
+
+.divider {
+  height: 1px;
+  background: #eee;
+  margin: 12px 0;
+}
+
+/* Form */
+
+.receivable-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 12px;
+  margin-bottom: 4px;
+  color: #666;
+}
+
+.form-group input {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.amount-group {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.amount-group input {
+  flex: 1;
+}
+
+/* Add Button */
+
+.add-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #1e88e5;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(30, 136, 229, 0.4);
+}
+
+.add-btn:hover {
+  background: #1565c0;
+}
+
+/* Rows */
+
+.receivable-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.row-content {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+}
+
+.receivable-row .title {
+  font-size: 14px;
+}
+
+.row-amount {
+  font-weight: 600;
+}
+
+.delete {
+  cursor: pointer;
+  color: #e53935;
+  font-size: 14px;
+}
+
+/* ===== Category Summary (Enhanced) ===== */
+
+.category-summary {
+  padding-bottom: 8px;
+}
+
+.category-row-advanced {
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.category-row-advanced:last-child {
+  border-bottom: none;
+}
+
+.category-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.category-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-icon {
+  font-size: 18px;
+}
+
+.category-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.category-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e88e5;
+}
+
+.category-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.category-progress mat-progress-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 6px;
+}
+
+.category-percent {
+  font-size: 12px;
+  color: #666;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* Hover – future drill-down friendly */
+.category-row-advanced:hover {
+  background: rgba(30, 136, 229, 0.04);
+  cursor: pointer;
+}
+
+
+/* ===== Monthly Bar Chart – Modern Style ===== */
+
+.bar-chart {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 18px 20px 20px;
+}
+
+.bar-chart-header {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+
+.bar-chart-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.bar-chart-header .subtitle {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.bar-chart-wrapper {
+  margin-top: 10px;
+}
+
+/* Override canvas size ONLY for this chart */
+.bar-chart canvas {
+  height: 240px !important;
 }

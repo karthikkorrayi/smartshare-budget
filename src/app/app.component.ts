@@ -6,15 +6,21 @@ import { PinLockComponent } from './security/pin-lock/pin-lock.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, PinLockComponent],
+  imports: [RouterOutlet],
   template: `
-    <h1>Personal Budget Tracker</h1>
-    <app-pin-lock></app-pin-lock>
+  <header class="top-nav">
+    <div class="nav-left">
+      <span class="app-title">Personal Budget Insights</span>
+    </div>
+  </header>
+  <router-outlet></router-outlet>
+  <!-- <app-pin-lock></app-pin-lock>
 
-    @if (!pinService.isLocked) {
-      <router-outlet></router-outlet>
-    }
-  `
+  @if (!pinService.isLocked) {
+    <router-outlet></router-outlet>
+  } -->
+  `,
+  styleUrl:'./app.component.scss'
 })
 export class AppComponent {
 
