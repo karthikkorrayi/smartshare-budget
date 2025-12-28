@@ -1,4 +1,4 @@
-name: Deploy Angular to GitHub Pages
+name: Deploy Angular App to GitHub Pages
 
 on:
   push:
@@ -26,11 +26,10 @@ jobs:
 
       - name: Build Angular app
         run: |
-          npm run build -- \
-          --base-href /${{ github.event.repository.name }}/
+          npm run build -- --base-href /${{ github.event.repository.name }}/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: dist/budget-tracker/browser
+          publish_dir: ./dist/budget-tracker
