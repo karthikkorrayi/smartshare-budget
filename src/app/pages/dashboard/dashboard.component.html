@@ -185,27 +185,64 @@
     </mat-card>
 
     <!-- Spending Table -->
-    <mat-card class="card spending-table">
-      <h3>Spending Summary</h3>
-      <table class="spending-table-ui">
-        <tr>
-          <th>Description</th>
-          <th>Category</th>
-          <th>Date</th>
-          <th>Amount</th>
-        </tr>
+    <mat-card class="card spending-table-modern">
+      <div class="table-header">
+        <h3>Spending Summary</h3>
+        <span class="transaction-count" *ngIf="recentExpenses.length > 0">
+          {{ recentExpenses.length }} transaction{{ recentExpenses.length > 1 ? 's' : '' }}
+        </span>
+      </div>
 
-        <tr *ngFor="let exp of recentExpenses">
-          <td>{{ exp.description }}</td>
-          <td>{{ exp.category }}</td>
-          <td>{{ exp.date.toDate() | date:'dd MMM' }}</td>
-          <td>₹{{ exp.amount }}</td>
-          <td>
-            <span class="action" (click)="editExpense(exp)">✏️</span>
-            <span class="action" (click)="deleteExpense(exp.id)">🗑️</span>
-          </td>
-        </tr>
-      </table>
+      <div class="table-container" *ngIf="recentExpenses.length > 0">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let exp of recentExpenses" class="table-row">
+              <td>
+                <div class="description-cell">
+                  <span class="category-icon">{{ getCategoryIcon(exp.category) }}</span>
+                  <span class="description-text">{{ exp.description }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="category-badge" [attr.data-category]="exp.category.toLowerCase()">
+                  {{ exp.category }}
+                </span>
+              </td>
+              <td>
+                <span class="date-text">{{ exp.date.toDate() | date:'dd MMM yyyy' }}</span>
+              </td>
+              <td>
+                <span class="amount-text">₹{{ exp.amount | number:'1.0-0' }}</span>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn edit-btn" (click)="editExpense(exp)" title="Edit">
+                    <span class="btn-icon">✏️</span>
+                  </button>
+                  <button class="action-btn delete-btn" (click)="deleteExpense(exp.id)" title="Delete">
+                    <span class="btn-icon">🗑️</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" *ngIf="recentExpenses.length === 0">
+        <div class="empty-icon">📊</div>
+        <h4>No transactions yet</h4>
+        <p>Your spending history will appear here once you add expenses</p>
+      </div>
     </mat-card>
 
   </div>
