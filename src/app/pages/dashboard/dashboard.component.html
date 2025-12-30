@@ -139,12 +139,21 @@
       <h3>Recent Income</h3>
 
       <table class="spending-table-ui">
-        <tr *ngFor="let inc of recentIncome">
-          <td>{{ inc.source }}</td>
+        <tr *ngFor="let inc of recentIncome" [class.system-generated]="inc.isSystemGenerated">
+          <td>
+            <span>{{ inc.source }}</span>
+            <span class="system-badge" *ngIf="inc.isSystemGenerated">Auto</span>
+          </td>
           <td>₹{{ inc.amount }}</td>
           <td>
-            <span class="action" (click)="editIncome(inc)">✏️</span>
-            <span class="action" (click)="deleteIncome(inc.id)">🗑️</span>
+            <span
+              class="action"
+              [class.disabled]="inc.isSystemGenerated"
+              (click)="editIncome(inc)">✏️</span>
+            <span
+              class="action"
+              [class.disabled]="inc.isSystemGenerated"
+              (click)="deleteIncome(inc.id)">🗑️</span>
           </td>
         </tr>
       </table>

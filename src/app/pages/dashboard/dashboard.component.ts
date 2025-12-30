@@ -13,6 +13,7 @@ import { AddIncomeComponent } from '../../dialogs/add-income/add-income.componen
 import { UpcomingPaymentService } from '../../services/upcoming-payment.service';
 import { combineLatest } from 'rxjs';
 import { ReceivableService } from '../../services/receivable.service';
+import { CarryForwardService } from '../../services/carry-forward.service';
 Chart.register(...registerables);
 
 @Component({
@@ -85,6 +86,7 @@ export class DashboardComponent {
     expenseService: ExpenseService,
     upcomingService: UpcomingPaymentService,
     receivableService: ReceivableService,
+    private carryForwardService: CarryForwardService,
     private dialog: MatDialog
   ) {
     this.incomeService = incomeService;
@@ -103,9 +105,12 @@ export class DashboardComponent {
   months: { label: string; value: string }[] = [];
   selectedMonth!: string;
 
-  ngOnInit() {
+  async ngOnInit() {
     this.generateMonths();
     this.selectedMonth = this.getCurrentMonth();
+
+    await this.carryForwardService.checkAndProcessCarryForward(this.selectedMonth);
+
     this.calculateMonthStats();
     this.loadData();
     this.loadMonthlyFinance();
@@ -657,6 +662,11 @@ export class DashboardComponent {
   }
 
   editIncome(income: any) {
+    if (income.isSystemGenerated) {
+      alert('System-generated transactions cannot be edited.');
+      return;
+    }
+
     this.dialog.open(AddIncomeComponent, {
       width: '320px',
       data: {
@@ -667,6 +677,12 @@ export class DashboardComponent {
   }
 
   deleteIncome(id: string) {
+    const income = this.recentIncome.find(i => i.id === id);
+    if (income?.isSystemGenerated) {
+      alert('System-generated transactions cannot be deleted.');
+      return;
+    }
+
     if (confirm('Delete this income?')) {
       this.incomeService.deleteIncome(id);
     }
