@@ -6,7 +6,7 @@ import { PinLockComponent } from './security/pin-lock/pin-lock.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, PinLockComponent],
+  imports: [RouterOutlet],
   template: `
   <header class="top-nav">
     <div class="nav-left">
