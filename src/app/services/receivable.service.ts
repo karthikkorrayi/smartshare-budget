@@ -5,7 +5,8 @@ import {
   addDoc,
   collectionData,
   deleteDoc,
-  doc
+  doc,
+  updateDoc
 } from '@angular/fire/firestore';
 
 @Injectable({ providedIn: 'root' })
@@ -21,6 +22,11 @@ export class ReceivableService {
       collection(this.firestore, 'receivables'),
       { idField: 'id' }
     );
+  }
+
+  update(id: string, data: any) {
+    const ref = doc(this.firestore, 'receivables', id);
+    return updateDoc(ref, data);
   }
 
   delete(id: string) {
