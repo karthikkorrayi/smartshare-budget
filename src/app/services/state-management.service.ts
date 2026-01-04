@@ -18,8 +18,6 @@ export class StateManagementService {
   expenses$ = this.expensesSubject.asObservable();
   incomes$ = this.incomesSubject.asObservable();
 
-  private receivableExpenseMap = new Map<string, string>();
-
   initializeState() {
     this.loadReceivables();
     this.loadExpenses();
@@ -44,16 +42,30 @@ export class StateManagementService {
     });
   }
 
+  async addReceivable(receivableData: any) {
+    const { title, amount, monthKey } = receivableData;
+
+    await this.receivableService.add({
+      title,
+      amount,
+      createdAt: new Date(),
+      status: 'PENDING'
+    });
+
+    await this.expenseService.addExpense({
+      description: `Lent: ${title}`,
+      amount,
+      category: 'Lent',
+      date: new Date(),
+      month: monthKey
+    });
+
+    this.loadReceivables();
+    this.loadExpenses();
+  }
+
   async addExpense(expenseData: any) {
-    const linkedReceivableId = expenseData.linkedReceivableId;
-    delete expenseData.linkedReceivableId;
-
     await this.expenseService.addExpense(expenseData);
-
-    if (linkedReceivableId) {
-      this.receivableExpenseMap.set(linkedReceivableId, expenseData.description);
-    }
-
     this.loadExpenses();
   }
 
@@ -64,10 +76,11 @@ export class StateManagementService {
       source: `Received from ${receivable.title}`,
       amount: receivable.amount,
       date: new Date(),
-      month: monthKey
+      month: monthKey,
+      isSystemGenerated: true
     });
 
-    const linkedExpense = Array.from(this.expensesSubject.value).find(
+    const linkedExpense = this.expensesSubject.value.find(
       (exp: any) => exp.description === `Lent: ${receivable.title}`
     );
 
@@ -97,9 +110,19 @@ export class StateManagementService {
 
     await this.receivableService.delete(receivableId);
 
-    this.receivableExpenseMap.delete(receivableId);
-
     this.loadReceivables();
     this.loadExpenses();
+  }
+
+  getReceivablesSnapshot() {
+    return this.receivablesSubject.getValue();
+  }
+
+  getExpensesSnapshot() {
+    return this.expensesSubject.getValue();
+  }
+
+  getIncomesSnapshot() {
+    return this.incomesSubject.getValue();
   }
 }

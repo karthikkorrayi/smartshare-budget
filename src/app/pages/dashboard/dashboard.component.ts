@@ -14,6 +14,7 @@ import { UpcomingPaymentService } from '../../services/upcoming-payment.service'
 import { combineLatest } from 'rxjs';
 import { ReceivableService } from '../../services/receivable.service';
 import { CarryForwardService } from '../../services/carry-forward.service';
+import { StateManagementService } from '../../services/state-management.service';
 Chart.register(...registerables);
 
 @Component({
@@ -39,6 +40,7 @@ export class DashboardComponent {
   expenseService: ExpenseService;
   upcomingService: UpcomingPaymentService;
   receivableService: ReceivableService;
+  stateManagement: StateManagementService;
 
   barChart!: Chart;
   dailyTotals: number[] = [];
@@ -86,6 +88,7 @@ export class DashboardComponent {
     expenseService: ExpenseService,
     upcomingService: UpcomingPaymentService,
     receivableService: ReceivableService,
+    stateManagement: StateManagementService,
     private carryForwardService: CarryForwardService,
     private dialog: MatDialog
   ) {
@@ -93,6 +96,7 @@ export class DashboardComponent {
     this.expenseService = expenseService;
     this.upcomingService = upcomingService;
     this.receivableService = receivableService;
+    this.stateManagement = stateManagement;
     incomeService.getIncome().subscribe((data: any[]) => {
       this.totalIncome = data.reduce((sum, i) => sum + i.amount, 0);
     });
@@ -130,45 +134,25 @@ export class DashboardComponent {
     });
   }
 
-  addReceivable() {
+  async addReceivable() {
     if (!this.newReceivable.title || this.newReceivable.amount <= 0) return;
 
-    // Save receivable
-    this.receivableService.add({
+    await this.stateManagement.addReceivable({
       title: this.newReceivable.title,
       amount: this.newReceivable.amount,
-      createdAt: new Date()
+      monthKey: this.getSelectedMonthKey()
     });
 
-    // Add as EXPENSE (money given)
-    this.expenseService.addExpense({
-      description: `Lent: ${this.newReceivable.title}`,
-      amount: this.newReceivable.amount,
-      category: 'Lent',
-      date: new Date(),
-      month: this.getSelectedMonthKey()
-    });
-
-    // reset input
     this.newReceivable = { title: '', amount: 0 };
   }
 
-  markReceivableReceived(item: any) {
-    // Add to INCOME
-    this.incomeService.addIncome({
-      source: `Received from ${item.title}`,
-      amount: item.amount,
-      date: new Date(),
-      month: this.getSelectedMonthKey()
-    });
-
-    // Remove from receivables
-    this.receivableService.delete(item.id);
+  async markReceivableReceived(item: any) {
+    await this.stateManagement.markReceivableAsPaid(item, this.getSelectedMonthKey());
   }
 
-  deleteReceivable(id: string) {
+  async deleteReceivable(id: string) {
     if (confirm('Delete this receivable?')) {
-      this.receivableService.delete(id);
+      await this.stateManagement.deleteReceivable(id);
     }
   }
 
