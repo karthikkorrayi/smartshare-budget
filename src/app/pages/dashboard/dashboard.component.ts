@@ -115,22 +115,30 @@ export class DashboardComponent {
 
     await this.carryForwardService.checkAndProcessCarryForward(this.selectedMonth);
 
+    this.stateManagement.initializeState();
+
     this.calculateMonthStats();
     this.loadData();
     this.loadMonthlyFinance();
+
     this.upcomingService.getAll().subscribe(data => {
-    this.upcomingPayments = data.map(p => ({
+      this.upcomingPayments = data.map(p => ({
         ...p,
         dueIn: this.calculateDueInDays(p['dueDate'])
       })).filter(p => p.dueIn >= 0)
         .sort((a, b) => a.dueIn - b.dueIn);
     });
-    this.receivableService.getAll().subscribe(data => {
+
+    this.stateManagement.receivables$.subscribe(data => {
       this.receivables = data;
       this.totalReceivable = data.reduce(
         (sum: number, r: any) => sum + r.amount,
         0
       );
+    });
+
+    this.stateManagement.expenses$.subscribe(() => {
+      this.loadData();
     });
   }
 
