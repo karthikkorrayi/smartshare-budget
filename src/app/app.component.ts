@@ -14,11 +14,11 @@ import { PinLockComponent } from './security/pin-lock/pin-lock.component';
     </div>
   </header>
   <!-- <router-outlet></router-outlet> -->
-  <app-pin-lock></app-pin-lock>
-
-   @if (!pinService.isLocked) {
-    <router-outlet></router-outlet>
-  } 
+  <app-pin-lock>
+    @if (!pinService.isLocked) {
+      <router-outlet></router-outlet>
+    } 
+  </app-pin-lock>
   `,
   styleUrl:'./app.component.scss'
 })
