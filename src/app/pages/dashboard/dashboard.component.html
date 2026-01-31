@@ -210,11 +210,12 @@
               <th>Category</th>
               <th>Date</th>
               <th>Amount</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let exp of recentExpenses" class="table-row">
+            <tr *ngFor="let exp of recentExpenses" class="table-row" [class.paid-row]="exp.status === 'PAID'">
               <td>
                 <div class="description-cell">
                   <span class="category-icon">{{ getCategoryIcon(exp.category) }}</span>
@@ -231,6 +232,10 @@
               </td>
               <td>
                 <span class="amount-text">₹{{ exp.amount | number:'1.0-0' }}</span>
+              </td>
+              <td>
+                <span class="status-badge" *ngIf="exp.status === 'PAID'">PAID</span>
+                <span class="status-badge pending" *ngIf="!exp.status || exp.status !== 'PAID'">PENDING</span>
               </td>
               <td>
                 <div class="action-buttons">

@@ -130,8 +130,9 @@ export class DashboardComponent {
     });
 
     this.stateManagement.receivables$.subscribe(data => {
-      this.receivables = data;
-      this.totalReceivable = data.reduce(
+      const pendingReceivables = data.filter((r: any) => r.status !== 'PAID');
+      this.receivables = pendingReceivables;
+      this.totalReceivable = pendingReceivables.reduce(
         (sum: number, r: any) => sum + r.amount,
         0
       );
@@ -231,7 +232,8 @@ export class DashboardComponent {
 
     this.expenseService.getExpensesByMonth(this.selectedMonth)
       .subscribe((data: any[]) => {
-        this.totalExpenses = data.reduce((a, b) => a + b.amount, 0);
+        const activeExpenses = data.filter(e => e.status !== 'PAID');
+        this.totalExpenses = activeExpenses.reduce((a, b) => a + b.amount, 0);
       });
   }
 
@@ -255,21 +257,23 @@ export class DashboardComponent {
     // Expenses
     this.expenseService.getExpensesByMonth(monthKey)
       .subscribe((data: any[]) => {
-        this.totalExpenses = data.reduce((sum, e) => sum + e.amount, 0);
+        const activeExpenses = data.filter(e => e.status !== 'PAID');
+        this.totalExpenses = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
         this.calculateBalance();
-        this.prepareDailyExpenses(data);
-        this.prepareCategorySummary(data);
+        this.prepareDailyExpenses(activeExpenses);
+        this.prepareCategorySummary(activeExpenses);
         this.prepareRecentExpenses(data);
         this.thisMonthCumulative =
-          this.prepareCumulativeData(data, monthKey);
+          this.prepareCumulativeData(activeExpenses, monthKey);
 
         this.renderLineChart();
       });
 
       this.expenseService.getExpensesByMonth(lastMonthKey)
       .subscribe((data: any[]) => {
+        const activeExpenses = data.filter(e => e.status !== 'PAID');
         this.lastMonthCumulative =
-          this.prepareCumulativeData(data, lastMonthKey);
+          this.prepareCumulativeData(activeExpenses, lastMonthKey);
 
         this.renderLineChart();
       });

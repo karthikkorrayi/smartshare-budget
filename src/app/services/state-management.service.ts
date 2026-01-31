@@ -85,7 +85,11 @@ export class StateManagementService {
     );
 
     if (linkedExpense) {
-      await this.expenseService.deleteExpense(linkedExpense.id);
+      await this.expenseService.updateExpense({
+        ...linkedExpense,
+        status: 'PAID',
+        paidDate: new Date()
+      });
     }
 
     this.loadReceivables();
