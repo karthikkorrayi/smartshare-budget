@@ -6,7 +6,7 @@ import { PinLockComponent } from './security/pin-lock/pin-lock.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, PinLockComponent],
   template: `
   <header class="top-nav">
     <div class="nav-left">
@@ -14,11 +14,10 @@ import { PinLockComponent } from './security/pin-lock/pin-lock.component';
     </div>
   </header>
   <!-- <router-outlet></router-outlet> -->
-  <app-pin-lock>
+  <app-pin-lock></app-pin-lock>
     @if (!pinService.isLocked) {
       <router-outlet></router-outlet>
     } 
-  </app-pin-lock>
   `,
   styleUrl:'./app.component.scss'
 })
