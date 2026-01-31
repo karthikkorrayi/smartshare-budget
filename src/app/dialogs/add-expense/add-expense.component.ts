@@ -71,6 +71,7 @@ export class AddExpenseComponent {
         amount: this.expense.amount,
         category: this.expense.category,
         dueDate: new Date(this.dueDate!),
+        month: this.data.month,
         createdAt: new Date()
       });
     }

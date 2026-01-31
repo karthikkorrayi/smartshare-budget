@@ -121,22 +121,8 @@ export class DashboardComponent {
     this.loadData();
     this.loadMonthlyFinance();
 
-    this.upcomingService.getAll().subscribe(data => {
-      this.upcomingPayments = data.map(p => ({
-        ...p,
-        dueIn: this.calculateDueInDays(p['dueDate'])
-      })).filter(p => p.dueIn >= 0)
-        .sort((a, b) => a.dueIn - b.dueIn);
-    });
-
-    this.stateManagement.receivables$.subscribe(data => {
-      const pendingReceivables = data.filter((r: any) => r.status !== 'PAID');
-      this.receivables = pendingReceivables;
-      this.totalReceivable = pendingReceivables.reduce(
-        (sum: number, r: any) => sum + r.amount,
-        0
-      );
-    });
+    this.loadReceivablesForMonth();
+    this.loadUpcomingPaymentsForMonth();
 
     this.stateManagement.expenses$.subscribe(() => {
       this.loadData();
@@ -156,10 +142,19 @@ export class DashboardComponent {
   }
 
   async markReceivableReceived(item: any) {
+    if (item.status === 'PAID') {
+      alert('This receivable has already been marked as paid.');
+      return;
+    }
     await this.stateManagement.markReceivableAsPaid(item, this.getSelectedMonthKey());
   }
 
   async deleteReceivable(id: string) {
+    const receivable = this.receivables.find(r => r.id === id);
+    if (receivable?.status === 'PAID') {
+      alert('Cannot delete a receivable that has been marked as paid.');
+      return;
+    }
     if (confirm('Delete this receivable?')) {
       await this.stateManagement.deleteReceivable(id);
     }
@@ -222,6 +217,28 @@ export class DashboardComponent {
   onMonthChange() {
     this.calculateMonthStats();
     this.loadMonthlyFinance();
+    this.loadReceivablesForMonth();
+    this.loadUpcomingPaymentsForMonth();
+  }
+
+  loadReceivablesForMonth() {
+    this.receivableService.getByMonth(this.getSelectedMonthKey()).subscribe(data => {
+      this.receivables = data;
+      this.totalReceivable = data.reduce(
+        (sum: number, r: any) => sum + r.amount,
+        0
+      );
+    });
+  }
+
+  loadUpcomingPaymentsForMonth() {
+    this.upcomingService.getByMonth(this.getSelectedMonthKey()).subscribe(data => {
+      this.upcomingPayments = data.map(p => ({
+        ...p,
+        dueIn: this.calculateDueInDays(p['dueDate'])
+      })).filter(p => p.dueIn >= 0)
+        .sort((a, b) => a.dueIn - b.dueIn);
+    });
   }
 
   loadData() {

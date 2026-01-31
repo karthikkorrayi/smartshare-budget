@@ -6,7 +6,9 @@ import {
   collectionData,
   deleteDoc,
   doc,
-  updateDoc
+  updateDoc,
+  query,
+  where
 } from '@angular/fire/firestore';
 
 @Injectable({ providedIn: 'root' })
@@ -20,6 +22,16 @@ export class ReceivableService {
   getAll() {
     return collectionData(
       collection(this.firestore, 'receivables'),
+      { idField: 'id' }
+    );
+  }
+
+  getByMonth(month: string) {
+    return collectionData(
+      query(
+        collection(this.firestore, 'receivables'),
+        where('month', '==', month)
+      ),
       { idField: 'id' }
     );
   }

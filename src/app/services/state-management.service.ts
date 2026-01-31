@@ -49,7 +49,8 @@ export class StateManagementService {
       title,
       amount,
       createdAt: new Date(),
-      status: 'PENDING'
+      status: 'PENDING',
+      month: monthKey
     });
 
     await this.expenseService.addExpense({
@@ -70,7 +71,14 @@ export class StateManagementService {
   }
 
   async markReceivableAsPaid(receivable: any, monthKey: string) {
-    await this.receivableService.update(receivable.id, { status: 'PAID' });
+    if (receivable.status === 'PAID') {
+      return;
+    }
+
+    await this.receivableService.update(receivable.id, {
+      status: 'PAID',
+      paidDate: new Date()
+    });
 
     await this.incomeService.addIncome({
       source: `Received from ${receivable.title}`,
@@ -103,6 +111,10 @@ export class StateManagementService {
     );
 
     if (!receivable) return;
+
+    if (receivable.status === 'PAID') {
+      return;
+    }
 
     const linkedExpense = this.expensesSubject.value.find(
       (exp: any) => exp.description === `Lent: ${receivable.title}`

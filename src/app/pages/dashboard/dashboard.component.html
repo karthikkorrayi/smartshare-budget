@@ -81,18 +81,20 @@
       <div class="divider"></div>
 
       <!-- List -->
-      <div *ngFor="let r of receivables" class="receivable-row">
+      <div *ngFor="let r of receivables" class="receivable-row" [class.paid]="r.status === 'PAID'">
         <input
           type="checkbox"
+          [checked]="r.status === 'PAID'"
+          [disabled]="r.status === 'PAID'"
           (change)="markReceivableReceived(r)"
         />
 
         <div class="row-content">
-          <span class="title">{{ r.title }}</span>
-          <span class="row-amount">₹{{ r.amount }}</span>
+          <span class="title" [class.paid-text]="r.status === 'PAID'">{{ r.title }}</span>
+          <span class="row-amount" [class.paid-text]="r.status === 'PAID'">₹{{ r.amount }}</span>
         </div>
 
-        <span class="delete" (click)="deleteReceivable(r.id)">🗑️</span>
+        <span class="delete" [class.disabled]="r.status === 'PAID'" (click)="deleteReceivable(r.id)">🗑️</span>
       </div>
 
     </mat-card>
