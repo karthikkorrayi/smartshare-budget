@@ -35,7 +35,12 @@ export class StateManagementService {
 
   private loadReceivables(month: string) {
     this.receivableService.getByMonth(month).subscribe(data => {
-      this.receivablesSubject.next(data);
+      const sortedData = [...data].sort((a, b) => {
+        const dateA = a['createdAt']?.seconds ? new Date(a['createdAt'].seconds * 1000).getTime() : 0;
+        const dateB = b['createdAt']?.seconds ? new Date(b['createdAt'].seconds * 1000).getTime() : 0;
+        return dateB - dateA;
+      });
+      this.receivablesSubject.next(sortedData);
     });
   }
 

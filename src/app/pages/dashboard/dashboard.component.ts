@@ -221,11 +221,19 @@ export class DashboardComponent {
     }
   }
 
-  onMonthChange() {
+  async onMonthChange() {
     const monthKey = this.getSelectedMonthKey();
+
+    await this.carryForwardService.checkAndProcessCarryForward(monthKey);
+
     this.stateManagement.setCurrentMonth(monthKey);
+
     this.calculateMonthStats();
+
+    this.loadData();
+
     this.loadMonthlyFinance();
+
     this.upcomingService.getByMonth(monthKey).subscribe(data => {
       this.upcomingPayments = data.map(p => ({
         ...p,
