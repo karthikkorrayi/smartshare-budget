@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IncomeService } from '../../services/income.service';
 import { ExpenseService } from '../../services/expense.service';
@@ -11,7 +11,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { AddExpenseComponent } from '../../dialogs/add-expense/add-expense.component';
 import { AddIncomeComponent } from '../../dialogs/add-income/add-income.component';
 import { UpcomingPaymentService } from '../../services/upcoming-payment.service';
-import { combineLatest } from 'rxjs';
+import { combineLatest, Subject } from 'rxjs';
+import { takeUntil, switchMap, map } from 'rxjs/operators';
 import { ReceivableService } from '../../services/receivable.service';
 import { CarryForwardService } from '../../services/carry-forward.service';
 import { StateManagementService } from '../../services/state-management.service';
@@ -24,23 +25,18 @@ Chart.register(...registerables);
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
-export class DashboardComponent {
-  // Basic info
+export class DashboardComponent implements OnDestroy {
+  private destroy$ = new Subject<void>();
+
   username = 'Karthik';
   today = new Date();
 
-  // Month stats
   completionPercent = 0;
   remainingDays = 0;
 
   totalIncome = 0;
   totalExpenses = 0;
   availableBalance = 0;
-  incomeService: IncomeService;
-  expenseService: ExpenseService;
-  upcomingService: UpcomingPaymentService;
-  receivableService: ReceivableService;
-  stateManagement: StateManagementService;
 
   barChart!: Chart;
   dailyTotals: number[] = [];
@@ -53,12 +49,10 @@ export class DashboardComponent {
 
   fabOpen = false;
 
-  isLoading = true;
-
   gaugeChart!: Chart;
   gaugeCategory = '';
   gaugeSpent = 0;
-  gaugeLimit = 50000; // static for now
+  gaugeLimit = 50000;
 
   recentExpenses: any[] = [];
 
@@ -76,28 +70,21 @@ export class DashboardComponent {
 
   receivables: any[] = [];
   totalReceivable = 0;
+  expenses: any[] = [];
 
-  // input model
   newReceivable = {
     title: '',
     amount: 0
   };
 
   constructor(
-    incomeService: IncomeService,
-    expenseService: ExpenseService,
-    upcomingService: UpcomingPaymentService,
-    receivableService: ReceivableService,
-    stateManagement: StateManagementService,
+    private incomeService: IncomeService,
+    private expenseService: ExpenseService,
+    private upcomingService: UpcomingPaymentService,
+    private stateManagement: StateManagementService,
     private carryForwardService: CarryForwardService,
     private dialog: MatDialog
-  ) {
-    this.incomeService = incomeService;
-    this.expenseService = expenseService;
-    this.upcomingService = upcomingService;
-    this.receivableService = receivableService;
-    this.stateManagement = stateManagement;
-  }
+  ) {}
 
   months: { label: string; value: string }[] = [];
   selectedMonth!: string;
@@ -112,10 +99,19 @@ export class DashboardComponent {
     this.stateManagement.initializeState(monthKey);
 
     this.calculateMonthStats();
-    this.loadData();
-    this.loadMonthlyFinance();
+    this.setupReactiveSubscriptions();
+  }
 
-    this.upcomingService.getByMonth(monthKey).subscribe(data => {
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupReactiveSubscriptions() {
+    this.stateManagement.currentMonth$.pipe(
+      takeUntil(this.destroy$),
+      switchMap(month => this.upcomingService.getByMonth(month))
+    ).subscribe(data => {
       this.upcomingPayments = data.map(p => ({
         ...p,
         dueIn: this.calculateDueInDays(p['dueDate'])
@@ -123,7 +119,9 @@ export class DashboardComponent {
         .sort((a, b) => a.dueIn - b.dueIn);
     });
 
-    this.stateManagement.receivables$.subscribe(data => {
+    this.stateManagement.receivables$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(data => {
       this.receivables = data;
       this.totalReceivable = data.reduce(
         (sum: number, r: any) => sum + r.amount,
@@ -131,8 +129,35 @@ export class DashboardComponent {
       );
     });
 
-    this.stateManagement.expenses$.subscribe(() => {
-      this.loadData();
+    combineLatest([
+      this.stateManagement.incomes$,
+      this.stateManagement.expenses$,
+      this.stateManagement.currentMonth$
+    ]).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(([incomes, expenses, currentMonth]) => {
+      this.expenses = expenses;
+      const activeExpenses = expenses.filter((e: any) => e.status !== 'PAID');
+
+      this.totalIncome = incomes.reduce((sum: number, i: any) => sum + i.amount, 0);
+      this.totalExpenses = activeExpenses.reduce((sum: number, e: any) => sum + e.amount, 0);
+      this.availableBalance = this.totalIncome - this.totalExpenses;
+
+      this.prepareRecentIncome(incomes);
+      this.prepareDailyExpenses(activeExpenses);
+      this.prepareCategorySummary(activeExpenses);
+      this.prepareRecentExpenses(expenses);
+
+      this.thisMonthCumulative = this.prepareCumulativeData(activeExpenses, currentMonth);
+
+      const lastMonthKey = this.getLastMonthKey();
+      this.expenseService.getExpensesByMonth(lastMonthKey).pipe(
+        takeUntil(this.destroy$)
+      ).subscribe((lastMonthExpenses: any[]) => {
+        const activeLastMonth = lastMonthExpenses.filter((e: any) => e.status !== 'PAID');
+        this.lastMonthCumulative = this.prepareCumulativeData(activeLastMonth, lastMonthKey);
+        this.renderLineChart();
+      });
     });
   }
 
@@ -153,7 +178,7 @@ export class DashboardComponent {
       alert('This receivable has already been marked as paid.');
       return;
     }
-    await this.stateManagement.markReceivableAsPaid(item, this.getSelectedMonthKey());
+    await this.stateManagement.markReceivableAsPaid(item, this.getSelectedMonthKey(), this.expenses);
   }
 
   async deleteReceivable(id: string) {
@@ -163,7 +188,7 @@ export class DashboardComponent {
       return;
     }
     if (confirm('Delete this receivable?')) {
-      await this.stateManagement.deleteReceivable(id);
+      await this.stateManagement.deleteReceivable(id, this.receivables, this.expenses);
     }
   }
 
@@ -227,80 +252,12 @@ export class DashboardComponent {
     await this.carryForwardService.checkAndProcessCarryForward(monthKey);
 
     this.stateManagement.setCurrentMonth(monthKey);
-
     this.calculateMonthStats();
-
-    this.loadData();
-
-    this.loadMonthlyFinance();
-
-    this.upcomingService.getByMonth(monthKey).subscribe(data => {
-      this.upcomingPayments = data.map(p => ({
-        ...p,
-        dueIn: this.calculateDueInDays(p['dueDate'])
-      })).filter(p => p.dueIn >= 0)
-        .sort((a, b) => a.dueIn - b.dueIn);
-    });
-  }
-
-
-  loadData() {
-    this.incomeService.getIncomeByMonth(this.selectedMonth)
-      .subscribe((data: any[]) => {
-        this.totalIncome = data.reduce((a, b) => a + b.amount, 0);
-      });
-
-    this.expenseService.getExpensesByMonth(this.selectedMonth)
-      .subscribe((data: any[]) => {
-        const activeExpenses = data.filter(e => e.status !== 'PAID');
-        this.totalExpenses = activeExpenses.reduce((a, b) => a + b.amount, 0);
-      });
   }
 
   getSelectedMonthKey(): string {
     const monthIndex = this.months.findIndex(m => m.value === this.selectedMonth);
     return monthIndex !== -1 ? this.months[monthIndex].value : this.selectedMonth;
-  }
-
-  loadMonthlyFinance() {
-    const monthKey = this.getSelectedMonthKey();
-    const lastMonthKey = this.getLastMonthKey();
-
-    // Income
-    this.incomeService.getIncomeByMonth(monthKey)
-      .subscribe((data: any[]) => {
-        this.totalIncome = data.reduce((sum, i) => sum + i.amount, 0);
-        this.prepareRecentIncome(data);
-        this.calculateBalance();
-      });
-
-    // Expenses
-    this.expenseService.getExpensesByMonth(monthKey)
-      .subscribe((data: any[]) => {
-        const activeExpenses = data.filter(e => e.status !== 'PAID');
-        this.totalExpenses = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
-        this.calculateBalance();
-        this.prepareDailyExpenses(activeExpenses);
-        this.prepareCategorySummary(activeExpenses);
-        this.prepareRecentExpenses(data);
-        this.thisMonthCumulative =
-          this.prepareCumulativeData(activeExpenses, monthKey);
-
-        this.renderLineChart();
-      });
-
-      this.expenseService.getExpensesByMonth(lastMonthKey)
-      .subscribe((data: any[]) => {
-        const activeExpenses = data.filter(e => e.status !== 'PAID');
-        this.lastMonthCumulative =
-          this.prepareCumulativeData(activeExpenses, lastMonthKey);
-
-        this.renderLineChart();
-      });
-}
-
-  calculateBalance() {
-    this.availableBalance = this.totalIncome - this.totalExpenses;
   }
 
   prepareDailyExpenses(expenses: any[]) {

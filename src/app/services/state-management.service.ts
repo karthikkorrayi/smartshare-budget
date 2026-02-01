@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, of } from 'rxjs';
+import { switchMap, map, shareReplay } from 'rxjs/operators';
 import { ReceivableService } from './receivable.service';
 import { ExpenseService } from './expense.service';
 import { IncomeService } from './income.service';
@@ -10,55 +11,44 @@ export class StateManagementService {
   private expenseService = inject(ExpenseService);
   private incomeService = inject(IncomeService);
 
-  private receivablesSubject = new BehaviorSubject<any[]>([]);
-  private expensesSubject = new BehaviorSubject<any[]>([]);
-  private incomesSubject = new BehaviorSubject<any[]>([]);
   private currentMonthSubject = new BehaviorSubject<string>('');
 
-  receivables$ = this.receivablesSubject.asObservable();
-  expenses$ = this.expensesSubject.asObservable();
-  incomes$ = this.incomesSubject.asObservable();
+  currentMonth$ = this.currentMonthSubject.asObservable();
+
+  receivables$ = this.currentMonthSubject.pipe(
+    switchMap(month => month ? this.receivableService.getByMonth(month) : of([])),
+    map(data => [...data].sort((a, b) => {
+      const dateA = a['createdAt']?.seconds ? new Date(a['createdAt'].seconds * 1000).getTime() : 0;
+      const dateB = b['createdAt']?.seconds ? new Date(b['createdAt'].seconds * 1000).getTime() : 0;
+      return dateB - dateA;
+    })),
+    shareReplay(1)
+  );
+
+  expenses$ = this.currentMonthSubject.pipe(
+    switchMap(month => month ? this.expenseService.getExpensesByMonth(month) : of([])),
+    shareReplay(1)
+  );
+
+  incomes$ = this.currentMonthSubject.pipe(
+    switchMap(month => month ? this.incomeService.getIncomeByMonth(month) : of([])),
+    shareReplay(1)
+  );
 
   initializeState(month: string) {
     this.currentMonthSubject.next(month);
-    this.loadReceivables(month);
-    this.loadExpenses(month);
-    this.loadIncomes(month);
   }
 
   setCurrentMonth(month: string) {
     this.currentMonthSubject.next(month);
-    this.loadReceivables(month);
-    this.loadExpenses(month);
-    this.loadIncomes(month);
   }
 
-  private loadReceivables(month: string) {
-    this.receivableService.getByMonth(month).subscribe(data => {
-      const sortedData = [...data].sort((a, b) => {
-        const dateA = a['createdAt']?.seconds ? new Date(a['createdAt'].seconds * 1000).getTime() : 0;
-        const dateB = b['createdAt']?.seconds ? new Date(b['createdAt'].seconds * 1000).getTime() : 0;
-        return dateB - dateA;
-      });
-      this.receivablesSubject.next(sortedData);
-    });
-  }
-
-  private loadExpenses(month: string) {
-    this.expenseService.getExpensesByMonth(month).subscribe((data: any[]) => {
-      this.expensesSubject.next(data);
-    });
-  }
-
-  private loadIncomes(month: string) {
-    this.incomeService.getIncomeByMonth(month).subscribe((data: any[]) => {
-      this.incomesSubject.next(data);
-    });
+  getCurrentMonth(): string {
+    return this.currentMonthSubject.value;
   }
 
   async addReceivable(receivableData: any) {
     const { title, amount, monthKey } = receivableData;
-    const month = this.currentMonthSubject.value;
 
     await this.receivableService.add({
       title,
@@ -75,19 +65,13 @@ export class StateManagementService {
       date: new Date(),
       month: monthKey
     });
-
-    this.loadReceivables(month);
-    this.loadExpenses(month);
   }
 
   async addExpense(expenseData: any) {
-    const month = this.currentMonthSubject.value;
     await this.expenseService.addExpense(expenseData);
-    this.loadExpenses(month);
   }
 
-  async markReceivableAsPaid(receivable: any, monthKey: string) {
-    const month = this.currentMonthSubject.value;
+  async markReceivableAsPaid(receivable: any, monthKey: string, expenses: any[]) {
     if (receivable.status === 'PAID') {
       return;
     }
@@ -105,7 +89,7 @@ export class StateManagementService {
       isSystemGenerated: true
     });
 
-    const linkedExpense = this.expensesSubject.value.find(
+    const linkedExpense = expenses.find(
       (exp: any) => exp.description === `Lent: ${receivable.title}`
     );
 
@@ -116,15 +100,10 @@ export class StateManagementService {
         paidDate: new Date()
       });
     }
-
-    this.loadReceivables(month);
-    this.loadExpenses(month);
-    this.loadIncomes(month);
   }
 
-  async deleteReceivable(receivableId: string) {
-    const month = this.currentMonthSubject.value;
-    const receivable = this.receivablesSubject.value.find(
+  async deleteReceivable(receivableId: string, receivables: any[], expenses: any[]) {
+    const receivable = receivables.find(
       (r: any) => r.id === receivableId
     );
 
@@ -134,7 +113,7 @@ export class StateManagementService {
       return;
     }
 
-    const linkedExpense = this.expensesSubject.value.find(
+    const linkedExpense = expenses.find(
       (exp: any) => exp.description === `Lent: ${receivable.title}`
     );
 
@@ -143,20 +122,5 @@ export class StateManagementService {
     }
 
     await this.receivableService.delete(receivableId);
-
-    this.loadReceivables(month);
-    this.loadExpenses(month);
-  }
-
-  getReceivablesSnapshot() {
-    return this.receivablesSubject.getValue();
-  }
-
-  getExpensesSnapshot() {
-    return this.expensesSubject.getValue();
-  }
-
-  getIncomesSnapshot() {
-    return this.incomesSubject.getValue();
   }
 }
