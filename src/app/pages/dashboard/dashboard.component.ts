@@ -97,13 +97,6 @@ export class DashboardComponent {
     this.upcomingService = upcomingService;
     this.receivableService = receivableService;
     this.stateManagement = stateManagement;
-    incomeService.getIncome().subscribe((data: any[]) => {
-      this.totalIncome = data.reduce((sum, i) => sum + i.amount, 0);
-    });
-
-    expenseService.getExpenses().subscribe((data: any[]) => {
-      this.totalExpenses = data.reduce((sum, e) => sum + e.amount, 0);
-    });
   }
 
   months: { label: string; value: string }[] = [];
@@ -115,14 +108,28 @@ export class DashboardComponent {
 
     await this.carryForwardService.checkAndProcessCarryForward(this.selectedMonth);
 
-    this.stateManagement.initializeState();
+    const monthKey = this.getSelectedMonthKey();
+    this.stateManagement.initializeState(monthKey);
 
     this.calculateMonthStats();
     this.loadData();
     this.loadMonthlyFinance();
 
-    this.loadReceivablesForMonth();
-    this.loadUpcomingPaymentsForMonth();
+    this.upcomingService.getByMonth(monthKey).subscribe(data => {
+      this.upcomingPayments = data.map(p => ({
+        ...p,
+        dueIn: this.calculateDueInDays(p['dueDate'])
+      })).filter(p => p.dueIn >= 0)
+        .sort((a, b) => a.dueIn - b.dueIn);
+    });
+
+    this.stateManagement.receivables$.subscribe(data => {
+      this.receivables = data;
+      this.totalReceivable = data.reduce(
+        (sum: number, r: any) => sum + r.amount,
+        0
+      );
+    });
 
     this.stateManagement.expenses$.subscribe(() => {
       this.loadData();
@@ -215,24 +222,11 @@ export class DashboardComponent {
   }
 
   onMonthChange() {
+    const monthKey = this.getSelectedMonthKey();
+    this.stateManagement.setCurrentMonth(monthKey);
     this.calculateMonthStats();
     this.loadMonthlyFinance();
-    this.loadReceivablesForMonth();
-    this.loadUpcomingPaymentsForMonth();
-  }
-
-  loadReceivablesForMonth() {
-    this.receivableService.getByMonth(this.getSelectedMonthKey()).subscribe(data => {
-      this.receivables = data;
-      this.totalReceivable = data.reduce(
-        (sum: number, r: any) => sum + r.amount,
-        0
-      );
-    });
-  }
-
-  loadUpcomingPaymentsForMonth() {
-    this.upcomingService.getByMonth(this.getSelectedMonthKey()).subscribe(data => {
+    this.upcomingService.getByMonth(monthKey).subscribe(data => {
       this.upcomingPayments = data.map(p => ({
         ...p,
         dueIn: this.calculateDueInDays(p['dueDate'])
@@ -240,6 +234,7 @@ export class DashboardComponent {
         .sort((a, b) => a.dueIn - b.dueIn);
     });
   }
+
 
   loadData() {
     this.incomeService.getIncomeByMonth(this.selectedMonth)

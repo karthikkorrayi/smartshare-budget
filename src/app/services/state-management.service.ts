@@ -13,37 +13,47 @@ export class StateManagementService {
   private receivablesSubject = new BehaviorSubject<any[]>([]);
   private expensesSubject = new BehaviorSubject<any[]>([]);
   private incomesSubject = new BehaviorSubject<any[]>([]);
+  private currentMonthSubject = new BehaviorSubject<string>('');
 
   receivables$ = this.receivablesSubject.asObservable();
   expenses$ = this.expensesSubject.asObservable();
   incomes$ = this.incomesSubject.asObservable();
 
-  initializeState() {
-    this.loadReceivables();
-    this.loadExpenses();
-    this.loadIncomes();
+  initializeState(month: string) {
+    this.currentMonthSubject.next(month);
+    this.loadReceivables(month);
+    this.loadExpenses(month);
+    this.loadIncomes(month);
   }
 
-  private loadReceivables() {
-    this.receivableService.getAll().subscribe(data => {
+  setCurrentMonth(month: string) {
+    this.currentMonthSubject.next(month);
+    this.loadReceivables(month);
+    this.loadExpenses(month);
+    this.loadIncomes(month);
+  }
+
+  private loadReceivables(month: string) {
+    this.receivableService.getByMonth(month).subscribe(data => {
       this.receivablesSubject.next(data);
     });
   }
 
-  private loadExpenses() {
-    this.expenseService.getExpenses().subscribe((data: any[]) => {
+  private loadExpenses(month: string) {
+    this.expenseService.getExpensesByMonth(month).subscribe((data: any[]) => {
       this.expensesSubject.next(data);
     });
   }
 
-  private loadIncomes() {
-    this.incomeService.getIncome().subscribe((data: any[]) => {
+  private loadIncomes(month: string) {
+    this.incomeService.getIncomeByMonth(month).subscribe((data: any[]) => {
       this.incomesSubject.next(data);
     });
   }
 
   async addReceivable(receivableData: any) {
     const { title, amount, monthKey } = receivableData;
+    const month = this.currentMonthSubject.value;
 
     await this.receivableService.add({
       title,
@@ -61,16 +71,18 @@ export class StateManagementService {
       month: monthKey
     });
 
-    this.loadReceivables();
-    this.loadExpenses();
+    this.loadReceivables(month);
+    this.loadExpenses(month);
   }
 
   async addExpense(expenseData: any) {
+    const month = this.currentMonthSubject.value;
     await this.expenseService.addExpense(expenseData);
-    this.loadExpenses();
+    this.loadExpenses(month);
   }
 
   async markReceivableAsPaid(receivable: any, monthKey: string) {
+    const month = this.currentMonthSubject.value;
     if (receivable.status === 'PAID') {
       return;
     }
@@ -100,12 +112,13 @@ export class StateManagementService {
       });
     }
 
-    this.loadReceivables();
-    this.loadExpenses();
-    this.loadIncomes();
+    this.loadReceivables(month);
+    this.loadExpenses(month);
+    this.loadIncomes(month);
   }
 
   async deleteReceivable(receivableId: string) {
+    const month = this.currentMonthSubject.value;
     const receivable = this.receivablesSubject.value.find(
       (r: any) => r.id === receivableId
     );
@@ -126,8 +139,8 @@ export class StateManagementService {
 
     await this.receivableService.delete(receivableId);
 
-    this.loadReceivables();
-    this.loadExpenses();
+    this.loadReceivables(month);
+    this.loadExpenses(month);
   }
 
   getReceivablesSnapshot() {
