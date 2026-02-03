@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, of } from 'rxjs';
-import { switchMap, map, shareReplay } from 'rxjs/operators';
+import { switchMap, map, shareReplay, startWith } from 'rxjs/operators';
 import { ReceivableService } from './receivable.service';
 import { ExpenseService } from './expense.service';
 import { IncomeService } from './income.service';
@@ -16,7 +16,12 @@ export class StateManagementService {
   currentMonth$ = this.currentMonthSubject.asObservable();
 
   receivables$ = this.currentMonthSubject.pipe(
-    switchMap(month => month ? this.receivableService.getByMonth(month) : of([])),
+    switchMap(month => {
+      if (!month) return of([]);
+      return this.receivableService.getByMonth(month).pipe(
+        startWith([])
+      );
+    }),
     map(data => [...data].sort((a, b) => {
       const dateA = a['createdAt']?.seconds ? new Date(a['createdAt'].seconds * 1000).getTime() : 0;
       const dateB = b['createdAt']?.seconds ? new Date(b['createdAt'].seconds * 1000).getTime() : 0;
@@ -26,12 +31,22 @@ export class StateManagementService {
   );
 
   expenses$ = this.currentMonthSubject.pipe(
-    switchMap(month => month ? this.expenseService.getExpensesByMonth(month) : of([])),
+    switchMap(month => {
+      if (!month) return of([]);
+      return this.expenseService.getExpensesByMonth(month).pipe(
+        startWith([])
+      );
+    }),
     shareReplay(1)
   );
 
   incomes$ = this.currentMonthSubject.pipe(
-    switchMap(month => month ? this.incomeService.getIncomeByMonth(month) : of([])),
+    switchMap(month => {
+      if (!month) return of([]);
+      return this.incomeService.getIncomeByMonth(month).pipe(
+        startWith([])
+      );
+    }),
     shareReplay(1)
   );
 

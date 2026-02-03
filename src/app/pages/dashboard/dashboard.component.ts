@@ -1,4 +1,4 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IncomeService } from '../../services/income.service';
 import { ExpenseService } from '../../services/expense.service';
@@ -27,6 +27,7 @@ Chart.register(...registerables);
 })
 export class DashboardComponent implements OnDestroy {
   private destroy$ = new Subject<void>();
+  private cdr = inject(ChangeDetectorRef);
 
   username = 'Karthik';
   today = new Date();
@@ -92,19 +93,24 @@ export class DashboardComponent implements OnDestroy {
   async ngOnInit() {
     this.generateMonths();
     this.selectedMonth = this.getCurrentMonth();
-
-    await this.carryForwardService.checkAndProcessCarryForward(this.selectedMonth);
-
     const monthKey = this.getSelectedMonthKey();
-    this.stateManagement.initializeState(monthKey);
 
-    this.calculateMonthStats();
+    this.stateManagement.initializeState(monthKey);
     this.setupReactiveSubscriptions();
+
+    await this.loadMonthData(monthKey);
   }
 
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private async loadMonthData(monthKey: string): Promise<void> {
+    await this.carryForwardService.checkAndProcessCarryForward(monthKey);
+    this.stateManagement.setCurrentMonth(monthKey);
+    this.calculateMonthStats();
+    this.cdr.markForCheck();
   }
 
   private setupReactiveSubscriptions() {
@@ -117,6 +123,7 @@ export class DashboardComponent implements OnDestroy {
         dueIn: this.calculateDueInDays(p['dueDate'])
       })).filter(p => p.dueIn >= 0)
         .sort((a, b) => a.dueIn - b.dueIn);
+      this.cdr.markForCheck();
     });
 
     this.stateManagement.receivables$.pipe(
@@ -127,6 +134,7 @@ export class DashboardComponent implements OnDestroy {
         (sum: number, r: any) => sum + r.amount,
         0
       );
+      this.cdr.markForCheck();
     });
 
     combineLatest([
@@ -149,6 +157,7 @@ export class DashboardComponent implements OnDestroy {
       this.prepareRecentExpenses(expenses);
 
       this.thisMonthCumulative = this.prepareCumulativeData(activeExpenses, currentMonth);
+      this.cdr.markForCheck();
 
       const lastMonthKey = this.getLastMonthKey();
       this.expenseService.getExpensesByMonth(lastMonthKey).pipe(
@@ -157,6 +166,7 @@ export class DashboardComponent implements OnDestroy {
         const activeLastMonth = lastMonthExpenses.filter((e: any) => e.status !== 'PAID');
         this.lastMonthCumulative = this.prepareCumulativeData(activeLastMonth, lastMonthKey);
         this.renderLineChart();
+        this.cdr.markForCheck();
       });
     });
   }
@@ -171,6 +181,7 @@ export class DashboardComponent implements OnDestroy {
     });
 
     this.newReceivable = { title: '', amount: 0 };
+    this.cdr.markForCheck();
   }
 
   async markReceivableReceived(item: any) {
@@ -179,6 +190,7 @@ export class DashboardComponent implements OnDestroy {
       return;
     }
     await this.stateManagement.markReceivableAsPaid(item, this.getSelectedMonthKey(), this.expenses);
+    this.cdr.markForCheck();
   }
 
   async deleteReceivable(id: string) {
@@ -189,6 +201,7 @@ export class DashboardComponent implements OnDestroy {
     }
     if (confirm('Delete this receivable?')) {
       await this.stateManagement.deleteReceivable(id, this.receivables, this.expenses);
+      this.cdr.markForCheck();
     }
   }
 
@@ -248,11 +261,7 @@ export class DashboardComponent implements OnDestroy {
 
   async onMonthChange() {
     const monthKey = this.getSelectedMonthKey();
-
-    await this.carryForwardService.checkAndProcessCarryForward(monthKey);
-
-    this.stateManagement.setCurrentMonth(monthKey);
-    this.calculateMonthStats();
+    await this.loadMonthData(monthKey);
   }
 
   getSelectedMonthKey(): string {
@@ -607,15 +616,18 @@ export class DashboardComponent implements OnDestroy {
   deleteExpense(id: string) {
     if (confirm('Delete this expense?')) {
       this.expenseService.deleteExpense(id);
+      this.cdr.markForCheck();
     }
   }
 
   toggleFab() {
     this.fabOpen = !this.fabOpen;
+    this.cdr.markForCheck();
   }
 
   openAddIncome() {
     this.fabOpen = false;
+    this.cdr.markForCheck();
     this.dialog.open(AddIncomeComponent, {
       width: '320px',
       data: {
@@ -658,11 +670,11 @@ export class DashboardComponent implements OnDestroy {
 
     if (confirm('Delete this income?')) {
       this.incomeService.deleteIncome(id);
+      this.cdr.markForCheck();
     }
   }
 
   markAsPaid(payment: any) {
-    // Add to expenses
     this.expenseService.addExpense({
       description: payment.description,
       amount: payment.amount,
@@ -671,13 +683,14 @@ export class DashboardComponent implements OnDestroy {
       month: this.getSelectedMonthKey()
     });
 
-    // Remove from upcoming list
     this.upcomingService.delete(payment.id);
+    this.cdr.markForCheck();
   }
 
   deleteUpcoming(id: string) {
     if (confirm('Delete this upcoming payment?')) {
       this.upcomingService.delete(id);
+      this.cdr.markForCheck();
     }
   }
 
