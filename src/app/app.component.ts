@@ -13,11 +13,11 @@ import { PinLockComponent } from './security/pin-lock/pin-lock.component';
       <span class="app-title">Personal Budget Insights</span>
     </div>
   </header>
-  <router-outlet></router-outlet>
-  <!-- <app-pin-lock></app-pin-lock>
+  <!-- <router-outlet></router-outlet> -->
+  <app-pin-lock></app-pin-lock>
     @if (!pinService.isLocked) {
       <router-outlet></router-outlet>
-    }  -->
+    } 
   `,
   styleUrl:'./app.component.scss'
 })
