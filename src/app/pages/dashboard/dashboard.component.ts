@@ -72,6 +72,7 @@ export class DashboardComponent implements OnDestroy {
   receivables: any[] = [];
   totalReceivable = 0;
   expenses: any[] = [];
+  isLoading = false;
 
   newReceivable = {
     title: '',
@@ -114,6 +115,13 @@ export class DashboardComponent implements OnDestroy {
   }
 
   private setupReactiveSubscriptions() {
+    this.stateManagement.loading$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(loading => {
+      this.isLoading = loading;
+      this.cdr.markForCheck();
+    });
+
     this.stateManagement.currentMonth$.pipe(
       takeUntil(this.destroy$),
       switchMap(month => this.upcomingService.getByMonth(month))

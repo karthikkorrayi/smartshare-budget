@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, of } from 'rxjs';
-import { switchMap, map, shareReplay, startWith } from 'rxjs/operators';
+import { switchMap, map, shareReplay, startWith, delay } from 'rxjs/operators';
 import { ReceivableService } from './receivable.service';
 import { ExpenseService } from './expense.service';
 import { IncomeService } from './income.service';
@@ -12,8 +12,10 @@ export class StateManagementService {
   private incomeService = inject(IncomeService);
 
   private currentMonthSubject = new BehaviorSubject<string>('');
+  private loadingSubject = new BehaviorSubject<boolean>(false);
 
   currentMonth$ = this.currentMonthSubject.asObservable();
+  loading$ = this.loadingSubject.asObservable();
 
   receivables$ = this.currentMonthSubject.pipe(
     switchMap(month => {
@@ -55,11 +57,21 @@ export class StateManagementService {
   }
 
   setCurrentMonth(month: string) {
-    this.currentMonthSubject.next(month);
+    this.loadingSubject.next(true);
+    this.currentMonthSubject.next('');
+
+    setTimeout(() => {
+      this.currentMonthSubject.next(month);
+      this.loadingSubject.next(false);
+    }, 0);
   }
 
   getCurrentMonth(): string {
     return this.currentMonthSubject.value;
+  }
+
+  clearCache() {
+    this.currentMonthSubject.next('');
   }
 
   async addReceivable(receivableData: any) {

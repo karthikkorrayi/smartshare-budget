@@ -1,4 +1,9 @@
-<div class="dashboard">
+<div class="dashboard" [class.loading]="isLoading">
+
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="loading-spinner"></div>
+    <p>Loading month data...</p>
+  </div>
 
   <!-- LEFT COLUMN -->
   <div class="left-column">
