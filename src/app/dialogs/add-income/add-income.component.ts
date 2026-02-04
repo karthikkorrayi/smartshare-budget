@@ -7,21 +7,43 @@ import { IncomeService } from '../../services/income.service';
 @Component({
   standalone: true,
   imports: [CommonModule, FormsModule],
+  styleUrls: ['./add-income.component.scss'],
   template: `
-    <h2>{{ data?.income ? 'Edit Income' : 'Add Income' }}</h2>
+    <div class="form-container">
+      <div class="form-header">
+        <div class="header-content">
+          <span class="header-icon">💰</span>
+          <div>
+            <h2 class="form-title">{{ data?.income ? 'Edit Income' : 'Add Income' }}</h2>
+            <p class="form-subtitle">Record your earnings</p>
+          </div>
+        </div>
+      </div>
 
-    <input
-      placeholder="Source (Salary, Freelance...)"
-      [(ngModel)]="income.source">
+      <div class="form-content">
+        <div class="form-section">
+          <label class="section-label">Income Source</label>
+          <input
+            type="text"
+            placeholder="Salary, Freelance, Bonus..."
+            [(ngModel)]="income.source"
+            class="form-input">
+        </div>
 
-    <input
-      type="number"
-      placeholder="Amount"
-      [(ngModel)]="income.amount">
+        <div class="form-section">
+          <label class="section-label">Amount (₹)</label>
+          <input
+            type="number"
+            placeholder="0.00"
+            [(ngModel)]="income.amount"
+            class="form-input">
+        </div>
+      </div>
 
-    <div class="actions">
-      <button (click)="save()">Save</button>
-      <button (click)="close()">Cancel</button>
+      <div class="form-actions">
+        <button (click)="close()" class="btn btn-secondary">Cancel</button>
+        <button (click)="save()" class="btn btn-primary">Save Income</button>
+      </div>
     </div>
   `
 })

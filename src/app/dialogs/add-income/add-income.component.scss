@@ -1,0 +1,130 @@
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  min-width: 420px;
+}
+
+.form-header {
+  background: linear-gradient(135deg, #10b981, #059669);
+  padding: 24px;
+  color: #fff;
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .header-icon {
+    font-size: 36px;
+    line-height: 1;
+  }
+
+  .form-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .form-subtitle {
+    margin: 4px 0 0;
+    font-size: 13px;
+    opacity: 0.9;
+  }
+}
+
+.form-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-input {
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: #f9fafb;
+
+  &:focus {
+    outline: none;
+    border-color: #10b981;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.3px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+
+  &:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(5, 150, 105, 0.15);
+  }
+}
+
+.btn-secondary {
+  background: #e5e7eb;
+  color: #374151;
+
+  &:hover {
+    background: #d1d5db;
+  }
+
+  &:active {
+    background: #9ca3af;
+  }
+}
