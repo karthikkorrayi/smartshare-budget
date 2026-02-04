@@ -355,16 +355,56 @@ canvas {
   margin-bottom: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
-.fab-menu button {
-  padding: 8px 12px;
-  border-radius: 6px;
+.cta-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-radius: 14px;
   border: none;
-  background: #ffffff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: all 0.25s ease;
+  color: #fff;
+}
+
+.cta-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+.cta-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.btn-icon {
+  font-size: 20px;
+}
+
+.btn-text {
+  flex: 1;
+}
+
+.expense-btn {
+  background: linear-gradient(135deg,#ef4444,#dc2626);
+}
+
+.expense-btn:hover {
+  background: linear-gradient(135deg,#dc2626,#b91c1c);
+}
+
+.income-btn {
+  background: linear-gradient(135deg,#10b981,#059669);
+}
+
+.income-btn:hover {
+  background: linear-gradient(135deg,#059669,#047857);
 }
 
 .upcoming {

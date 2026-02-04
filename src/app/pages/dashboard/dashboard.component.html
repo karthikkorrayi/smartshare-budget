@@ -353,7 +353,13 @@
   <button class="fab" (click)="toggleFab()">+</button>
 
   <div class="fab-menu" *ngIf="fabOpen">
-    <button (click)="openAddExpense()">Add Expense</button>
-    <button (click)="openAddIncome()">Add Income</button>
+    <button class="cta-btn expense-btn" (click)="openAddExpense()">
+      <span class="btn-icon">💸</span>
+      <span class="btn-text">Add Expense</span>
+    </button>
+    <button class="cta-btn income-btn" (click)="openAddIncome()">
+      <span class="btn-icon">💰</span>
+      <span class="btn-text">Add Income</span>
+    </button>
   </div>
 </div>
