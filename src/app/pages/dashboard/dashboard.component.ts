@@ -139,7 +139,7 @@ export class DashboardComponent implements OnDestroy {
     ).subscribe(data => {
       this.receivables = data;
       this.totalReceivable = data.reduce(
-        (sum: number, r: any) => sum + r.amount,
+        (sum: number, r: any) => r.status === 'PENDING' ? sum + r.amount : sum,
         0
       );
       this.cdr.markForCheck();
