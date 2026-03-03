@@ -350,7 +350,7 @@
 </div>
 
 <div class="fab-container">
-  <button class="fab" (click)="toggleFab()">+</button>
+  <button class="fab" [class.open]="fabOpen" (click)="toggleFab()" aria-label="Open quick actions">+</button>
 
   <div class="fab-menu" *ngIf="fabOpen">
     <button class="cta-btn expense-btn" (click)="openAddExpense()">

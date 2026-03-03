@@ -603,8 +603,11 @@ export class DashboardComponent implements OnDestroy {
   }
 
   openAddExpense() {
+    this.fabOpen = false;
+    this.cdr.markForCheck();
     this.dialog.open(AddExpenseComponent, {
-      width: '320px',
+      width: 'min(92vw, 520px)',
+      maxWidth: '95vw',
       data: {
         month: this.getSelectedMonthKey()
       }
@@ -613,7 +616,8 @@ export class DashboardComponent implements OnDestroy {
 
   editExpense(expense: any) {
     this.dialog.open(AddExpenseComponent, {
-      width: '320px',
+      width: 'min(92vw, 520px)',
+      maxWidth: '95vw',
       data: {
         expense,
         month: this.getSelectedMonthKey()
@@ -637,7 +641,8 @@ export class DashboardComponent implements OnDestroy {
     this.fabOpen = false;
     this.cdr.markForCheck();
     this.dialog.open(AddIncomeComponent, {
-      width: '320px',
+      width: 'min(92vw, 520px)',
+      maxWidth: '95vw',
       data: {
         month: this.getSelectedMonthKey()
       }
@@ -661,7 +666,8 @@ export class DashboardComponent implements OnDestroy {
     }
 
     this.dialog.open(AddIncomeComponent, {
-      width: '320px',
+      width: 'min(92vw, 520px)',
+      maxWidth: '95vw',
       data: {
         income,
         month: this.getSelectedMonthKey()

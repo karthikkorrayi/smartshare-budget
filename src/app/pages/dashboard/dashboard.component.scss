@@ -327,18 +327,26 @@ canvas {
 }
 
 .fab {
-  position: fixed;
-  right: 30px;
-  bottom: 30px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: #1e88e5;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #1e88e5, #2563eb);
   color: white;
-  font-size: 28px;
+  font-size: 32px;
+  line-height: 1;
   border: none;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.32);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.38);
+}
+
+.fab.open {
+  transform: rotate(45deg);
 }
 
 .fab:hover {
@@ -347,35 +355,42 @@ canvas {
 
 .fab-container {
   position: fixed;
-  right: 30px;
-  bottom: 30px;
+  right: 22px;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  z-index: 50;
 }
 
 .fab-menu {
-  margin-bottom: 10px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: flex-end;
+  gap: 10px;
 }
 
 .cta-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
-  border-radius: 14px;
-  border: none;
-  font-size: 15px;
+  gap: 8px;
+  min-width: 172px;
+  justify-content: flex-start;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transition: all 0.25s ease;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   color: #fff;
 }
 
 .cta-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
 .cta-btn:active {
@@ -384,27 +399,15 @@ canvas {
 }
 
 .btn-icon {
-  font-size: 20px;
-}
-
-.btn-text {
-  flex: 1;
+  font-size: 18px;
 }
 
 .expense-btn {
-  background: linear-gradient(135deg,#ef4444,#dc2626);
-}
-
-.expense-btn:hover {
-  background: linear-gradient(135deg,#dc2626,#b91c1c);
+  background: linear-gradient(135deg, #ef4444, #dc2626);
 }
 
 .income-btn {
-  background: linear-gradient(135deg,#10b981,#059669);
-}
-
-.income-btn:hover {
-  background: linear-gradient(135deg,#059669,#047857);
+  background: linear-gradient(135deg, #10b981, #059669);
 }
 
 .upcoming {
@@ -1376,4 +1379,41 @@ mat-progress-bar {
 .modern-table tbody tr.paid-row .amount-text {
   color: #059669;
   text-decoration: line-through;
+}
+
+@media (max-width: 1024px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .card {
+    border-radius: 14px;
+    padding: 12px;
+  }
+
+  .fab-container {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .fab-menu {
+    width: auto;
+    align-items: flex-end;
+  }
+
+  .cta-btn {
+    min-width: 156px;
+    width: auto;
+  }
 }
