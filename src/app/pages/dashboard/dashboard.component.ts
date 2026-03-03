@@ -18,6 +18,29 @@ import { CarryForwardService } from '../../services/carry-forward.service';
 import { StateManagementService } from '../../services/state-management.service';
 Chart.register(...registerables);
 
+
+const hoverGuideLinePlugin = {
+  id: 'hoverGuideLine',
+  afterDraw(chart: any) {
+    const active = chart.tooltip?.getActiveElements?.();
+    if (!active || !active.length) return;
+
+    const { ctx, chartArea: { top, bottom } } = chart;
+    const x = active[0].element.x;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = '#94a3b8';
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -517,14 +540,30 @@ export class DashboardComponent implements OnDestroy {
     if (!this.thisMonthCumulative.length) return;
 
     const days = this.thisMonthCumulative.length;
-    const labels = Array.from({ length: days }, (_, i) => i + 1);
+    const labels = Array.from({ length: days }, (_, i) => `Day ${i + 1}`);
+
+    const normalizeSeries = (series: number[], targetLength: number): number[] => {
+      if (!series.length) {
+        return new Array(targetLength).fill(0);
+      }
+
+      if (series.length >= targetLength) {
+        return series.slice(0, targetLength);
+      }
+
+      const lastValue = series[series.length - 1];
+      return [...series, ...new Array(targetLength - series.length).fill(lastValue)];
+    };
+
+    const thisMonthSeries = normalizeSeries(this.thisMonthCumulative, days);
+    const lastMonthSeries = normalizeSeries(this.lastMonthCumulative, days);
 
     const ctx = document
       .getElementById('spendingLineChart') as HTMLCanvasElement;
 
     const gradient = ctx.getContext('2d')!.createLinearGradient(0, 0, 0, 220);
-    gradient.addColorStop(0, 'rgba(30,136,229,0.25)');
-    gradient.addColorStop(1, 'rgba(30,136,229,0.02)');
+    gradient.addColorStop(0, 'rgba(37, 99, 235, 0.18)');
+    gradient.addColorStop(1, 'rgba(37, 99, 235, 0.02)');
 
     if (this.lineChart) {
       this.lineChart.destroy();
@@ -536,33 +575,40 @@ export class DashboardComponent implements OnDestroy {
         labels,
         datasets: [
           {
-            label: 'This Month',
-            data: this.thisMonthCumulative,
-            borderColor: '#1d7dd8',
+            label: 'Current Month',
+            data: thisMonthSeries,
+            borderColor: '#2563eb',
             backgroundColor: gradient,
             borderWidth: 3,
-            tension: 0.35,
+            tension: 0.32,
             fill: true,
-            pointRadius: 2,
-            pointHoverRadius: 5,
-            pointBackgroundColor: '#1d7dd8',
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointBackgroundColor: '#2563eb',
             pointBorderWidth: 0
           },
           {
-            label: 'Last Month',
-            data: this.lastMonthCumulative,
-            borderColor: '#93c5fd',
+            label: 'Previous Month',
+            data: lastMonthSeries,
+            borderColor: '#94a3b8',
             borderWidth: 2,
-            tension: 0.35,
-            borderDash: [6, 6],
+            tension: 0.32,
+            borderDash: [5, 5],
             fill: false,
-            pointRadius: 0
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointBackgroundColor: '#94a3b8',
+            pointBorderWidth: 0
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -573,18 +619,20 @@ export class DashboardComponent implements OnDestroy {
             borderWidth: 1,
             padding: 10,
             callbacks: {
-              label: ctx => `₹ ${ctx.raw}`
+              title: items => items.length ? items[0].label : '',
+              label: context => `${context.dataset.label}: ₹${context.raw}`
             }
           }
         },
         scales: {
           x: {
             grid: {
-              display: false
+              color: 'rgba(203, 213, 225, 0.24)',
             },
             ticks: {
               color: '#64748b',
-              maxTicksLimit: 8,
+              maxTicksLimit: 6,
+              callback: (_value, index) => `${index + 1}`,
               font: { size: 11 }
             }
           },
@@ -603,7 +651,8 @@ export class DashboardComponent implements OnDestroy {
             }
           }
         }
-      }
+      },
+      plugins: [hoverGuideLinePlugin]
     });
   }
 

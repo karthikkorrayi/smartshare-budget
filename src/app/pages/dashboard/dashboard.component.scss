@@ -793,10 +793,10 @@ mat-progress-bar {
 
 /* Modern Line Chart Card */
 .modern-line-card {
-  background: linear-gradient(160deg, #ffffff 0%, #f3f9ff 100%);
-  padding: 18px;
-  border: 1px solid #d6e6f7;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
 }
 
 .spending-trend-card .line-header {
@@ -808,12 +808,12 @@ mat-progress-bar {
 
 .line-header h3 {
   margin: 0;
-  font-size: 19px;
+  font-size: 17px;
   line-height: 1.2;
 }
 
 .subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: #64748b;
   margin-top: 4px;
 }
@@ -822,9 +822,9 @@ mat-progress-bar {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 6px 10px;
+  padding: 5px 9px;
   border-radius: 999px;
   border: 1px solid #fecaca;
   background: #fff1f2;
@@ -841,24 +841,52 @@ mat-progress-bar {
   font-size: 11px;
 }
 
+
+.trend-legend {
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: #475569;
+  font-size: 12px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-line {
+  width: 20px;
+  height: 0;
+  border-top: 2px solid #2563eb;
+  border-radius: 999px;
+}
+
+.legend-item.previous .legend-line {
+  border-top-color: #94a3b8;
+  border-top-style: dashed;
+}
+
 .trend-metrics {
   display: flex;
   align-items: stretch;
-  gap: 8px;
-  margin-top: 14px;
+  gap: 6px;
+  margin-top: 10px;
   background: #ffffff;
-  border: 1px solid #dbe7f4;
-  border-radius: 12px;
-  padding: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 4px;
 }
 
 .trend-metrics .metric {
   flex: 1;
   min-width: 0;
-  padding: 8px 10px;
+  padding: 7px 8px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .trend-metrics .metric:not(:last-child) {
@@ -873,7 +901,7 @@ mat-progress-bar {
 }
 
 .trend-metrics .metric strong {
-  font-size: 17px;
+  font-size: 14px;
   color: #0f172a;
   line-height: 1.2;
 }
@@ -887,12 +915,12 @@ mat-progress-bar {
 }
 
 .line-chart-wrapper {
-  height: 220px;
-  margin-top: 12px;
+  height: 236px;
+  margin-top: 10px;
   background: #ffffff;
-  border: 1px solid #dbe7f4;
-  border-radius: 14px;
-  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 8px 8px;
 }
 
 /* ===== Amount to Receive Card ===== */
@@ -1488,6 +1516,13 @@ mat-progress-bar {
   .cta-btn {
     min-width: 156px;
     width: auto;
+  }
+
+  .trend-legend {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    column-gap: 10px;
+    font-size: 11px;
   }
 
   .trend-metrics {
