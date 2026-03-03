@@ -328,13 +328,17 @@ export class DashboardComponent implements OnDestroy {
   const canvas = document.getElementById('monthlyBarChart') as HTMLCanvasElement;
   const ctx = canvas.getContext('2d')!;
 
-  // Gradient for bars
-  const barGradient = ctx.createLinearGradient(0, 0, 0, 240);
-  barGradient.addColorStop(0, 'rgba(59, 130, 246, 0.9)');
-  barGradient.addColorStop(1, 'rgba(59, 130, 246, 0.2)');
+  const barGradient = ctx.createLinearGradient(0, 0, 0, 260);
+  barGradient.addColorStop(0, 'rgba(37, 99, 235, 0.95)');
+  barGradient.addColorStop(0.55, 'rgba(59, 130, 246, 0.72)');
+  barGradient.addColorStop(1, 'rgba(125, 211, 252, 0.34)');
+
+  const lineGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+  lineGradient.addColorStop(0, '#06b6d4');
+  lineGradient.addColorStop(1, '#0ea5e9');
 
   const barColors = this.dailyTotals.map((_, index) =>
-    index + 1 === todayDate ? '#2563eb' : barGradient
+    index + 1 === todayDate ? '#1d4ed8' : barGradient
   );
 
   if (this.barChart) {
@@ -345,24 +349,26 @@ export class DashboardComponent implements OnDestroy {
     data: {
       labels,
       datasets: [
-        // BAR DATASET – Daily spending
         {
           type: 'bar',
+          label: 'Daily Spending',
           data: this.dailyTotals,
           backgroundColor: barColors,
-          borderRadius: 12,
+          borderColor: 'rgba(255,255,255,0.55)',
+          borderWidth: 1,
+          borderRadius: 10,
           maxBarThickness: 18
         },
-
-        // LINE DATASET – Cumulative total
         {
           type: 'line',
+          label: 'Cumulative',
           data: this.cumulativeTotals,
-          borderColor: '#68d2ffff',
-          borderWidth: 2,
-          tension: 0.4,
-          pointRadius: 3,
-          pointBackgroundColor: '#68d2ffff',
+          borderColor: lineGradient,
+          borderWidth: 2.5,
+          tension: 0.34,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointBackgroundColor: '#0284c7',
           fill: false
         }
       ]
@@ -377,18 +383,15 @@ export class DashboardComponent implements OnDestroy {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#111827',
-          titleColor: '#fff',
-          bodyColor: '#fff',
-          cornerRadius: 8,
+          backgroundColor: '#0f172a',
+          titleColor: '#e2e8f0',
+          bodyColor: '#f8fafc',
+          cornerRadius: 10,
           padding: 10,
           callbacks: {
-            label: ctx => {
-              if (ctx.dataset.type === 'line') {
-                return `Total: ₹${ctx.raw}`;
-              }
-              return `Spent: ₹${ctx.raw}`;
-            }
+            label: item => item.dataset.type === 'line'
+              ? `Total: ₹${item.raw}`
+              : `Spent: ₹${item.raw}`
           }
         }
       },
@@ -396,19 +399,19 @@ export class DashboardComponent implements OnDestroy {
         x: {
           grid: { display: false },
           ticks: {
-            color: '#9ca3af',
+            color: '#64748b',
             font: { size: 11 }
           }
         },
         y: {
           beginAtZero: true,
           grid: {
-            color: 'rgba(21, 173, 255, 0.3)',
+            color: 'rgba(148, 163, 184, 0.26)',
             drawOnChartArea: true,
             drawTicks: false
           },
           ticks: {
-            color: '#9ca3af',
+            color: '#64748b',
             font: { size: 11 },
             callback: (value: string | number) => `₹${value}`
           }

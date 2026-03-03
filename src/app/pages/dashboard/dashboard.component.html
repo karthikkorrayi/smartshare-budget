@@ -150,45 +150,84 @@
 
   <!-- CENTER COLUMN -->
   <div class="center-column">
-    <mat-card class="card">
-      <h3>Recent Income</h3>
+    <mat-card class="card recent-income-modern spending-table-modern income-summary-modern">
+      <div class="table-header">
+        <h3>Income Summary</h3>
+        <span class="transaction-count" *ngIf="recentIncome.length > 0">
+          {{ recentIncome.length }} entr{{ recentIncome.length > 1 ? 'ies' : 'y' }}
+        </span>
+      </div>
 
-      <table class="spending-table-ui">
-        <tr *ngFor="let inc of recentIncome" [class.system-generated]="inc.isSystemGenerated">
-          <td>
-            <span>{{ inc.source }}</span>
-            <span class="system-badge" *ngIf="inc.isSystemGenerated">Auto</span>
-          </td>
-          <td>₹{{ inc.amount }}</td>
-          <td>
-            <span
-              class="action"
-              [class.disabled]="inc.isSystemGenerated"
-              (click)="editIncome(inc)">✏️</span>
-            <span
-              class="action"
-              [class.disabled]="inc.isSystemGenerated"
-              (click)="deleteIncome(inc.id)">🗑️</span>
-          </td>
-        </tr>
-      </table>
+      <div class="table-container" *ngIf="recentIncome.length > 0">
+        <table class="modern-table income-table">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let inc of recentIncome" [class.system-generated-row]="inc.isSystemGenerated">
+              <td>
+                <div class="description-cell">
+                  <span class="category-icon">💸</span>
+                  <span class="description-text">{{ inc.source }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="amount-text income-amount">₹{{ inc.amount | number:'1.0-0' }}</span>
+              </td>
+              <td>
+                <span class="status-badge auto" *ngIf="inc.isSystemGenerated">AUTO</span>
+                <span class="status-badge" *ngIf="!inc.isSystemGenerated">MANUAL</span>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <button class="action-btn edit-btn"
+                    [class.disabled]="inc.isSystemGenerated"
+                    [disabled]="inc.isSystemGenerated"
+                    (click)="editIncome(inc)"
+                    title="Edit">
+                    <span class="btn-icon">✏️</span>
+                  </button>
+                  <button class="action-btn delete-btn"
+                    [class.disabled]="inc.isSystemGenerated"
+                    [disabled]="inc.isSystemGenerated"
+                    (click)="deleteIncome(inc.id)"
+                    title="Delete">
+                    <span class="btn-icon">🗑️</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" *ngIf="recentIncome.length === 0">
+        <div class="empty-icon">💰</div>
+        <h4>No income entries yet</h4>
+        <p>Add income to see your monthly summary</p>
+      </div>
     </mat-card>
 
     <!-- Top Stats -->
     <div class="stats-row">
       <div class="kpi-card income" [class.active]="availableBalance > 0">
         <p class="kpi-label">Total Income</p>
-        <h2 class="kpi-value">₹{{ totalIncome | number:'1.0-0' }}</h2>
+        <h2 class="kpi-value income-value">₹{{ totalIncome | number:'1.0-0' }}</h2>
       </div>
 
       <div class="kpi-card expense">
         <p class="kpi-label">Total Spending</p>
-        <h2 class="kpi-value">₹{{ totalExpenses | number:'1.0-0' }}</h2>
+        <h2 class="kpi-value expense-value">₹{{ totalExpenses | number:'1.0-0' }}</h2>
       </div>
 
       <div class="kpi-card balance" [class.active]="availableBalance > totalIncome * 0.5">
         <p class="kpi-label">Available Balance</p>
-        <h2 class="kpi-value" [class.positive]="availableBalance > 0" [class.negative]="availableBalance < 0">
+        <h2 class="kpi-value balance-value">
           ₹{{ availableBalance | number:'1.0-0' }}
         </h2>
       </div>
