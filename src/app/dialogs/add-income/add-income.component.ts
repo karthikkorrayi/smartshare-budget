@@ -21,28 +21,34 @@ import { IncomeService } from '../../services/income.service';
       </div>
 
       <div class="form-content">
-        <div class="form-section">
-          <label class="section-label">Income Source</label>
+        <div class="input-group">
           <input
             type="text"
-            placeholder="Salary, Freelance, Bonus..."
+            id="source"
             [(ngModel)]="income.source"
-            class="form-input">
+            class="floating-input"
+            placeholder=" ">
+          <label for="source" class="floating-label">Income Source</label>
         </div>
 
-        <div class="form-section">
-          <label class="section-label">Amount (₹)</label>
+        <div class="input-group">
           <input
             type="number"
-            placeholder="0.00"
+            id="amount"
             [(ngModel)]="income.amount"
-            class="form-input">
+            class="floating-input"
+            placeholder=" ">
+          <label for="amount" class="floating-label">Amount (₹)</label>
         </div>
       </div>
 
       <div class="form-actions">
-        <button (click)="close()" class="btn btn-secondary">Cancel</button>
-        <button (click)="save()" class="btn btn-primary">Save Income</button>
+        <button (click)="close()" class="btn btn-cancel">
+          <span class="btn-content">Cancel</span>
+        </button>
+        <button (click)="save()" class="btn btn-save">
+          <span class="btn-content">Save Income</span>
+        </button>
       </div>
     </div>
   `

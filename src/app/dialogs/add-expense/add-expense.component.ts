@@ -22,52 +22,60 @@ import { UpcomingPaymentService } from '../../services/upcoming-payment.service'
       </div>
 
       <div class="form-content">
-        <div class="form-section">
-          <label class="section-label">Description</label>
+        <div class="input-group">
           <input
             type="text"
-            placeholder="What did you spend on?"
+            id="description"
             [(ngModel)]="expense.description"
-            class="form-input">
+            class="floating-input"
+            placeholder=" ">
+          <label for="description" class="floating-label">Description</label>
         </div>
 
         <div class="form-row">
-          <div class="form-section">
-            <label class="section-label">Amount (₹)</label>
+          <div class="input-group">
             <input
               type="number"
-              placeholder="0.00"
+              id="amount"
               [(ngModel)]="expense.amount"
-              class="form-input">
+              class="floating-input"
+              placeholder=" ">
+            <label for="amount" class="floating-label">Amount (₹)</label>
           </div>
 
-          <div class="form-section">
-            <label class="section-label">Category</label>
-            <select [(ngModel)]="expense.category" class="form-select">
+          <div class="input-group">
+            <select id="category" [(ngModel)]="expense.category" class="floating-input floating-select">
               <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
             </select>
+            <label for="category" class="floating-label">Category</label>
           </div>
         </div>
 
-        <div class="form-section checkbox-section">
+        <div class="checkbox-section">
           <label class="checkbox-label">
-            <input type="checkbox" [(ngModel)]="isUpcoming">
+            <input type="checkbox" [(ngModel)]="isUpcoming" class="checkbox-input">
             <span class="checkbox-text">Mark as upcoming payment</span>
           </label>
         </div>
 
-        <div *ngIf="isUpcoming" class="form-section date-section">
-          <label class="section-label">Due Date</label>
+        <div *ngIf="isUpcoming" class="input-group date-section">
           <input
             type="date"
+            id="dueDate"
             [(ngModel)]="dueDate"
-            class="form-input">
+            class="floating-input"
+            placeholder=" ">
+          <label for="dueDate" class="floating-label">Due Date</label>
         </div>
       </div>
 
       <div class="form-actions">
-        <button (click)="close()" class="btn btn-secondary">Cancel</button>
-        <button (click)="save()" class="btn btn-primary">Save Expense</button>
+        <button (click)="close()" class="btn btn-cancel">
+          <span class="btn-content">Cancel</span>
+        </button>
+        <button (click)="save()" class="btn btn-save">
+          <span class="btn-content">Save Expense</span>
+        </button>
       </div>
     </div>
   `

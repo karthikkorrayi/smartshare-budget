@@ -3,14 +3,16 @@
   flex-direction: column;
   gap: 0;
   background: #fff;
-  border-radius: 16px;
+  border-radius: 20px;
   overflow: hidden;
-  min-width: 420px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
 .form-header {
   background: linear-gradient(135deg, #10b981, #059669);
-  padding: 24px;
+  padding: 28px 24px;
   color: #fff;
 
   .header-content {
@@ -20,111 +22,192 @@
   }
 
   .header-icon {
-    font-size: 36px;
+    font-size: 40px;
     line-height: 1;
   }
 
   .form-title {
     margin: 0;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
-    line-height: 1.3;
+    line-height: 1.2;
   }
 
   .form-subtitle {
-    margin: 4px 0 0;
+    margin: 6px 0 0;
     font-size: 13px;
     opacity: 0.9;
+    font-weight: 400;
   }
 }
 
 .form-content {
-  padding: 24px;
+  padding: 32px 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+  background: #fafafa;
 }
 
-.form-section {
+.input-group {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
-.section-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #374151;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.form-input {
-  padding: 12px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 14px;
+.floating-input {
+  width: 100%;
+  padding: 16px 14px 8px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 15px;
   font-family: inherit;
-  transition: all 0.2s ease;
-  background: #f9fafb;
+  background: #ffffff;
+  transition: all 0.25s ease;
+  outline: none;
+  box-sizing: border-box;
 
   &:focus {
-    outline: none;
     border-color: #10b981;
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.08);
+  }
+
+  &:focus + .floating-label,
+  &:not(:placeholder-shown) + .floating-label {
+    top: 8px;
+    font-size: 11px;
+    color: #10b981;
+    font-weight: 600;
   }
 
   &::placeholder {
-    color: #9ca3af;
+    color: transparent;
   }
+}
+
+.floating-label {
+  position: absolute;
+  left: 14px;
+  top: 16px;
+  font-size: 15px;
+  color: #6b7280;
+  pointer-events: none;
+  transition: all 0.25s ease;
+  background: #ffffff;
+  padding: 0 4px;
+  font-weight: 500;
 }
 
 .form-actions {
   display: flex;
   gap: 12px;
-  padding: 16px 24px;
-  background: #f9fafb;
+  padding: 20px 24px;
+  background: #ffffff;
   border-top: 1px solid #e5e7eb;
-  justify-content: flex-end;
 }
 
 .btn {
-  padding: 10px 20px;
+  flex: 1;
+  padding: 14px 24px;
   border: none;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  letter-spacing: 0.3px;
+  transition: all 0.25s ease;
+  letter-spacing: 0.2px;
+  position: relative;
+  overflow: hidden;
+
+  .btn-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.5s, height 0.5s;
+  }
+
+  &:hover::before {
+    width: 300px;
+    height: 300px;
+  }
 }
 
-.btn-primary {
+.btn-cancel {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 2px solid #e5e7eb;
+
+  &:hover {
+    background: #e5e7eb;
+    border-color: #d1d5db;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  }
+}
+
+.btn-save {
   background: linear-gradient(135deg, #10b981, #059669);
   color: #fff;
 
   &:hover {
     background: linear-gradient(135deg, #059669, #047857);
-    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(5, 150, 105, 0.3);
   }
 
   &:active {
     transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(5, 150, 105, 0.15);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
   }
 }
 
-.btn-secondary {
-  background: #e5e7eb;
-  color: #374151;
-
-  &:hover {
-    background: #d1d5db;
+@media (max-width: 640px) {
+  .form-container {
+    max-width: 100%;
+    border-radius: 16px;
   }
 
-  &:active {
-    background: #9ca3af;
+  .form-header {
+    padding: 24px 20px;
+
+    .header-icon {
+      font-size: 32px;
+    }
+
+    .form-title {
+      font-size: 20px;
+    }
+  }
+
+  .form-content {
+    padding: 24px 20px;
+    gap: 20px;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+    padding: 16px 20px;
+    gap: 10px;
+  }
+
+  .btn {
+    width: 100%;
   }
 }
