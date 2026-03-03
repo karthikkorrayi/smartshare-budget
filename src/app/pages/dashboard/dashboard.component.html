@@ -72,20 +72,28 @@
           />
         </div>
 
-        <div class="form-group amount-group">
+        <div class="form-group">
           <label>Amount</label>
-          <input
-            type="number"
-            placeholder="0"
-            [(ngModel)]="newReceivable.amount"
-          />
-          <button class="add-btn" (click)="addReceivable()">+</button>
+          <div class="amount-input-wrap">
+            <input
+              type="number"
+              placeholder="0"
+              [(ngModel)]="newReceivable.amount"
+            />
+            <button class="add-btn" (click)="addReceivable()" aria-label="Add receivable">+</button>
+          </div>
         </div>
       </div>
 
       <div class="divider"></div>
 
       <!-- List -->
+      <div class="receivable-empty" *ngIf="receivables.length === 0">
+        <span class="empty-icon">🤝</span>
+        <p>No pending receivables</p>
+        <small>Add a person/reason and amount to track money you should receive.</small>
+      </div>
+
       <div *ngFor="let r of receivables" class="receivable-row" [class.paid]="r.status === 'PAID'">
         <input
           type="checkbox"
@@ -272,7 +280,7 @@
   <div class="right-column">
 
     <!-- Spending Fulfillment -->
-    <mat-card class="card fulfillment modern-line-card">
+    <mat-card class="card fulfillment modern-line-card spending-trend-card">
       <div class="line-header">
         <div>
           <h3>Monthly Spending Trend</h3>
@@ -280,23 +288,31 @@
             {{ selectedMonth | date:'MMMM yyyy' }} vs previous month
           </p>
         </div>
+        <span class="trend-pill" [class.down]="spendingDelta < 0" [class.up]="spendingDelta >= 0">
+          <span class="trend-arrow">{{ spendingDelta >= 0 ? '▲' : '▼' }}</span>
+          {{ spendingDeltaPercent | number:'1.0-0' }}%
+        </span>
+      </div>
+
+      <div class="trend-metrics">
+        <div class="metric this">
+          <span>This Month</span>
+          <strong>₹{{ totalExpenses }}</strong>
+        </div>
+        <div class="metric last">
+          <span>Last Month</span>
+          <strong>₹{{ lastMonthExpense }}</strong>
+        </div>
+        <div class="metric diff">
+          <span>Difference</span>
+          <strong [class.positive]="spendingDelta < 0" [class.negative]="spendingDelta > 0">
+            {{ spendingDelta > 0 ? '+' : '' }}₹{{ spendingDelta | number:'1.0-0' }}
+          </strong>
+        </div>
       </div>
 
       <div class="line-chart-wrapper">
         <canvas id="spendingLineChart"></canvas>
-      </div>
-
-      <div class="line-info modern">
-        <div>
-          <span class="dot this"></span>
-          <span>This Month</span>
-          <strong>₹{{ totalExpenses }}</strong>
-        </div>
-        <div>
-          <span class="dot last"></span>
-          <span>Last Month</span>
-          <strong>₹{{ lastMonthCumulative.at(-1) || 0 }}</strong>
-        </div>
       </div>
     </mat-card>
 

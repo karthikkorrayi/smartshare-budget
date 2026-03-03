@@ -387,7 +387,7 @@ export class DashboardComponent implements OnDestroy {
           ticks: {
             color: '#9ca3af',
             font: { size: 11 },
-            callback: value => `₹${value}`
+            callback: (value: string | number) => `₹${value}`
           }
         }
       }
@@ -538,20 +538,22 @@ export class DashboardComponent implements OnDestroy {
           {
             label: 'This Month',
             data: this.thisMonthCumulative,
-            borderColor: '#1e88e5',
+            borderColor: '#1d7dd8',
             backgroundColor: gradient,
             borderWidth: 3,
-            tension: 0.45,
+            tension: 0.35,
             fill: true,
-            pointRadius: 0,
-            pointHoverRadius: 5
+            pointRadius: 2,
+            pointHoverRadius: 5,
+            pointBackgroundColor: '#1d7dd8',
+            pointBorderWidth: 0
           },
           {
             label: 'Last Month',
             data: this.lastMonthCumulative,
-            borderColor: '#9ecbff',
+            borderColor: '#93c5fd',
             borderWidth: 2,
-            tension: 0.45,
+            tension: 0.35,
             borderDash: [6, 6],
             fill: false,
             pointRadius: 0
@@ -565,9 +567,9 @@ export class DashboardComponent implements OnDestroy {
           legend: { display: false },
           tooltip: {
             backgroundColor: '#ffffff',
-            titleColor: '#333',
-            bodyColor: '#555',
-            borderColor: '#e0e0e0',
+            titleColor: '#0f172a',
+            bodyColor: '#334155',
+            borderColor: '#cbd5e1',
             borderWidth: 1,
             padding: 10,
             callbacks: {
@@ -581,25 +583,44 @@ export class DashboardComponent implements OnDestroy {
               display: false
             },
             ticks: {
-              color: '#888',
+              color: '#64748b',
+              maxTicksLimit: 8,
               font: { size: 11 }
             }
           },
           y: {
             beginAtZero: true,
             grid: {
-              color: 'rgba(0,0,0,0.04)',
+              color: 'rgba(148, 163, 184, 0.22)',
               drawOnChartArea: true,
               drawTicks: false
             },
             ticks: {
-              color: '#888',
+              color: '#64748b',
+              maxTicksLimit: 6,
+              callback: (value: string | number) => `₹${value}`,
               font: { size: 11 }
             }
           }
         }
       }
     });
+  }
+
+
+  get lastMonthExpense(): number {
+    return this.lastMonthCumulative.at(-1) || 0;
+  }
+
+  get spendingDelta(): number {
+    return this.totalExpenses - this.lastMonthExpense;
+  }
+
+  get spendingDeltaPercent(): number {
+    if (this.lastMonthExpense === 0) {
+      return this.totalExpenses > 0 ? 100 : 0;
+    }
+    return Math.abs((this.spendingDelta / this.lastMonthExpense) * 100);
   }
 
   openAddExpense() {
