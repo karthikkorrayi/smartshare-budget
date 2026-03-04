@@ -1076,14 +1076,183 @@ mat-progress-bar {
 }
 
 @media (max-width: 900px) {
-  .receivable-header .total {
-    font-size: 22px;
+  .dashboard {
+    padding: 10px;
+    gap: 12px;
+    padding-bottom: 96px;
   }
 
-  .row-amount {
-    font-size: 16px;
+  .left-column,
+  .center-column,
+  .right-column {
+    gap: 12px;
+  }
+
+  .greeting-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .month-select select {
+    width: 100%;
+  }
+
+  .card,
+  .spending-table-modern,
+  .income-summary-modern,
+  .bar-chart,
+  .modern-line-card {
+    border-radius: 14px;
+    padding: 12px;
+  }
+
+  .line-chart-wrapper {
+    height: 205px;
+  }
+
+  .bar-chart canvas {
+    height: 190px !important;
+  }
+
+  .table-header {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  .table-container {
+    border: none;
+    overflow: visible;
+  }
+
+  .modern-table,
+  .modern-table thead,
+  .modern-table tbody,
+  .modern-table th,
+  .modern-table td,
+  .modern-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .modern-table thead {
+    display: none;
+  }
+
+  .modern-table tbody tr {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+  }
+
+  .modern-table tbody tr:hover {
+    transform: none;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+    background: #fff;
+  }
+
+  .modern-table tbody td {
+    border-bottom: 1px dashed #e2e8f0;
+    padding: 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    text-align: right;
+  }
+
+  .modern-table tbody td:last-child {
+    border-bottom: none;
+  }
+
+  .spending-table-modern .modern-table tbody td::before,
+  .income-summary-modern .income-table tbody td::before {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    text-align: left;
+    flex: 0 0 88px;
+    content: '';
+  }
+
+  .income-summary-modern .income-table tbody td:nth-child(1)::before { content: 'Source'; }
+  .income-summary-modern .income-table tbody td:nth-child(2)::before { content: 'Amount'; }
+  .income-summary-modern .income-table tbody td:nth-child(3)::before { content: 'Status'; }
+  .income-summary-modern .income-table tbody td:nth-child(4)::before { content: 'Actions'; }
+
+  .spending-table-modern .modern-table tbody td:nth-child(1)::before { content: 'Description'; }
+  .spending-table-modern .modern-table tbody td:nth-child(2)::before { content: 'Category'; }
+  .spending-table-modern .modern-table tbody td:nth-child(3)::before { content: 'Date'; }
+  .spending-table-modern .modern-table tbody td:nth-child(4)::before { content: 'Amount'; }
+  .spending-table-modern .modern-table tbody td:nth-child(5)::before { content: 'Status'; }
+  .spending-table-modern .modern-table tbody td:nth-child(6)::before { content: 'Actions'; }
+
+  .description-cell {
+    justify-content: flex-end;
+    gap: 8px;
+    max-width: 68%;
+  }
+
+  .description-text {
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .action-buttons {
+    justify-content: flex-end;
+  }
+
+  .fab-container {
+    right: 12px;
+    bottom: 14px;
+  }
+
+  .fab {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+  }
+
+  .fab-menu {
+    width: auto;
+    align-items: flex-end;
+  }
+
+  .cta-btn {
+    min-width: 148px;
+    width: auto;
+  }
+
+  .trend-legend {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    column-gap: 10px;
+    font-size: 11px;
+  }
+
+  .trend-metrics {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .trend-metrics .metric:not(:last-child) {
+    border-right: none;
+    border-bottom: 1px solid #e6eef8;
+  }
+
+  .trend-metrics .metric strong {
+    font-size: 17px;
+  }
+
+  .line-header h3 {
+    font-size: 18px;
   }
 }
+
 
 /* ===== Category Summary (Enhanced) ===== */
 
@@ -1481,7 +1650,14 @@ mat-progress-bar {
 
 @media (max-width: 900px) {
   .dashboard {
-    padding: 12px;
+    padding: 10px;
+    gap: 12px;
+    padding-bottom: 96px;
+  }
+
+  .left-column,
+  .center-column,
+  .right-column {
     gap: 12px;
   }
 
@@ -1494,14 +1670,124 @@ mat-progress-bar {
     width: 100%;
   }
 
-  .card {
+  .card,
+  .spending-table-modern,
+  .income-summary-modern,
+  .bar-chart,
+  .modern-line-card {
     border-radius: 14px;
     padding: 12px;
   }
 
+  .line-chart-wrapper {
+    height: 205px;
+  }
+
+  .bar-chart canvas {
+    height: 190px !important;
+  }
+
+  .table-header {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  .table-container {
+    border: none;
+    overflow: visible;
+  }
+
+  .modern-table,
+  .modern-table thead,
+  .modern-table tbody,
+  .modern-table th,
+  .modern-table td,
+  .modern-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .modern-table thead {
+    display: none;
+  }
+
+  .modern-table tbody tr {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+  }
+
+  .modern-table tbody tr:hover {
+    transform: none;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+    background: #fff;
+  }
+
+  .modern-table tbody td {
+    border-bottom: 1px dashed #e2e8f0;
+    padding: 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    text-align: right;
+  }
+
+  .modern-table tbody td:last-child {
+    border-bottom: none;
+  }
+
+  .spending-table-modern .modern-table tbody td::before,
+  .income-summary-modern .income-table tbody td::before {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    text-align: left;
+    flex: 0 0 88px;
+    content: '';
+  }
+
+  .income-summary-modern .income-table tbody td:nth-child(1)::before { content: 'Source'; }
+  .income-summary-modern .income-table tbody td:nth-child(2)::before { content: 'Amount'; }
+  .income-summary-modern .income-table tbody td:nth-child(3)::before { content: 'Status'; }
+  .income-summary-modern .income-table tbody td:nth-child(4)::before { content: 'Actions'; }
+
+  .spending-table-modern .modern-table tbody td:nth-child(1)::before { content: 'Description'; }
+  .spending-table-modern .modern-table tbody td:nth-child(2)::before { content: 'Category'; }
+  .spending-table-modern .modern-table tbody td:nth-child(3)::before { content: 'Date'; }
+  .spending-table-modern .modern-table tbody td:nth-child(4)::before { content: 'Amount'; }
+  .spending-table-modern .modern-table tbody td:nth-child(5)::before { content: 'Status'; }
+  .spending-table-modern .modern-table tbody td:nth-child(6)::before { content: 'Actions'; }
+
+  .description-cell {
+    justify-content: flex-end;
+    gap: 8px;
+    max-width: 68%;
+  }
+
+  .description-text {
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .action-buttons {
+    justify-content: flex-end;
+  }
+
   .fab-container {
-    right: 16px;
-    bottom: 16px;
+    right: 12px;
+    bottom: 14px;
+  }
+
+  .fab {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
   }
 
   .fab-menu {
@@ -1510,15 +1796,8 @@ mat-progress-bar {
   }
 
   .cta-btn {
-    min-width: 156px;
+    min-width: 148px;
     width: auto;
-  }
-
-  .trend-legend {
-    flex-wrap: wrap;
-    row-gap: 6px;
-    column-gap: 10px;
-    font-size: 11px;
   }
 
   .trend-legend {
