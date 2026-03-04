@@ -58,12 +58,8 @@ export class StateManagementService {
 
   setCurrentMonth(month: string) {
     this.loadingSubject.next(true);
-    this.currentMonthSubject.next('');
-
-    setTimeout(() => {
-      this.currentMonthSubject.next(month);
-      this.loadingSubject.next(false);
-    }, 0);
+    this.currentMonthSubject.next(month);
+    this.loadingSubject.next(false);
   }
 
   getCurrentMonth(): string {

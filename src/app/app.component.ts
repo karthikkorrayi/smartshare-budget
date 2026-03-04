@@ -9,21 +9,36 @@ import { PinLockComponent } from './security/pin-lock/pin-lock.component';
   imports: [RouterOutlet, PinLockComponent],
   template: `
   <header class="top-nav">
-    <div class="nav-left">
-      <span class="app-title">Personal Budget Insights</span>
+    <div class="brand">
+      <div class="brand-badge">💰</div>
+      <div class="brand-text">
+        <span class="app-title">SmartShare Budget</span>
+        <span class="app-subtitle">Track smarter, spend better</span>
+      </div>
     </div>
+
+    <button class="lock-btn" (click)="lockApp()" aria-label="Lock app">
+      <span>🔒</span>
+      <span class="lock-label">Lock</span>
+    </button>
   </header>
   <!-- <router-outlet></router-outlet> -->
-  <app-pin-lock></app-pin-lock>
+  <main class="app-shell">
+    <app-pin-lock></app-pin-lock>
     @if (!pinService.isLocked) {
       <router-outlet></router-outlet>
-    } 
+    }
+  </main>
   `,
   styleUrl:'./app.component.scss'
 })
 export class AppComponent {
 
   constructor(public pinService: PinLockService) {}
+
+  lockApp(): void {
+    this.pinService.lock();
+  }
 
   // CTRL + L - Lock app
   @HostListener('window:keydown', ['$event'])

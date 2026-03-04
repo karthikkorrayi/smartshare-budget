@@ -1,4 +1,4 @@
-import { Component, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnDestroy, ChangeDetectorRef, HostListener, Injector, inject, runInInjectionContext } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IncomeService } from '../../services/income.service';
 import { ExpenseService } from '../../services/expense.service';
@@ -16,6 +16,7 @@ import { takeUntil, switchMap, map } from 'rxjs/operators';
 import { ReceivableService } from '../../services/receivable.service';
 import { CarryForwardService } from '../../services/carry-forward.service';
 import { StateManagementService } from '../../services/state-management.service';
+import { PinLockService } from '../../services/pin-lock.service';
 Chart.register(...registerables);
 
 
@@ -51,6 +52,7 @@ const hoverGuideLinePlugin = {
 export class DashboardComponent implements OnDestroy {
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
+  private injector = inject(Injector);
 
   username = 'Karthik';
   today = new Date();
@@ -108,7 +110,8 @@ export class DashboardComponent implements OnDestroy {
     private upcomingService: UpcomingPaymentService,
     private stateManagement: StateManagementService,
     private carryForwardService: CarryForwardService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private pinLockService: PinLockService
   ) {}
 
   months: { label: string; value: string }[] = [];
@@ -147,7 +150,7 @@ export class DashboardComponent implements OnDestroy {
 
     this.stateManagement.currentMonth$.pipe(
       takeUntil(this.destroy$),
-      switchMap(month => this.upcomingService.getByMonth(month))
+      switchMap(month => runInInjectionContext(this.injector, () => this.upcomingService.getByMonth(month)))
     ).subscribe(data => {
       this.upcomingPayments = data.map(p => ({
         ...p,
@@ -191,7 +194,7 @@ export class DashboardComponent implements OnDestroy {
       this.cdr.markForCheck();
 
       const lastMonthKey = this.getLastMonthKey();
-      this.expenseService.getExpensesByMonth(lastMonthKey).pipe(
+      runInInjectionContext(this.injector, () => this.expenseService.getExpensesByMonth(lastMonthKey)).pipe(
         takeUntil(this.destroy$)
       ).subscribe((lastMonthExpenses: any[]) => {
         const activeLastMonth = lastMonthExpenses.filter((e: any) => e.status !== 'PAID');
@@ -233,6 +236,15 @@ export class DashboardComponent implements OnDestroy {
     if (confirm('Delete this receivable?')) {
       await this.stateManagement.deleteReceivable(id, this.receivables, this.expenses);
       this.cdr.markForCheck();
+    }
+  }
+
+
+  @HostListener('document:contextmenu', ['$event'])
+  onRightClick(event: MouseEvent) {
+    event.preventDefault();
+    if (confirm('Lock dashboard?')) {
+      this.pinLockService.lock();
     }
   }
 
@@ -470,6 +482,11 @@ export class DashboardComponent implements OnDestroy {
   }
 
   renderGaugeChart() {
+    const gaugeCanvas = document.getElementById('categoryGauge') as HTMLCanvasElement | null;
+    if (!gaugeCanvas) {
+      return;
+    }
+
     const used = this.gaugeSpent;
     const remaining = Math.max(this.gaugeLimit - used, 0);
 
@@ -477,7 +494,7 @@ export class DashboardComponent implements OnDestroy {
       this.gaugeChart.destroy();
     }
 
-    this.gaugeChart = new Chart('categoryGauge', {
+    this.gaugeChart = new Chart(gaugeCanvas, {
       type: 'doughnut',
       data: {
         datasets: [{
@@ -521,14 +538,24 @@ export class DashboardComponent implements OnDestroy {
   }
 
   prepareCumulativeData(expenses: any[], monthKey: string): number[] {
-    const [year, month] = monthKey.split('-').map(Number);
+    const [yearRaw, monthRaw] = monthKey.split('-').map(Number);
+    const year = Number.isFinite(yearRaw) ? yearRaw : this.today.getFullYear();
+    const month = Number.isFinite(monthRaw) && monthRaw >= 1 && monthRaw <= 12
+      ? monthRaw
+      : this.today.getMonth() + 1;
+
     const daysInMonth = new Date(year, month, 0).getDate();
+    if (!Number.isFinite(daysInMonth) || daysInMonth <= 0) {
+      return [];
+    }
 
     const dailyTotals = new Array(daysInMonth).fill(0);
 
     expenses.forEach(exp => {
       const day = new Date(exp.date.seconds * 1000).getDate();
-      dailyTotals[day - 1] += exp.amount;
+      if (day >= 1 && day <= daysInMonth) {
+        dailyTotals[day - 1] += exp.amount;
+      }
     });
 
     // convert to cumulative
@@ -561,10 +588,14 @@ export class DashboardComponent implements OnDestroy {
     const thisMonthSeries = normalizeSeries(this.thisMonthCumulative, days);
     const lastMonthSeries = normalizeSeries(this.lastMonthCumulative, days);
 
-    const ctx = document
-      .getElementById('spendingLineChart') as HTMLCanvasElement;
+    const canvas = document.getElementById('spendingLineChart') as HTMLCanvasElement | null;
+    const context = canvas?.getContext('2d');
 
-    const gradient = ctx.getContext('2d')!.createLinearGradient(0, 0, 0, 220);
+    if (!canvas || !context) {
+      return;
+    }
+
+    const gradient = context.createLinearGradient(0, 0, 0, 220);
     gradient.addColorStop(0, 'rgba(37, 99, 235, 0.18)');
     gradient.addColorStop(1, 'rgba(37, 99, 235, 0.02)');
 
@@ -572,7 +603,7 @@ export class DashboardComponent implements OnDestroy {
       this.lineChart.destroy();
     }
 
-    this.lineChart = new Chart(ctx, {
+    this.lineChart = new Chart(canvas, {
       type: 'line',
       data: {
         labels,
