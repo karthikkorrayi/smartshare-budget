@@ -68,6 +68,7 @@ export class DashboardComponent implements OnDestroy {
   dailyTotals: number[] = [];
 
   recentIncome: any[] = [];
+  allIncome: any[] = [];
 
   upcomingPayments: any[] = [];
 
@@ -81,6 +82,7 @@ export class DashboardComponent implements OnDestroy {
   gaugeLimit = 50000;
 
   recentExpenses: any[] = [];
+  allExpenses: any[] = [];
 
   lineChart!: Chart;
 
@@ -98,6 +100,10 @@ export class DashboardComponent implements OnDestroy {
   totalReceivable = 0;
   expenses: any[] = [];
   isLoading = false;
+
+  // Modal state
+  showAllExpensesModal = false;
+  showAllIncomeModal = false;
 
   newReceivable = {
     title: '',
@@ -292,11 +298,9 @@ export class DashboardComponent implements OnDestroy {
     } else if (
       new Date(year, month - 1) < new Date(today.getFullYear(), today.getMonth())
     ) {
-      // Past month
       this.completionPercent = 100;
       this.remainingDays = 0;
     } else {
-      // Future month
       this.completionPercent = 0;
       this.remainingDays = totalDays;
     }
@@ -313,10 +317,8 @@ export class DashboardComponent implements OnDestroy {
   }
 
   prepareDailyExpenses(expenses: any[]) {
-    const year = this.today.getFullYear();
-    const monthIndex = this.months.findIndex(m => m.value === this.selectedMonth);
-
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    const [year, month] = this.selectedMonth.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
     this.dailyTotals = new Array(daysInMonth).fill(0);
 
     expenses.forEach(exp => {
@@ -324,7 +326,6 @@ export class DashboardComponent implements OnDestroy {
       this.dailyTotals[day - 1] += exp.amount;
     });
 
-    // 🔥 cumulative calculation
     this.cumulativeTotals = [...this.dailyTotals];
     for (let i = 1; i < this.cumulativeTotals.length; i++) {
       this.cumulativeTotals[i] += this.cumulativeTotals[i - 1];
@@ -460,12 +461,14 @@ export class DashboardComponent implements OnDestroy {
   }
   
   getCategoryIcon(category: string): string {
-    switch (category.toLowerCase()) {
+    switch (category?.toLowerCase()) {
       case 'food': return '🍔';
       case 'shopping': return '🛍️';
       case 'transport': return '🚕';
       case 'bills': return '💡';
       case 'lent': return '🤝';
+      case 'petrol': return '⛽';
+      case 'tickets': return '🎟️';
       default: return '📦';
     }
   }
@@ -473,7 +476,6 @@ export class DashboardComponent implements OnDestroy {
   prepareCategoryGauge() {
     if (!this.categorySummary.length) return;
 
-    // pick highest spending category
     const topCategory = this.categorySummary[0];
     this.gaugeCategory = topCategory.name;
     this.gaugeSpent = topCategory.amount;
@@ -520,20 +522,18 @@ export class DashboardComponent implements OnDestroy {
   }
 
   prepareRecentExpenses(expenses: any[]) {
-    this.recentExpenses = [...expenses]
-      .sort((a, b) => {
-        const da = new Date(a.date.seconds * 1000).getTime();
-        const db = new Date(b.date.seconds * 1000).getTime();
-        return db - da;
-      })
-      .slice(0, 5);
+    const sorted = [...expenses].sort((a, b) => {
+      const da = new Date(a.date.seconds * 1000).getTime();
+      const db = new Date(b.date.seconds * 1000).getTime();
+      return db - da;
+    });
+    this.allExpenses = sorted;
+    this.recentExpenses = sorted.slice(0, 5);
   }
 
   getLastMonthKey(): string {
-    const year = this.today.getFullYear();
-    const monthIndex = this.months.findIndex(m => m.value === this.selectedMonth);
-
-    const date = new Date(year, monthIndex - 1);
+    const [year, month] = this.selectedMonth.split('-').map(Number);
+    const date = new Date(year, month - 2); // month-1 is current, month-2 is previous
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
   }
 
@@ -558,7 +558,6 @@ export class DashboardComponent implements OnDestroy {
       }
     });
 
-    // convert to cumulative
     for (let i = 1; i < dailyTotals.length; i++) {
       dailyTotals[i] += dailyTotals[i - 1];
     }
@@ -729,6 +728,13 @@ export class DashboardComponent implements OnDestroy {
     });
   }
 
+  editExpenseFromModal(expense: any) {
+    this.closeAllExpensesModal();
+    setTimeout(() => {
+      this.editExpense(expense);
+    }, 150);
+  }
+
   deleteExpense(id: string) {
     if (confirm('Delete this expense?')) {
       this.expenseService.deleteExpense(id);
@@ -754,13 +760,13 @@ export class DashboardComponent implements OnDestroy {
   }
 
   prepareRecentIncome(income: any[]) {
-    this.recentIncome = [...income]
-      .sort((a, b) => {
-        const da = new Date(a.date.seconds * 1000).getTime();
-        const db = new Date(b.date.seconds * 1000).getTime();
-        return db - da;
-      })
-      .slice(0, 3);
+    const sorted = [...income].sort((a, b) => {
+      const da = new Date(a.date.seconds * 1000).getTime();
+      const db = new Date(b.date.seconds * 1000).getTime();
+      return db - da;
+    });
+    this.allIncome = sorted;
+    this.recentIncome = sorted.slice(0, 3);
   }
 
   editIncome(income: any) {
@@ -779,8 +785,15 @@ export class DashboardComponent implements OnDestroy {
     });
   }
 
+  editIncomeFromModal(income: any) {
+    this.closeAllIncomeModal();
+    setTimeout(() => {
+      this.editIncome(income);
+    }, 150);
+  }
+
   deleteIncome(id: string) {
-    const income = this.recentIncome.find(i => i.id === id);
+    const income = this.allIncome.find(i => i.id === id);
     if (income?.isSystemGenerated) {
       alert('System-generated transactions cannot be deleted.');
       return;
@@ -812,4 +825,29 @@ export class DashboardComponent implements OnDestroy {
     }
   }
 
+  // ── Modal helpers ──────────────────────────────────────────────
+
+  openAllExpensesModal() {
+    this.showAllExpensesModal = true;
+    document.body.style.overflow = 'hidden';
+    this.cdr.markForCheck();
+  }
+
+  closeAllExpensesModal() {
+    this.showAllExpensesModal = false;
+    document.body.style.overflow = '';
+    this.cdr.markForCheck();
+  }
+
+  openAllIncomeModal() {
+    this.showAllIncomeModal = true;
+    document.body.style.overflow = 'hidden';
+    this.cdr.markForCheck();
+  }
+
+  closeAllIncomeModal() {
+    this.showAllIncomeModal = false;
+    document.body.style.overflow = '';
+    this.cdr.markForCheck();
+  }
 }

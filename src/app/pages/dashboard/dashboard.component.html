@@ -153,9 +153,17 @@
     <mat-card class="card recent-income-modern spending-table-modern income-summary-modern">
       <div class="table-header">
         <h3>Income Summary</h3>
-        <span class="transaction-count" *ngIf="recentIncome.length > 0">
-          {{ recentIncome.length }} entr{{ recentIncome.length > 1 ? 'ies' : 'y' }}
-        </span>
+        <div class="table-header-right">
+          <span class="transaction-count" *ngIf="recentIncome.length > 0">
+            {{ recentIncome.length }} entr{{ recentIncome.length > 1 ? 'ies' : 'y' }}
+          </span>
+          <button
+            class="view-all-btn"
+            *ngIf="allIncome.length > 3"
+            (click)="openAllIncomeModal()">
+            View All ({{ allIncome.length }})
+          </button>
+        </div>
       </div>
 
       <div class="table-container" *ngIf="recentIncome.length > 0">
@@ -235,7 +243,6 @@
 
 
     <!-- Monthly Bar Chart -->
-    <!-- Monthly Bar Chart -->
     <mat-card class="card bar-chart">
       <div class="bar-chart-header">
         <h3>{{ selectedMonthLabel }}</h3>
@@ -251,9 +258,17 @@
     <mat-card class="card spending-table-modern">
       <div class="table-header">
         <h3>Spending Summary</h3>
-        <span class="transaction-count" *ngIf="recentExpenses.length > 0">
-          {{ recentExpenses.length }} transaction{{ recentExpenses.length > 1 ? 's' : '' }}
-        </span>
+        <div class="table-header-right">
+          <span class="transaction-count" *ngIf="recentExpenses.length > 0">
+            {{ recentExpenses.length }} transaction{{ recentExpenses.length > 1 ? 's' : '' }}
+          </span>
+          <button
+            class="view-all-btn"
+            *ngIf="allExpenses.length > 5"
+            (click)="openAllExpensesModal()">
+            View All ({{ allExpenses.length }})
+          </button>
+        </div>
       </div>
 
       <div class="table-container" *ngIf="recentExpenses.length > 0">
@@ -415,6 +430,7 @@
 
 </div>
 
+<!-- FAB -->
 <div class="fab-container">
   <button class="fab" [class.open]="fabOpen" (click)="toggleFab()" aria-label="Open quick actions">+</button>
 
@@ -427,5 +443,139 @@
       <span class="btn-icon">💰</span>
       <span class="btn-text">Add Income</span>
     </button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- ALL EXPENSES MODAL                                           -->
+<!-- ============================================================ -->
+<div class="modal-overlay" *ngIf="showAllExpensesModal" (click)="closeAllExpensesModal()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <span class="modal-icon">📊</span>
+        <div>
+          <h3 class="modal-title">All Transactions</h3>
+          <p class="modal-subtitle">{{ allExpenses.length }} expense{{ allExpenses.length !== 1 ? 's' : '' }} · {{ selectedMonthLabel }}</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" (click)="closeAllExpensesModal()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <table class="modern-table modal-table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let exp of allExpenses" class="table-row" [class.paid-row]="exp.status === 'PAID'">
+            <td>
+              <div class="description-cell">
+                <span class="category-icon">{{ getCategoryIcon(exp.category) }}</span>
+                <span class="description-text">{{ exp.description }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="category-badge" [attr.data-category]="exp.category.toLowerCase()">
+                {{ exp.category }}
+              </span>
+            </td>
+            <td>
+              <span class="date-text">{{ exp.date.toDate() | date:'dd MMM yyyy' }}</span>
+            </td>
+            <td>
+              <span class="amount-text">₹{{ exp.amount | number:'1.0-0' }}</span>
+            </td>
+            <td>
+              <span class="status-badge" *ngIf="exp.status === 'PAID'">PAID</span>
+              <span class="status-badge pending" *ngIf="!exp.status || exp.status !== 'PAID'">PENDING</span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button class="action-btn edit-btn" (click)="editExpenseFromModal(exp)" title="Edit">
+                  <span class="btn-icon">✏️</span>
+                </button>
+                <button class="action-btn delete-btn" (click)="deleteExpense(exp.id)" title="Delete">
+                  <span class="btn-icon">🗑️</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- ALL INCOME MODAL                                             -->
+<!-- ============================================================ -->
+<div class="modal-overlay" *ngIf="showAllIncomeModal" (click)="closeAllIncomeModal()">
+  <div class="modal-panel" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <span class="modal-icon">💰</span>
+        <div>
+          <h3 class="modal-title">All Income</h3>
+          <p class="modal-subtitle">{{ allIncome.length }} entr{{ allIncome.length !== 1 ? 'ies' : 'y' }} · {{ selectedMonthLabel }}</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" (click)="closeAllIncomeModal()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <table class="modern-table modal-table income-table">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let inc of allIncome" [class.system-generated-row]="inc.isSystemGenerated">
+            <td>
+              <div class="description-cell">
+                <span class="category-icon">💸</span>
+                <span class="description-text">{{ inc.source }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="amount-text income-amount">₹{{ inc.amount | number:'1.0-0' }}</span>
+            </td>
+            <td>
+              <span class="status-badge auto" *ngIf="inc.isSystemGenerated">AUTO</span>
+              <span class="status-badge" *ngIf="!inc.isSystemGenerated">MANUAL</span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button class="action-btn edit-btn"
+                  [class.disabled]="inc.isSystemGenerated"
+                  [disabled]="inc.isSystemGenerated"
+                  (click)="editIncomeFromModal(inc)"
+                  title="Edit">
+                  <span class="btn-icon">✏️</span>
+                </button>
+                <button class="action-btn delete-btn"
+                  [class.disabled]="inc.isSystemGenerated"
+                  [disabled]="inc.isSystemGenerated"
+                  (click)="deleteIncome(inc.id)"
+                  title="Delete">
+                  <span class="btn-icon">🗑️</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

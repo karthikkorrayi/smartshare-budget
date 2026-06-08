@@ -51,14 +51,14 @@ import { UpcomingPaymentService } from '../../services/upcoming-payment.service'
           </div>
         </div>
 
-        <div class="checkbox-section">
+        <div class="checkbox-section" *ngIf="!expense.id">
           <label class="checkbox-label">
             <input type="checkbox" [(ngModel)]="isUpcoming" class="checkbox-input">
             <span class="checkbox-text">Mark as upcoming payment</span>
           </label>
         </div>
 
-        <div *ngIf="isUpcoming" class="input-group date-section">
+        <div *ngIf="isUpcoming && !expense.id" class="input-group date-section">
           <input
             type="date"
             id="dueDate"
@@ -74,7 +74,7 @@ import { UpcomingPaymentService } from '../../services/upcoming-payment.service'
           <span class="btn-content">Cancel</span>
         </button>
         <button (click)="save()" class="btn btn-save">
-          <span class="btn-content">Save Expense</span>
+          <span class="btn-content">{{ expense.id ? 'Update Expense' : 'Save Expense' }}</span>
         </button>
       </div>
     </div>
@@ -82,7 +82,7 @@ import { UpcomingPaymentService } from '../../services/upcoming-payment.service'
 })
 export class AddExpenseComponent {
 
-  categories = ['Food', 'Shopping', 'Transport', 'Bills'];
+  categories = ['Food', 'Shopping', 'Transport', 'Bills', 'Petrol', 'Tickets', 'Lent', 'Others'];
 
   expense: any = {
     description: '',
@@ -110,7 +110,22 @@ export class AddExpenseComponent {
   }
 
   save() {
-    // UPCOMING PAYMENT ONLY (NOTE)
+    // EDIT MODE — update existing expense
+    if (this.expense.id) {
+      this.expenseService.updateExpense({
+        id: this.expense.id,
+        description: this.expense.description,
+        amount: this.expense.amount,
+        category: this.expense.category,
+        date: this.expense.date,
+        month: this.expense.month,
+        ...(this.expense.status ? { status: this.expense.status } : {})
+      });
+      this.dialogRef.close();
+      return;
+    }
+
+    // UPCOMING PAYMENT
     if (this.isUpcoming) {
       this.upcomingService.add({
         description: this.expense.description,
@@ -121,7 +136,7 @@ export class AddExpenseComponent {
         createdAt: new Date()
       });
     }
-    // REAL EXPENSE
+    // NEW EXPENSE
     else {
       this.expenseService.addExpense({
         description: this.expense.description,
