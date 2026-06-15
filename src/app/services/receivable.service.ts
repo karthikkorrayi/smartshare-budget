@@ -8,7 +8,8 @@ import {
   doc,
   updateDoc,
   query,
-  where
+  where,
+  orderBy
 } from '@angular/fire/firestore';
 
 @Injectable({ providedIn: 'root' })

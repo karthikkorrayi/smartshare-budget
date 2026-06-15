@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, of } from 'rxjs';
-import { switchMap, map, shareReplay, startWith, delay } from 'rxjs/operators';
+import { BehaviorSubject, of } from 'rxjs';
+import { switchMap, map, shareReplay, startWith } from 'rxjs/operators';
 import { ReceivableService } from './receivable.service';
 import { ExpenseService } from './expense.service';
 import { IncomeService } from './income.service';
@@ -17,13 +17,7 @@ export class StateManagementService {
   currentMonth$ = this.currentMonthSubject.asObservable();
   loading$ = this.loadingSubject.asObservable();
 
-  receivables$ = this.currentMonthSubject.pipe(
-    switchMap(month => {
-      if (!month) return of([]);
-      return this.receivableService.getByMonth(month).pipe(
-        startWith([])
-      );
-    }),
+  receivables$ = this.receivableService.getAll().pipe(
     map(data => [...data].sort((a, b) => {
       const dateA = a['createdAt']?.seconds ? new Date(a['createdAt'].seconds * 1000).getTime() : 0;
       const dateB = b['createdAt']?.seconds ? new Date(b['createdAt'].seconds * 1000).getTime() : 0;
@@ -73,14 +67,13 @@ export class StateManagementService {
   async addReceivable(receivableData: any) {
     const { title, amount, monthKey, trackInExpenses } = receivableData;
 
-    // Save receivable with the flag so the list can show the correct pill
+    // No 'month' stored on the document — receivables are global
     await this.receivableService.add({
       title,
       amount,
       createdAt: new Date(),
       status: 'PENDING',
-      month: monthKey,
-      trackInExpenses: !!trackInExpenses   // ← stored on the document
+      trackInExpenses: !!trackInExpenses
     });
 
     // Only create a Lent expense when the user opted in
@@ -100,13 +93,12 @@ export class StateManagementService {
   }
 
   async markReceivableAsPaid(receivable: any, monthKey: string, expenses: any[]) {
-    if (receivable.status === 'PAID') {
-      return;
-    }
+    if (receivable.status === 'PAID') return;
 
     await this.receivableService.update(receivable.id, {
       status: 'PAID',
-      paidDate: new Date()
+      paidDate: new Date(),
+      paidInMonth: monthKey   // record which month the action happened
     });
 
     await this.incomeService.addIncome({
@@ -122,7 +114,6 @@ export class StateManagementService {
       const linkedExpense = expenses.find(
         (exp: any) => exp.description === `Lent: ${receivable.title}`
       );
-
       if (linkedExpense) {
         await this.expenseService.updateExpense({
           ...linkedExpense,
@@ -134,22 +125,14 @@ export class StateManagementService {
   }
 
   async deleteReceivable(receivableId: string, receivables: any[], expenses: any[]) {
-    const receivable = receivables.find(
-      (r: any) => r.id === receivableId
-    );
+    const receivable = receivables.find((r: any) => r.id === receivableId);
 
-    if (!receivable) return;
+    if (!receivable || receivable.status === 'PAID') return;
 
-    if (receivable.status === 'PAID') {
-      return;
-    }
-
-    // Only delete the linked expense if it was tracked in spending
     if (receivable.trackInExpenses) {
       const linkedExpense = expenses.find(
         (exp: any) => exp.description === `Lent: ${receivable.title}`
       );
-
       if (linkedExpense) {
         await this.expenseService.deleteExpense(linkedExpense.id);
       }
