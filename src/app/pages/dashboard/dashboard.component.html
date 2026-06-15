@@ -83,6 +83,25 @@
             <button class="add-btn" (click)="addReceivable()" aria-label="Add receivable">Add</button>
           </div>
         </div>
+
+        <!-- Track in spending toggle -->
+        <label class="track-toggle">
+          <div class="toggle-switch">
+            <input
+              type="checkbox"
+              [(ngModel)]="newReceivable.trackInExpenses"
+            />
+            <span class="toggle-slider"></span>
+          </div>
+          <div class="toggle-label">
+            <span class="toggle-title">Add to Spending Summary</span>
+            <span class="toggle-hint">
+              {{ newReceivable.trackInExpenses
+                ? 'Will appear as a Lent expense'
+                : 'Track only — no expense created' }}
+            </span>
+          </div>
+        </label>
       </div>
 
       <div class="divider"></div>
@@ -103,7 +122,15 @@
         />
 
         <div class="row-content">
-          <span class="title" [class.paid-text]="r.status === 'PAID'">{{ r.title }}</span>
+          <div class="row-left">
+            <span class="title" [class.paid-text]="r.status === 'PAID'">{{ r.title }}</span>
+            <span
+              class="track-pill"
+              [class.in-spending]="r.trackInExpenses"
+              [class.watch-only]="!r.trackInExpenses">
+              {{ r.trackInExpenses ? '💸 In Spending' : '👁 Watch Only' }}
+            </span>
+          </div>
           <span class="row-amount" [class.paid-text]="r.status === 'PAID'">₹{{ r.amount }}</span>
         </div>
 
@@ -205,7 +232,7 @@
                     [disabled]="inc.isSystemGenerated"
                     (click)="deleteIncome(inc.id)"
                     title="Delete">
-                    <span class="btn-icon">🗑️</span>
+                    <span class="btn-icon">🗑️</span> 
                   </button>
                 </div>
               </td>

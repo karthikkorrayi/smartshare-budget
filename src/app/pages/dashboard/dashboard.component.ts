@@ -107,7 +107,8 @@ export class DashboardComponent implements OnDestroy {
 
   newReceivable = {
     title: '',
-    amount: 0
+    amount: 0,
+    trackInExpenses: true
   };
 
   constructor(
@@ -217,10 +218,11 @@ export class DashboardComponent implements OnDestroy {
     await this.stateManagement.addReceivable({
       title: this.newReceivable.title,
       amount: this.newReceivable.amount,
-      monthKey: this.getSelectedMonthKey()
+      monthKey: this.getSelectedMonthKey(),
+      trackInExpenses: this.newReceivable.trackInExpenses
     });
 
-    this.newReceivable = { title: '', amount: 0 };
+    this.newReceivable = { title: '', amount: 0, trackInExpenses: true };
     this.cdr.markForCheck();
   }
 
