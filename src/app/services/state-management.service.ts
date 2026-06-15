@@ -71,23 +71,28 @@ export class StateManagementService {
   }
 
   async addReceivable(receivableData: any) {
-    const { title, amount, monthKey } = receivableData;
+    const { title, amount, monthKey, trackInExpenses } = receivableData;
 
+    // Save receivable with the flag so the list can show the correct pill
     await this.receivableService.add({
       title,
       amount,
       createdAt: new Date(),
       status: 'PENDING',
-      month: monthKey
+      month: monthKey,
+      trackInExpenses: !!trackInExpenses   // ← stored on the document
     });
 
-    await this.expenseService.addExpense({
-      description: `Lent: ${title}`,
-      amount,
-      category: 'Lent',
-      date: new Date(),
-      month: monthKey
-    });
+    // Only create a Lent expense when the user opted in
+    if (trackInExpenses) {
+      await this.expenseService.addExpense({
+        description: `Lent: ${title}`,
+        amount,
+        category: 'Lent',
+        date: new Date(),
+        month: monthKey
+      });
+    }
   }
 
   async addExpense(expenseData: any) {
@@ -112,16 +117,19 @@ export class StateManagementService {
       isSystemGenerated: true
     });
 
-    const linkedExpense = expenses.find(
-      (exp: any) => exp.description === `Lent: ${receivable.title}`
-    );
+    // Only touch the linked expense if this receivable was tracked in spending
+    if (receivable.trackInExpenses) {
+      const linkedExpense = expenses.find(
+        (exp: any) => exp.description === `Lent: ${receivable.title}`
+      );
 
-    if (linkedExpense) {
-      await this.expenseService.updateExpense({
-        ...linkedExpense,
-        status: 'PAID',
-        paidDate: new Date()
-      });
+      if (linkedExpense) {
+        await this.expenseService.updateExpense({
+          ...linkedExpense,
+          status: 'PAID',
+          paidDate: new Date()
+        });
+      }
     }
   }
 
@@ -136,12 +144,15 @@ export class StateManagementService {
       return;
     }
 
-    const linkedExpense = expenses.find(
-      (exp: any) => exp.description === `Lent: ${receivable.title}`
-    );
+    // Only delete the linked expense if it was tracked in spending
+    if (receivable.trackInExpenses) {
+      const linkedExpense = expenses.find(
+        (exp: any) => exp.description === `Lent: ${receivable.title}`
+      );
 
-    if (linkedExpense) {
-      await this.expenseService.deleteExpense(linkedExpense.id);
+      if (linkedExpense) {
+        await this.expenseService.deleteExpense(linkedExpense.id);
+      }
     }
 
     await this.receivableService.delete(receivableId);
