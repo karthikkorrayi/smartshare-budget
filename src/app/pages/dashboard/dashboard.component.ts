@@ -1,4 +1,4 @@
-import { Component, OnDestroy, ChangeDetectorRef, HostListener, Injector, inject, runInInjectionContext } from '@angular/core';
+import { Component, OnDestroy, ChangeDetectorRef, HostListener, Injector, inject, runInInjectionContext, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IncomeService } from '../../services/income.service';
 import { ExpenseService } from '../../services/expense.service';
@@ -16,8 +16,8 @@ import { ReceivableService } from '../../services/receivable.service';
 import { CarryForwardService } from '../../services/carry-forward.service';
 import { StateManagementService } from '../../services/state-management.service';
 import { PinLockService } from '../../services/pin-lock.service';
+import { AuthService } from '../../services/auth.service';
 Chart.register(...registerables);
-
 
 const hoverGuideLinePlugin = {
   id: 'hoverGuideLine',
@@ -38,7 +38,6 @@ const hoverGuideLinePlugin = {
   }
 };
 
-
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -46,12 +45,13 @@ const hoverGuideLinePlugin = {
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
-export class DashboardComponent implements OnDestroy {
+export class DashboardComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
   private injector = inject(Injector);
+  private authService = inject(AuthService);
 
-  username = 'Karthik';
+  username = 'User';
   today = new Date();
 
   completionPercent = 0;
@@ -122,7 +122,22 @@ export class DashboardComponent implements OnDestroy {
     private pinLockService: PinLockService
   ) {}
 
-  async ngOnInit() {
+  ngOnInit() {
+    // Load user profile
+    this.authService.getUserProfile()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(profile => {
+        if (profile?.displayName) {
+          this.username = profile.displayName;
+          this.cdr.markForCheck();
+        }
+      });
+
+    // Initialize dashboard
+    this.initializeDashboard();
+  }
+
+  private async initializeDashboard() {
     this.generateMonths();
     this.selectedMonth = this.getCurrentMonth();
     const monthKey = this.getSelectedMonthKey();
@@ -234,7 +249,7 @@ export class DashboardComponent implements OnDestroy {
     await this.stateManagement.addReceivable({
       title: this.newReceivable.title,
       amount: this.newReceivable.amount,
-      monthKey: this.getSelectedMonthKey(),   // used only for the optional Lent expense
+      monthKey: this.getSelectedMonthKey(),
       trackInExpenses: this.newReceivable.trackInExpenses
     });
 
@@ -373,6 +388,7 @@ export class DashboardComponent implements OnDestroy {
     const todayDate = this.today.getDate();
 
     const canvas = document.getElementById('monthlyBarChart') as HTMLCanvasElement;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d')!;
 
     const barGradient = ctx.createLinearGradient(0, 0, 0, 260);

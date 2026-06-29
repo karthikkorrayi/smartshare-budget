@@ -1,27 +1,187 @@
 <div class="lock-screen" *ngIf="pinService.isLocked">
   <div class="lock-box">
-    <h2>Enter 4-Digit PIN</h2>
-
-    <!-- PIN INPUT -->
-    <div class="pin-dots">
-      <span *ngFor="let d of [0,1,2,3]; let i = index"
-            [class.filled]="i < pin.length">
-      </span>
+    <!-- LOADING STATE -->
+    <div *ngIf="isLoading" class="loading-overlay">
+      <div class="spinner"></div>
+      <p>Processing...</p>
     </div>
 
-    <p class="error" *ngIf="error">Invalid PIN</p>
-
-    <!-- DIAL PAD -->
-    <div class="dial-pad">
-      <button *ngFor="let n of numbers" (click)="press(n)">
-        {{ n }}
+    <!-- SIGN IN STEP -->
+    <div *ngIf="registrationStep === 'signin'" class="signin-section">
+      <h2>Welcome to SmartShare Budget</h2>
+      <p class="subtitle">Sign in to access your budget tracker</p>
+      
+      <button 
+        class="google-signin-btn" 
+        (click)="signInWithGoogle()"
+        [disabled]="isLoading"
+        aria-label="Sign in with Google"
+      >
+        <span class="icon">🔐</span>
+        <span class="text">Sign in with Google</span>
       </button>
 
-      <button class="empty"></button>
+      <p *ngIf="error" class="error-message">
+        {{ errorMessage }}
+      </p>
+    </div>
 
-      <button (click)="press(0)">0</button>
+    <!-- REGISTRATION STEP -->
+    <div *ngIf="registrationStep === 'register'" class="register-section">
+      <h2>Complete Your Registration</h2>
+      <p class="subtitle">{{ currentUserEmail }}</p>
+      
+      <div class="form-group">
+        <label for="displayName">Full Name *</label>
+        <input 
+          id="displayName"
+          type="text" 
+          [(ngModel)]="displayName" 
+          placeholder="Enter your name"
+          [disabled]="isLoading"
+        />
+      </div>
 
-      <button class="clear" (click)="remove()">⌫</button>
+      <div class="form-group">
+        <label for="registrationPin">Create 4-Digit PIN *</label>
+        <input 
+          id="registrationPin"
+          type="password" 
+          [(ngModel)]="registrationPin" 
+          placeholder="Enter PIN" 
+          maxlength="4"
+          [disabled]="isLoading"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPin">Confirm PIN *</label>
+        <input 
+          id="confirmPin"
+          type="password" 
+          [(ngModel)]="confirmPin" 
+          placeholder="Confirm PIN" 
+          maxlength="4"
+          [disabled]="isLoading"
+        />
+      </div>
+
+      <p *ngIf="registrationError" class="error-message">
+        {{ registrationError }}
+      </p>
+
+      <button 
+        class="register-btn" 
+        (click)="completeRegistration()"
+        [disabled]="isLoading"
+      >
+        Complete Registration
+      </button>
+
+      <button 
+        class="signout-btn" 
+        (click)="signOut()"
+        [disabled]="isLoading"
+      >
+        Use Different Account
+      </button>
+    </div>
+
+    <!-- PIN VERIFICATION STEP -->
+    <div *ngIf="registrationStep === 'verify'" class="verify-section">
+      <h2>Enter Your PIN</h2>
+      <p class="subtitle">{{ currentUserEmail }}</p>
+
+      <div class="pin-dots">
+        <span *ngFor="let d of [0,1,2,3]; let i = index" [class.filled]="i < pin.length"></span>
+      </div>
+
+      <p *ngIf="error" class="error-message">
+        {{ errorMessage }}
+      </p>
+
+      <div class="dial-pad">
+        <button 
+          *ngFor="let n of numbers" 
+          (click)="press(n)"
+          [disabled]="isLoading"
+          class="dial-btn"
+        >
+          {{ n }}
+        </button>
+        <button class="empty"></button>
+        <button 
+          (click)="press(0)"
+          [disabled]="isLoading"
+          class="dial-btn"
+        >
+          0
+        </button>
+        <button 
+          class="clear" 
+          (click)="remove()"
+          [disabled]="isLoading"
+        >
+          ⌫
+        </button>
+      </div>
+
+      <button 
+        class="forgot-pin-btn" 
+        (click)="onForgotPinClick()"
+        [disabled]="isLoading"
+      >
+        Forgot PIN?
+      </button>
+
+      <button 
+        class="signout-btn" 
+        (click)="signOut()"
+        [disabled]="isLoading"
+      >
+        Sign out
+      </button>
+    </div>
+
+    <!-- FORGOT PIN MODAL -->
+    <div *ngIf="showForgotPin" class="forgot-pin-modal">
+      <div class="modal-content">
+        <button class="close-btn" (click)="closeForgotPin()">✕</button>
+        
+        <h3>Reset Your PIN</h3>
+        
+        <div *ngIf="!resetSent">
+          <p class="modal-description">
+            Enter your registered email address to receive a PIN reset link
+          </p>
+          
+          <input 
+            type="email" 
+            [(ngModel)]="resetEmail" 
+            placeholder="Enter your email"
+            [disabled]="isLoading"
+            class="modal-input"
+          />
+
+          <p *ngIf="forgotPinError" class="error-message">
+            {{ forgotPinError }}
+          </p>
+
+          <button 
+            (click)="requestPinReset()"
+            [disabled]="isLoading"
+            class="modal-btn"
+          >
+            Send Reset Link
+          </button>
+        </div>
+
+        <div *ngIf="resetSent" class="success-message">
+          <p class="checkmark">✓</p>
+          <p>Reset link sent to your email!</p>
+          <p class="small-text">Check your inbox and follow the link to reset your PIN</p>
+        </div>
+      </div>
     </div>
   </div>
 </div>

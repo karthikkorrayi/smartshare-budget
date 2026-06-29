@@ -4,12 +4,14 @@ import { switchMap, map, shareReplay, startWith } from 'rxjs/operators';
 import { ReceivableService } from './receivable.service';
 import { ExpenseService } from './expense.service';
 import { IncomeService } from './income.service';
+import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class StateManagementService {
   private receivableService = inject(ReceivableService);
   private expenseService = inject(ExpenseService);
   private incomeService = inject(IncomeService);
+  private authService = inject(AuthService);
 
   private currentMonthSubject = new BehaviorSubject<string>('');
   private loadingSubject = new BehaviorSubject<boolean>(false);
@@ -17,30 +19,53 @@ export class StateManagementService {
   currentMonth$ = this.currentMonthSubject.asObservable();
   loading$ = this.loadingSubject.asObservable();
 
-  receivables$ = this.receivableService.getAll().pipe(
-    map(data => [...data].sort((a, b) => {
-      const dateA = a['createdAt']?.seconds ? new Date(a['createdAt'].seconds * 1000).getTime() : 0;
-      const dateB = b['createdAt']?.seconds ? new Date(b['createdAt'].seconds * 1000).getTime() : 0;
-      return dateB - dateA;
-    })),
-    shareReplay(1)
-  );
-
-  expenses$ = this.currentMonthSubject.pipe(
-    switchMap(month => {
-      if (!month) return of([]);
-      return this.expenseService.getExpensesByMonth(month).pipe(
-        startWith([])
+  // Filter receivables by current user
+  receivables$ = this.authService.getCurrentUser().pipe(
+    switchMap(user => {
+      if (!user) return of([]);
+      return this.receivableService.getAll().pipe(
+        map(data => [...data]
+          .filter(item => item['userId'] === user.uid)
+          .sort((a, b) => {
+            const dateA = a['createdAt']?.seconds ? new Date(a['createdAt'].seconds * 1000).getTime() : 0;
+            const dateB = b['createdAt']?.seconds ? new Date(b['createdAt'].seconds * 1000).getTime() : 0;
+            return dateB - dateA;
+          })
+        )
       );
     }),
     shareReplay(1)
   );
 
-  incomes$ = this.currentMonthSubject.pipe(
-    switchMap(month => {
-      if (!month) return of([]);
-      return this.incomeService.getIncomeByMonth(month).pipe(
-        startWith([])
+  // Filter expenses by current user and month
+  expenses$ = this.authService.getCurrentUser().pipe(
+    switchMap(user => {
+      if (!user) return of([]);
+      return this.currentMonthSubject.pipe(
+        switchMap(month => {
+          if (!month) return of([]);
+          return this.expenseService.getExpensesByMonth(month).pipe(
+            map(data => data.filter(item => item['userId'] === user.uid)),
+            startWith([])
+          );
+        })
+      );
+    }),
+    shareReplay(1)
+  );
+
+  // Filter incomes by current user and month
+  incomes$ = this.authService.getCurrentUser().pipe(
+    switchMap(user => {
+      if (!user) return of([]);
+      return this.currentMonthSubject.pipe(
+        switchMap(month => {
+          if (!month) return of([]);
+          return this.incomeService.getIncomeByMonth(month).pipe(
+            map(data => data.filter(item => item['userId'] === user.uid)),
+            startWith([])
+          );
+        })
       );
     }),
     shareReplay(1)
@@ -66,11 +91,17 @@ export class StateManagementService {
 
   async addReceivable(receivableData: any) {
     const { title, amount, monthKey, trackInExpenses } = receivableData;
+    const userId = this.authService.getCurrentUserId();
+
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
 
     // No 'month' stored on the document — receivables are global
     await this.receivableService.add({
       title,
       amount,
+      userId, // Add user ID for filtering
       createdAt: new Date(),
       status: 'PENDING',
       trackInExpenses: !!trackInExpenses
@@ -83,22 +114,32 @@ export class StateManagementService {
         amount,
         category: 'Lent',
         date: new Date(),
-        month: monthKey
+        month: monthKey,
+        userId
       });
     }
   }
 
   async addExpense(expenseData: any) {
-    await this.expenseService.addExpense(expenseData);
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    await this.expenseService.addExpense({ ...expenseData, userId });
   }
 
   async markReceivableAsPaid(receivable: any, monthKey: string, expenses: any[]) {
     if (receivable.status === 'PAID') return;
 
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+
     await this.receivableService.update(receivable.id, {
       status: 'PAID',
       paidDate: new Date(),
-      paidInMonth: monthKey   // record which month the action happened
+      paidInMonth: monthKey
     });
 
     await this.incomeService.addIncome({
@@ -106,7 +147,8 @@ export class StateManagementService {
       amount: receivable.amount,
       date: new Date(),
       month: monthKey,
-      isSystemGenerated: true
+      isSystemGenerated: true,
+      userId
     });
 
     // Only touch the linked expense if this receivable was tracked in spending
