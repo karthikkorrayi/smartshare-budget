@@ -1,4 +1,4 @@
-import { Component, OnDestroy, ChangeDetectorRef, HostListener, Injector, inject, runInInjectionContext } from '@angular/core';
+import { Component, OnDestroy, ChangeDetectorRef, Injector, inject, runInInjectionContext } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IncomeService } from '../../services/income.service';
 import { ExpenseService } from '../../services/expense.service';
@@ -15,7 +15,6 @@ import { takeUntil } from 'rxjs/operators';
 import { ReceivableService } from '../../services/receivable.service';
 import { CarryForwardService } from '../../services/carry-forward.service';
 import { StateManagementService } from '../../services/state-management.service';
-import { PinLockService } from '../../services/pin-lock.service';
 Chart.register(...registerables);
 
 
@@ -118,8 +117,7 @@ export class DashboardComponent implements OnDestroy {
     private receivableService: ReceivableService,
     private stateManagement: StateManagementService,
     private carryForwardService: CarryForwardService,
-    private dialog: MatDialog,
-    private pinLockService: PinLockService
+    private dialog: MatDialog
   ) {}
 
   async ngOnInit() {
@@ -282,14 +280,6 @@ export class DashboardComponent implements OnDestroy {
     if (confirm('Delete this upcoming payment?')) {
       this.upcomingService.delete(id);
       this.cdr.markForCheck();
-    }
-  }
-
-  @HostListener('document:contextmenu', ['$event'])
-  onRightClick(event: MouseEvent) {
-    event.preventDefault();
-    if (confirm('Lock dashboard?')) {
-      this.pinLockService.lock();
     }
   }
 

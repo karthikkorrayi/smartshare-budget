@@ -54,14 +54,4 @@ export class AppComponent {
   onRefresh() {
     this.pinService.refreshLock();
   }
-
-  // right-click menu - lock
-  @HostListener('document:contextmenu', ['$event'])
-  onRightClick(event: MouseEvent) {
-    event.preventDefault();
-    if (confirm('Lock application?')) {
-      this.pinService.lock();
-    }
-  }
-
 }
