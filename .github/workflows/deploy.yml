@@ -27,7 +27,7 @@ jobs:
 
       - name: Build Angular app
         run: |
-          npm run build -- --base-href /${{ github.event.repository.name }}/
+          npm run build -- --configuration production --base-href /${{ github.event.repository.name }}/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
