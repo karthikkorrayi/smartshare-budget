@@ -1,17 +1,19 @@
 import { Injectable, inject } from '@angular/core';
+import { AuthService } from './auth.service';
 import { Firestore, collection, addDoc, collectionData, doc, updateDoc, deleteDoc } from '@angular/fire/firestore';
 import { query, where } from "firebase/firestore";
 
 @Injectable({ providedIn: 'root' })
 export class IncomeService {
   firestore = inject(Firestore);
+  private auth = inject(AuthService);
 
   addIncome(data: any) {
-    return addDoc(collection(this.firestore, 'income'), data);
+    return addDoc(collection(this.firestore, 'income'), { ...data, userId: this.auth.user()?.uid });
   }
 
   getIncome() {
-    return collectionData(collection(this.firestore, 'income'), {
+    return collectionData(query(collection(this.firestore, 'income'), where('userId', '==', this.auth.user()?.uid ?? '__anonymous__')), {
       idField: 'id'
     });
   }
@@ -20,7 +22,8 @@ export class IncomeService {
     return collectionData(
       query(
         collection(this.firestore, 'income'),
-        where('month', '==', month)
+        where('month', '==', month),
+        where('userId', '==', this.auth.user()?.uid ?? '__anonymous__')
       ),
       { idField: 'id' }
     );

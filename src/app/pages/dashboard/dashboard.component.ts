@@ -15,6 +15,7 @@ import { takeUntil } from 'rxjs/operators';
 import { ReceivableService } from '../../services/receivable.service';
 import { CarryForwardService } from '../../services/carry-forward.service';
 import { StateManagementService } from '../../services/state-management.service';
+import { AuthService } from '../../services/auth.service';
 Chart.register(...registerables);
 
 
@@ -49,6 +50,7 @@ export class DashboardComponent implements OnDestroy {
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
   private injector = inject(Injector);
+  private auth = inject(AuthService);
 
   username = 'Karthik';
   today = new Date();
@@ -121,6 +123,7 @@ export class DashboardComponent implements OnDestroy {
   ) {}
 
   async ngOnInit() {
+    this.username = this.auth.profile()?.displayName || this.auth.user()?.displayName || 'Friend';
     this.generateMonths();
     this.selectedMonth = this.getCurrentMonth();
     const monthKey = this.getSelectedMonthKey();

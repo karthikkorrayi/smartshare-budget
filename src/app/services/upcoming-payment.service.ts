@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { AuthService } from './auth.service';
 import {
   Firestore,
   collection,
@@ -13,14 +14,15 @@ import {
 @Injectable({ providedIn: 'root' })
 export class UpcomingPaymentService {
   firestore = inject(Firestore);
+  private auth = inject(AuthService);
 
   add(payment: any) {
-    return addDoc(collection(this.firestore, 'upcoming_payments'), payment);
+    return addDoc(collection(this.firestore, 'upcoming_payments'), { ...payment, userId: this.auth.user()?.uid });
   }
 
   getAll() {
     return collectionData(
-      collection(this.firestore, 'upcoming_payments'),
+      query(collection(this.firestore, 'upcoming_payments'), where('userId', '==', this.auth.user()?.uid ?? '__anonymous__')),
       { idField: 'id' }
     );
   }
@@ -29,7 +31,8 @@ export class UpcomingPaymentService {
     return collectionData(
       query(
         collection(this.firestore, 'upcoming_payments'),
-        where('month', '==', month)
+        where('month', '==', month),
+        where('userId', '==', this.auth.user()?.uid ?? '__anonymous__')
       ),
       { idField: 'id' }
     );

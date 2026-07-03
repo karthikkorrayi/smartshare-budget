@@ -1,18 +1,20 @@
 import { addDoc, collection, collectionData, doc, updateDoc, deleteDoc } from '@angular/fire/firestore';
 import { Firestore } from '@angular/fire/firestore';
 import { Injectable, inject } from '@angular/core';
+import { AuthService } from './auth.service';
 import { query, where } from "firebase/firestore";
 
 @Injectable({ providedIn: 'root' })
 export class ExpenseService {
   firestore = inject(Firestore);
+  private auth = inject(AuthService);
 
   addExpense(data: any) {
-    return addDoc(collection(this.firestore, 'expenses'), data);
+    return addDoc(collection(this.firestore, 'expenses'), { ...data, userId: this.auth.user()?.uid });
   }
 
   getExpenses() {
-    return collectionData(collection(this.firestore, 'expenses'), {
+    return collectionData(query(collection(this.firestore, 'expenses'), where('userId', '==', this.auth.user()?.uid ?? '__anonymous__')), {
       idField: 'id'
     });
   }
@@ -21,7 +23,8 @@ export class ExpenseService {
     return collectionData(
       query(
         collection(this.firestore, 'expenses'),
-        where('month', '==', month)
+        where('month', '==', month),
+        where('userId', '==', this.auth.user()?.uid ?? '__anonymous__')
       ),
       { idField: 'id' }
     );
@@ -38,4 +41,3 @@ export class ExpenseService {
   }
 
 }
-

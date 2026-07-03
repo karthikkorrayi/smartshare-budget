@@ -34,3 +34,22 @@ body {
 html, body {
   height: 100%;
 }
+
+.auth-shell { min-height: calc(100vh - 32px); display: grid; place-items: center; padding: 2rem; background: radial-gradient(circle at top left, #e0f2fe, transparent 36%), linear-gradient(135deg, #f8fafc, #eef2ff); }
+.auth-card { width: min(440px, 100%); padding: 2rem; border-radius: 28px; background: rgba(255,255,255,.92); box-shadow: 0 24px 80px rgba(15,23,42,.16); text-align: center; animation: authIn .25s ease-out; }
+.auth-card.hero { padding-block: 3rem; }
+.brand-mark { width: 72px; height: 72px; border-radius: 24px; display: grid; place-items: center; margin: 0 auto 1rem; font-size: 2rem; background: #ecfeff; }
+.avatar { width: 86px; height: 86px; border-radius: 50%; object-fit: cover; border: 4px solid #e0f2fe; }
+.muted { color: #64748b; margin-top: -.5rem; }
+.pin-form, .auth-card form { display: grid; gap: .8rem; margin-top: 1.25rem; text-align: left; }
+.pin-form input, .auth-card input { border: 1px solid #cbd5e1; border-radius: 14px; padding: .85rem 1rem; font: inherit; text-align: center; letter-spacing: .35em; }
+.auth-card input[type=email] { text-align: left; letter-spacing: normal; }
+.primary-btn { border: 0; border-radius: 999px; padding: .9rem 1.2rem; color: white; font-weight: 700; background: linear-gradient(135deg, #2563eb, #4f46e5); cursor: pointer; }
+.primary-btn:disabled { opacity: .65; cursor: wait; }
+.google { margin-top: 1rem; width: 100%; }
+.auth-error { color: #dc2626; text-align: center; }
+.success { color: #047857; font-weight: 700; text-align: center; }
+.auth-links { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+.auth-links button { border: 0; background: transparent; color: #dc2626; cursor: pointer; }
+.app-loading { min-height: 100vh; display: grid; place-items: center; color: #475569; font-weight: 700; }
+@keyframes authIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
