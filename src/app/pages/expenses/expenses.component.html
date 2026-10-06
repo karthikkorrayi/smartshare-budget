@@ -1,10 +1,14 @@
-<input matInput placeholder="Description" [(ngModel)]="description">
-<input matInput type="number" placeholder="Amount" [(ngModel)]="amount">
-
-<select [(ngModel)]="category">
-  <option *ngFor="let c of categories" [value]="c">
-    {{ c }}
-  </option>
-</select>
-
-<button mat-raised-button color="warn" (click)="save()">Add</button>
+<section class="entry-page">
+  <a href="#/" class="back-link">← Back to overview</a>
+  <p class="eyebrow">MONEY OUT</p><h1>Add expense</h1>
+  <p class="entry-hint">Small details make a clearer spending picture.</p>
+  <div class="entry-card">
+    <label for="expense-description">Description</label>
+    <input matInput id="expense-description" placeholder="What did you spend on?" [(ngModel)]="description">
+    <label for="expense-amount">Amount (₹)</label>
+    <input matInput id="expense-amount" type="number" min="0" placeholder="0" [(ngModel)]="amount">
+    <label for="expense-category">Category</label>
+    <select id="expense-category" [(ngModel)]="category"><option *ngFor="let c of categories" [value]="c">{{ c }}</option></select>
+    <button mat-raised-button (click)="save()">Add expense</button>
+  </div>
+</section>

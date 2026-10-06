@@ -1,3 +1,7 @@
+<section class="overview-heading">
+  <div><p class="eyebrow">YOUR MONEY, AT A GLANCE</p><h1>Monthly overview</h1><p>A little clarity for every rupee.</p></div>
+  <div class="overview-actions"><button class="overview-secondary" (click)="openAddIncome()">+ Add income</button><button class="overview-primary" (click)="openAddExpense()">+ Add expense</button></div>
+</section>
 <div class="dashboard" [class.loading]="isLoading">
 
   <div class="loading-overlay" *ngIf="isLoading">
@@ -22,8 +26,8 @@
       </div>
 
       <div class="month-select">
-        <label>Month</label>
-        <select [(ngModel)]="selectedMonth" (change)="onMonthChange()">
+        <label for="overview-month">Month</label>
+        <select id="overview-month" [(ngModel)]="selectedMonth" (change)="onMonthChange()">
           <option *ngFor="let m of months" [value]="m.value">
             {{ m.label }}
           </option>
@@ -64,19 +68,19 @@
       <!-- Data Entry -->
       <div class="receivable-form">
         <div class="form-group">
-          <label>Title</label>
+          <label for="receivable-title">Title</label>
           <input
-            type="text"
+            id="receivable-title" type="text"
             placeholder="Friend / Reason"
             [(ngModel)]="newReceivable.title"
           />
         </div>
 
         <div class="form-group">
-          <label>Amount</label>
+          <label for="receivable-amount">Amount</label>
           <div class="amount-input-wrap">
             <input
-              type="number"
+              id="receivable-amount" type="number"
               placeholder="0"
               [(ngModel)]="newReceivable.amount"
             />
@@ -177,6 +181,28 @@
 
   <!-- CENTER COLUMN -->
   <div class="center-column">
+    <!-- Top Stats -->
+    <div class="stats-row">
+      <div class="kpi-card income" [class.active]="availableBalance > 0">
+        <p class="kpi-label">Total Income</p>
+        <h2 class="kpi-value income-value">₹{{ totalIncome | number:'1.0-0' }}</h2>
+      </div>
+
+      <div class="kpi-card expense">
+        <p class="kpi-label">Total Spending</p>
+        <h2 class="kpi-value expense-value">₹{{ totalExpenses | number:'1.0-0' }}</h2>
+      </div>
+
+      <div class="kpi-card balance" [class.active]="availableBalance > totalIncome * 0.5">
+        <p class="kpi-label">Available Balance</p>
+        <h2 class="kpi-value balance-value">
+          ₹{{ availableBalance | number:'1.0-0' }}
+        </h2>
+      </div>
+    </div>
+
+
+
     <mat-card class="card recent-income-modern spending-table-modern income-summary-modern">
       <div class="table-header">
         <h3>Income Summary</h3>
@@ -247,27 +273,6 @@
         <p>Add income to see your monthly summary</p>
       </div>
     </mat-card>
-
-    <!-- Top Stats -->
-    <div class="stats-row">
-      <div class="kpi-card income" [class.active]="availableBalance > 0">
-        <p class="kpi-label">Total Income</p>
-        <h2 class="kpi-value income-value">₹{{ totalIncome | number:'1.0-0' }}</h2>
-      </div>
-
-      <div class="kpi-card expense">
-        <p class="kpi-label">Total Spending</p>
-        <h2 class="kpi-value expense-value">₹{{ totalExpenses | number:'1.0-0' }}</h2>
-      </div>
-
-      <div class="kpi-card balance" [class.active]="availableBalance > totalIncome * 0.5">
-        <p class="kpi-label">Available Balance</p>
-        <h2 class="kpi-value balance-value">
-          ₹{{ availableBalance | number:'1.0-0' }}
-        </h2>
-      </div>
-    </div>
-
 
     <!-- Monthly Bar Chart -->
     <mat-card class="card bar-chart">

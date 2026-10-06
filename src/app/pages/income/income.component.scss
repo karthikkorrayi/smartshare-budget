@@ -1,0 +1,12 @@
+
+:host { display: block; }
+.entry-page { max-width: 620px; margin: auto; padding: 32px 20px 80px; }
+.back-link { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 24px; color: #0f766e; text-decoration: none; font-weight: 600; }
+.eyebrow { color: #0f766e; letter-spacing: 1.8px; font-size: 11px; font-weight: 750; margin: 0 0 8px; }
+h1 { font-size: 32px; letter-spacing: -1px; margin: 0 0 12px; color: #0f172a; }
+.entry-hint { color: #64748b; margin: 0 0 28px; line-height: 1.6; }
+.entry-card { display: flex; flex-direction: column; padding: 28px; border: 1px solid #e2e8f0; border-radius: 22px; background: #fff; box-shadow: 0 4px 20px #0f172a05; }
+label { color: #334155; font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+input, select { width: 100%; min-height: 52px; padding: 14px; border: 1px solid #cbd5e1; border-radius: 12px; background: #f8fafc; font-size: 16px; color: #0f172a; margin-bottom: 24px; }
+.entry-card button { min-height: 48px; border-radius: 12px; background: #0f766e; color: #fff; }
+@media (max-width: 600px) { .entry-page { padding: 24px 16px 60px; } .entry-card { padding: 20px; } }

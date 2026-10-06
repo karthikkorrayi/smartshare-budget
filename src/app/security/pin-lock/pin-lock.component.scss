@@ -1,84 +1,20 @@
-.lock-screen {
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(135deg, #0f172a, #020617);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
 
-.lock-box {
-  background: #ffffff;
-  padding: 30px 26px;
-  border-radius: 18px;
-  width: 280px;
-  text-align: center;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-}
-
-.lock-box h2 {
-  margin-bottom: 20px;
-  font-weight: 600;
-}
-
-.pin-dots {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.pin-dots span {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid #94a3b8;
-}
-
-.pin-dots span.filled {
-  background: #1e88e5;
-  border-color: #1e88e5;
-}
-
-.error {
-  color: #e53935;
-  font-size: 13px;
-  margin-bottom: 8px;
-}
-
-/* Dial Pad */
-.dial-pad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.dial-pad button {
-  height: 52px;
-  border-radius: 14px;
-  border: none;
-  font-size: 18px;
-  background: #e3f2fd;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.dial-pad button:hover {
-  background: #bbdefb;
-}
-
-.dial-pad .clear {
-  background: #ffebee;
-  color: #c62828;
-}
-
-.dial-pad .clear:hover {
-  background: #ffcdd2;
-}
-
-.dial-pad .empty {
-  background: transparent;
-  pointer-events: none;
-}
+.lock-screen { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; display: grid; place-items: center; padding: 24px 16px; background: radial-gradient(ellipse at top left, #134e4a, transparent 65%), #0f172a; }
+.lock-box { width: min(100%, 400px); padding: 36px; border: 1px solid #ffffff24; border-radius: 28px; background: #fff; text-align: center; box-shadow: 0 30px 90px #0004; }
+.lock-brand { color: #0f766e; font-size: 12px; font-weight: 750; letter-spacing: 2px; text-transform: uppercase; margin: 0 0 24px; }
+.lock-emblem { display: grid; place-items: center; width: 60px; height: 60px; margin: 0 auto 20px; border-radius: 20px; background: #f0fdfa; font-size: 26px; }
+.lock-box h2 { margin: 0 0 8px; font-size: 24px; color: #0f172a; letter-spacing: -.6px; }
+.lock-hint { margin: 0 0 28px; color: #64748b; line-height: 1.6; font-size: 14px; }
+.pin-dots { display: flex; justify-content: center; gap: 18px; margin-bottom: 20px; }
+.pin-dots span { width: 14px; height: 14px; border: 2px solid #cbd5e1; border-radius: 50%; }
+.pin-dots span.filled { background: #0f766e; border-color: #0f766e; }
+.error { color: #b91c1c; font-size: 14px; margin: 12px 0; }
+.dial-pad { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.dial-pad button { min-height: 60px; border: 1px solid #e2e8f0; border-radius: 16px; color: #0f172a; font-size: 22px; font-weight: 600; background: #f8fafc; cursor: pointer; transition: background .15s; }
+.dial-pad button:hover { background: #ccfbf1; border-color: #99f6e4; }
+.dial-pad button:active { background: #99f6e4; }
+.dial-pad .clear { color: #64748b; }
+.dial-pad .empty { visibility: hidden; }
+.lock-footer { font-size: 12px; color: #64748b; margin: 24px 0 0; }
+@media (max-width: 380px) { .lock-box { padding: 28px 20px; } }
+@media (max-height: 650px) { .lock-screen { place-items: start center; } .lock-box { padding: 20px; } .lock-brand { margin-bottom: 12px; } .lock-emblem { display: none; } .lock-hint { margin-bottom: 18px; } }

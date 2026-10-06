@@ -34,3 +34,16 @@ body {
 html, body {
   height: 100%;
 }
+
+/* SmartShare responsive refresh */
+
+:root { --ss-accent: #0f766e; --ss-ink: #0f172a; --ss-muted: #64748b; --ss-border: #e2e8f0; }
+body { background: #f4f7fa; color: var(--ss-ink); font-family: 'Inter', Roboto, system-ui, sans-serif; }
+button, input, select { font: inherit; }
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 3px solid #0d9488; outline-offset: 3px; }
+input, select { accent-color: #0f766e; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+/* Dialogs are rendered in the global overlay, outside the application shell. */
+.cdk-overlay-pane { max-width: calc(100vw - 24px) !important; }
+.mat-mdc-dialog-surface { border-radius: 24px !important; }
