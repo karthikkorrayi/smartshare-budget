@@ -3,9 +3,7 @@ import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { AuthService } from './auth.service';
 
 async function waitForAuth(auth: AuthService): Promise<void> {
-  while (auth.loading()) {
-    await new Promise(resolve => setTimeout(resolve, 25));
-  }
+  await auth.ready;
 }
 
 export const authGuard: CanActivateFn = async (): Promise<boolean | UrlTree> => {
@@ -13,7 +11,6 @@ export const authGuard: CanActivateFn = async (): Promise<boolean | UrlTree> => 
   const router = inject(Router);
   await waitForAuth(auth);
   if (!auth.user()) return router.createUrlTree(['/login']);
-  if (!auth.isRegistered()) return router.createUrlTree(['/setup-pin']);
   return true;
 };
 

@@ -53,3 +53,38 @@ html, body {
 .auth-links button { border: 0; background: transparent; color: #dc2626; cursor: pointer; }
 .app-loading { min-height: 100vh; display: grid; place-items: center; color: #475569; font-weight: 700; }
 @keyframes authIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.auth-shell {
+  background: radial-gradient(circle at 12% 8%, rgba(59, 130, 246, 0.34), transparent 34%), radial-gradient(circle at 88% 14%, rgba(124, 58, 237, 0.28), transparent 30%), linear-gradient(135deg, #020617, #0f172a 52%, #111827);
+}
+.auth-card {
+  color: #e5eefb;
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.86));
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 28px 90px rgba(2, 6, 23, 0.5);
+  backdrop-filter: blur(18px);
+}
+.minimal-auth { padding-block: 2.25rem; }
+.auth-divider { display: flex; align-items: center; gap: 0.8rem; margin: 1.25rem 0 0; color: #94a3b8; font-size: 0.85rem; }
+.auth-divider::before, .auth-divider::after { content: ''; height: 1px; flex: 1; background: rgba(148, 163, 184, 0.24); }
+.auth-card label { color: #cbd5e1; font-weight: 700; font-size: 0.9rem; }
+.auth-card input { background: rgba(15, 23, 42, 0.72); color: #f8fafc; border-color: rgba(148, 163, 184, 0.35); }
+.auth-card input::placeholder { color: #64748b; }
+.secondary-auth, .google { width: 100%; }
+.avatar { background: #0f172a; border-color: rgba(96, 165, 250, 0.45); box-shadow: 0 12px 34px rgba(2, 6, 23, 0.35); }
+.selected-avatar { width: 96px; height: 96px; }
+.avatar-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin: 1.25rem 0; }
+.avatar-picker button { border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 20px; padding: 0.45rem; background: rgba(15, 23, 42, 0.6); cursor: pointer; transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
+.avatar-picker button:hover, .avatar-picker button.selected { transform: translateY(-2px); border-color: #60a5fa; box-shadow: 0 12px 30px rgba(37, 99, 235, 0.22); }
+.avatar-picker img { width: 100%; aspect-ratio: 1; display: block; border-radius: 16px; }
+.pin-lock-form { text-align: center; }
+.pin-dots { display: flex; justify-content: center; gap: 0.9rem; margin: 0.4rem 0 0.2rem; }
+.pin-dots span { width: 16px; height: 16px; border-radius: 999px; border: 1px solid rgba(203, 213, 225, 0.55); background: rgba(15, 23, 42, 0.75); transition: transform 0.18s ease, background 0.18s ease; }
+.pin-dots span.filled { background: linear-gradient(135deg, #60a5fa, #818cf8); transform: scale(1.12); }
+.pin-step { text-align: center; margin: 0; }
+.pin-keypad { display: grid; grid-template-columns: repeat(3, minmax(64px, 1fr)); gap: 0.7rem; margin-top: 1rem; }
+.pin-keypad button { min-height: 54px; border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 18px; background: rgba(15, 23, 42, 0.64); color: #f8fafc; font-size: 1.15rem; font-weight: 800; cursor: pointer; transition: transform 0.14s ease, background 0.14s ease; }
+.pin-keypad button:hover { background: rgba(30, 41, 59, 0.92); transform: translateY(-1px); }
+.pin-keypad .clear, .pin-keypad .backspace { font-size: 0.92rem; color: #cbd5e1; }
+.shake { animation: pinShake 0.26s ease-in-out; }
+@keyframes pinShake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@media (max-width: 520px) { .auth-shell { padding: 1rem; } .auth-card { padding: 1.35rem; border-radius: 24px; } .avatar-picker { grid-template-columns: repeat(2, 1fr); } .pin-keypad { grid-template-columns: repeat(3, 1fr); } }
