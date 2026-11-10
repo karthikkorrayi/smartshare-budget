@@ -1,45 +1,42 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, addDoc, collectionData, query, where, getDocs, doc, setDoc } from '@angular/fire/firestore';
+import { Firestore, deleteField, doc, getDoc, setDoc } from '@angular/fire/firestore';
+import { firstValueFrom } from 'rxjs';
 import { IncomeService } from './income.service';
 import { ExpenseService } from './expense.service';
-import { firstValueFrom } from 'rxjs';
+import { AuthService } from './auth.service';
 
+/**
+ * Carry-forward bookkeeping is now per user:
+ *   metadata/{uid} → { processedMonths: { 'YYYY-MM': true }, lastUpdated }
+ * Previously one global doc (metadata/carry_forward_metadata) was shared by everyone.
+ */
 @Injectable({ providedIn: 'root' })
 export class CarryForwardService {
   private firestore = inject(Firestore);
+  private auth = inject(AuthService);
   private incomeService = inject(IncomeService);
   private expenseService = inject(ExpenseService);
 
-  private readonly METADATA_DOC = 'carry_forward_metadata';
-
   async checkAndProcessCarryForward(currentMonth: string): Promise<void> {
+    const uid = this.auth.requireUid();
     const previousMonth = this.getPreviousMonth(currentMonth);
 
-    const alreadyProcessed = await this.isCarryForwardProcessed(currentMonth);
-    if (alreadyProcessed) {
+    if (await this.isCarryForwardProcessed(uid, currentMonth)) {
       return;
     }
 
-    const previousIncome = await firstValueFrom(
-      this.incomeService.getIncomeByMonth(previousMonth)
-    );
-    const previousExpenses = await firstValueFrom(
-      this.expenseService.getExpensesByMonth(previousMonth)
-    );
+    const previousIncome = await firstValueFrom(this.incomeService.getIncomeByMonth(previousMonth));
+    const previousExpenses = await firstValueFrom(this.expenseService.getExpensesByMonth(previousMonth));
 
-    const totalIncome = previousIncome.reduce((sum, i: any) => sum + i.amount, 0);
-    const totalExpenses = previousExpenses.reduce((sum, e: any) => sum + e.amount, 0);
+    const totalIncome = previousIncome.reduce((sum, i: any) => sum + (Number(i.amount) || 0), 0);
+    const totalExpenses = previousExpenses.reduce((sum, e: any) => sum + (Number(e.amount) || 0), 0);
     const closingBalance = totalIncome - totalExpenses;
 
     if (closingBalance > 0) {
-      await this.createCarryForwardTransaction(
-        currentMonth,
-        previousMonth,
-        closingBalance
-      );
+      await this.createCarryForwardTransaction(currentMonth, previousMonth, closingBalance);
     }
 
-    await this.markCarryForwardProcessed(currentMonth);
+    await this.markCarryForwardProcessed(uid, currentMonth);
   }
 
   private async createCarryForwardTransaction(
@@ -50,61 +47,43 @@ export class CarryForwardService {
     const [year, month] = previousMonth.split('-');
     const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', {
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
     });
 
-    const firstDayOfMonth = this.getFirstDayOfMonth(currentMonth);
-
-    await addDoc(collection(this.firestore, 'income'), {
+    await this.incomeService.addIncome({
       source: 'Carry Forward',
-      amount: amount,
+      amount,
       description: `Balance carried forward from ${monthName}`,
-      date: firstDayOfMonth,
+      date: this.getFirstDayOfMonth(currentMonth),
       month: currentMonth,
       isSystemGenerated: true,
       isCarryForward: true,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
   }
 
-  private async isCarryForwardProcessed(month: string): Promise<boolean> {
+  private metadataRef(uid: string) {
+    return doc(this.firestore, 'metadata', uid);
+  }
+
+  private async isCarryForwardProcessed(uid: string, month: string): Promise<boolean> {
     try {
-      const metadataRef = doc(this.firestore, 'metadata', this.METADATA_DOC);
-      const metadataQuery = await getDocs(
-        query(collection(this.firestore, 'metadata'), where('__name__', '==', this.METADATA_DOC))
-      );
-
-      if (metadataQuery.empty) {
-        return false;
-      }
-
-      const data = metadataQuery.docs[0].data();
-      return data['processedMonths']?.[month] === true;
-    } catch {
-      return false;
+      const snap = await getDoc(this.metadataRef(uid));
+      return snap.exists() && snap.data()?.['processedMonths']?.[month] === true;
+    } catch (err) {
+      console.error('Error reading carry-forward metadata:', err);
+      // Fail closed: if we can't confirm, don't risk creating a duplicate carry-forward.
+      return true;
     }
   }
 
-  private async markCarryForwardProcessed(month: string): Promise<void> {
-    const metadataRef = doc(this.firestore, 'metadata', this.METADATA_DOC);
-
+  private async markCarryForwardProcessed(uid: string, month: string): Promise<void> {
     try {
-      const metadataQuery = await getDocs(
-        query(collection(this.firestore, 'metadata'), where('__name__', '==', this.METADATA_DOC))
+      await setDoc(
+        this.metadataRef(uid),
+        { processedMonths: { [month]: true }, lastUpdated: new Date() },
+        { merge: true }
       );
-
-      let processedMonths: any = {};
-
-      if (!metadataQuery.empty) {
-        processedMonths = metadataQuery.docs[0].data()['processedMonths'] || {};
-      }
-
-      processedMonths[month] = true;
-
-      await setDoc(metadataRef, {
-        processedMonths,
-        lastUpdated: new Date()
-      });
     } catch (error) {
       console.error('Error marking carry-forward as processed:', error);
     }
@@ -114,7 +93,6 @@ export class CarryForwardService {
     const [year, month] = currentMonth.split('-').map(Number);
     const date = new Date(year, month - 1);
     date.setMonth(date.getMonth() - 1);
-
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
   }
 
@@ -123,28 +101,14 @@ export class CarryForwardService {
     return new Date(year, monthNum - 1, 1, 0, 0, 0);
   }
 
+  /** Clears the "processed" flag for a month so carry-forward can run again. Not currently called by the UI. */
   async resetCarryForwardForMonth(month: string): Promise<void> {
-    const carryForwardQuery = query(
-      collection(this.firestore, 'income'),
-      where('month', '==', month),
-      where('isCarryForward', '==', true)
+    // Note: like the original, this does NOT delete the existing carry-forward income entry.
+    const uid = this.auth.requireUid();
+    await setDoc(
+      this.metadataRef(uid),
+      { processedMonths: { [month]: deleteField() }, lastUpdated: new Date() },
+      { merge: true }
     );
-
-    const snapshot = await getDocs(carryForwardQuery);
-
-    const metadataRef = doc(this.firestore, 'metadata', this.METADATA_DOC);
-    const metadataSnapshot = await getDocs(
-      query(collection(this.firestore, 'metadata'), where('__name__', '==', this.METADATA_DOC))
-    );
-
-    if (!metadataSnapshot.empty) {
-      const processedMonths = metadataSnapshot.docs[0].data()['processedMonths'] || {};
-      delete processedMonths[month];
-
-      await setDoc(metadataRef, {
-        processedMonths,
-        lastUpdated: new Date()
-      });
-    }
   }
 }

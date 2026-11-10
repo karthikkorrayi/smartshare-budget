@@ -1,0 +1,86 @@
+<section class="cc-heading">
+  <div>
+    <p class="eyebrow">STATEMENTS</p>
+    <h1>Billing statements</h1>
+    <p>What's due, by when, and what's already paid.</p>
+  </div>
+  <div class="cc-heading-actions">
+    <button class="cc-btn cc-btn--primary" (click)="add()" [disabled]="!cards().length">+ Add statement</button>
+  </div>
+</section>
+
+<section class="cc-filters">
+  <div class="cc-chips">
+    <button class="cc-chip" [class.active]="statusFilter() === 'open'" (click)="statusFilter.set('open')">
+      Unpaid <span class="cc-count">{{ counts().open }}</span>
+    </button>
+    <button class="cc-chip" [class.active]="statusFilter() === 'Paid'" (click)="statusFilter.set('Paid')">
+      Paid <span class="cc-count">{{ counts().Paid }}</span>
+    </button>
+    <button class="cc-chip" [class.active]="statusFilter() === 'all'" (click)="statusFilter.set('all')">
+      All <span class="cc-count">{{ counts().all }}</span>
+    </button>
+  </div>
+  <select class="cc-select" [value]="cardFilter()" (change)="cardFilter.set($any($event.target).value)" aria-label="Card">
+    <option value="all">All cards</option>
+    @for (c of cards(); track c.id) { <option [value]="c.id">{{ cardName(c.id) }}</option> }
+  </select>
+</section>
+
+@if (actionError()) { <p class="cc-error" role="alert">{{ actionError() }}</p> }
+
+@if (!cards().length) {
+  <div class="cc-empty"><div class="icon">💳</div><h2>Add a card first</h2><p>Statements belong to a card.</p></div>
+} @else if (loading()) {
+  <div class="cc-empty"><div class="cc-spinner"></div><p>Loading statements…</p></div>
+} @else if (!rows().length) {
+  <div class="cc-empty">
+    <div class="icon">📄</div>
+    <h2>{{ statusFilter() === 'open' ? 'Nothing unpaid' : 'No statements here' }}</h2>
+    <p>Add a statement after your card's billing date, or approve one from Review.</p>
+  </div>
+} @else {
+  <section class="list">
+    @for (s of rows(); track s.id) {
+      <article class="cc-panel stmt">
+        <header class="stmt-head">
+          <div>
+            <span class="card">{{ cardName(s.cardId) }}</span>
+            <span class="period">Statement {{ s.statementDate | date: 'd MMM y' }} · due {{ s.dueDate | date: 'd MMM y' }}</span>
+          </div>
+          <span class="cc-badge" [class]="'tone-' + s.due.tone">{{ s.due.text }}</span>
+        </header>
+
+        <div class="amounts">
+          <div><span>Total due</span><strong>₹{{ s.totalDue | number: '1.0-2' }}</strong></div>
+          <div><span>Minimum due</span><strong>₹{{ s.minDue | number: '1.0-2' }}</strong></div>
+          <div><span>Paid</span><strong>₹{{ s.paidAmount | number: '1.0-2' }}</strong></div>
+          <div><span>Outstanding</span><strong [class.owing]="s.due.outstanding > 0">₹{{ s.due.outstanding | number: '1.0-2' }}</strong></div>
+        </div>
+
+        <footer class="stmt-foot">
+          <span class="tags">
+            @switch (s.source) {
+              @case ('email') { <span class="cc-badge tone-info">📧 Verified email</span> }
+              @case ('demo') { <span class="cc-badge tone-demo">🧪 Sample</span> }
+              @default { <span class="cc-badge">✍️ Manual</span> }
+            }
+            <span class="cc-badge">{{ s.status }}</span>
+          </span>
+          @if (confirmDeleteId() === s.id) {
+            <span class="actions">
+              <button class="cc-btn cc-btn--sm cc-btn--danger" (click)="remove(s.id)">Delete</button>
+              <button class="cc-btn cc-btn--sm" (click)="confirmDeleteId.set(null)">Keep</button>
+            </span>
+          } @else {
+            <span class="actions">
+              @if (s.status !== 'Paid') { <button class="cc-btn cc-btn--sm cc-btn--primary" (click)="markPaid(s)">✓ Paid</button> }
+              <button class="cc-btn cc-btn--sm" (click)="edit(s)">Edit</button>
+              <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="confirmDeleteId.set(s.id)" aria-label="Delete">✕</button>
+            </span>
+          }
+        </footer>
+      </article>
+    }
+  </section>
+}

@@ -1,0 +1,300 @@
+rules_version = '2';
+
+// SmartShare Budget — security rules.
+// Model: every document carries `userId`; only that user may touch it.
+// Anything not matched below is denied by default.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ─────────────────────────────────────────────────────
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isUser(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+    function ownsExisting() {
+      return isUser(resource.data.userId);
+    }
+    function ownsIncoming() {
+      return isUser(request.resource.data.userId);
+    }
+    function ownerRead()   { return ownsExisting(); }
+    function ownerCreate() { return ownsIncoming(); }
+    function ownerUpdate() { return ownsExisting() && ownsIncoming(); } // userId can't change
+    function ownerDelete() { return ownsExisting(); }
+
+    function docPath(col, id) {
+      return /databases/$(database)/documents/$(col)/$(id);
+    }
+    function str(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+    function optStr(d, key, max) {
+      return !(key in d) || str(d[key], 0, max);
+    }
+    function intIn(v, lo, hi) {
+      return v is int && v >= lo && v <= hi;
+    }
+    function money(v) {
+      return v is number && v >= 0 && v < 1000000000;
+    }
+    // Field not changed by this update (absent before and after also counts as unchanged).
+    function unchanged(key) {
+      return request.resource.data.get(key, null) == resource.data.get(key, null);
+    }
+    // The card exists and belongs to the caller.
+    function ownsCard(cardId) {
+      return cardId is string
+        && exists(docPath('cards', cardId))
+        && get(docPath('cards', cardId)).data.userId == request.auth.uid;
+    }
+
+    // A pending review item, owned by the caller, is being approved IN THIS SAME BATCH
+    // with `targetId` pointing at the record being written. This is what makes
+    // "only approved email data becomes verified data" a server-side guarantee.
+    function reviewApproves(reviewId, kind, targetId) {
+      return reviewId is string
+        && exists(docPath('review_items', reviewId))
+        && get(docPath('review_items', reviewId)).data.userId == request.auth.uid
+        && get(docPath('review_items', reviewId)).data.status == 'pending'
+        && getAfter(docPath('review_items', reviewId)).data.status == 'approved'
+        && getAfter(docPath('review_items', reviewId)).data.kind == kind
+        && getAfter(docPath('review_items', reviewId)).data.targetId == targetId;
+    }
+    // 'gmail' reviews produce source 'email'; sample reviews produce source 'demo'.
+    function sourceMatchesReview(reviewId, source) {
+      return (source == 'email' && get(docPath('review_items', reviewId)).data.origin == 'gmail')
+          || (source == 'demo'  && get(docPath('review_items', reviewId)).data.origin == 'demo');
+    }
+    // Verified record creation: manual (no reviewId) or backed by an approval in the same batch.
+    function createdManuallyOrApproved(d, kind, id) {
+      return (d.source == 'manual' && !('reviewId' in d))
+          || (d.source in ['email', 'demo']
+              && reviewApproves(d.reviewId, kind, id)
+              && sourceMatchesReview(d.reviewId, d.source));
+    }
+
+    // ── Profile: users/{uid} ────────────────────────────────────────
+    match /users/{uid} {
+      allow get: if isUser(uid);
+      allow create, update: if isUser(uid) && request.resource.data.uid == uid;
+      allow list, delete: if false;
+    }
+
+    // ── Per-user bookkeeping: metadata/{uid} (carry-forward state) ──
+    match /metadata/{uid} {
+      allow read, write: if isUser(uid);
+    }
+
+    // ── Core budget collections ─────────────────────────────────────
+    match /expenses/{id} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
+      allow delete: if ownerDelete();
+    }
+    match /income/{id} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
+      allow delete: if ownerDelete();
+    }
+    match /receivables/{id} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
+      allow delete: if ownerDelete();
+    }
+    match /upcoming_payments/{id} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
+      allow delete: if ownerDelete();
+    }
+    match /categories/{id} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
+      allow delete: if ownerDelete();
+    }
+
+    // ── Credit cards: cards/{cardId} ────────────────────────────────
+    function isValidCard(d) {
+      return d.keys().hasOnly(['userId', 'cardholderName', 'bankName', 'nickname', 'lastFourDigits',
+                               'expiryMonth', 'expiryYear', 'statementDay', 'dueDay', 'status',
+                               'autoMonitor', 'monitoredConnectionIds', 'dailySpendingLimit',
+                               'createdAt', 'lastUpdated', 'lastUpdateSource', 'lastReviewId'])
+        && d.keys().hasAll(['userId', 'cardholderName', 'bankName', 'lastFourDigits', 'expiryMonth',
+                            'expiryYear', 'statementDay', 'dueDay', 'status', 'autoMonitor',
+                            'createdAt', 'lastUpdated', 'lastUpdateSource'])
+        && str(d.cardholderName, 1, 60)
+        && str(d.bankName, 1, 60)
+        && optStr(d, 'nickname', 40)
+        && d.lastFourDigits is string && d.lastFourDigits.matches('^[0-9]{4}$')
+        && intIn(d.expiryMonth, 1, 12)
+        && intIn(d.expiryYear, 2000, 2100)
+        && intIn(d.statementDay, 1, 31)
+        && intIn(d.dueDay, 1, 31)
+        && d.status in ['Active', 'Closed']
+        && d.autoMonitor is bool
+        && (!('monitoredConnectionIds' in d) || (d.monitoredConnectionIds is list && d.monitoredConnectionIds.size() <= 10))
+        && (!('dailySpendingLimit' in d) || money(d.dailySpendingLimit))
+        && d.createdAt is timestamp
+        && d.lastUpdated == request.time
+        && d.lastUpdateSource in ['manual', 'review'];
+    }
+    match /cards/{cardId} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate()
+        && isValidCard(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.lastUpdateSource == 'manual'
+        && !('lastReviewId' in request.resource.data);
+      allow update: if ownerUpdate()
+        && isValidCard(request.resource.data)
+        && unchanged('createdAt')
+        && (
+          (request.resource.data.lastUpdateSource == 'manual' && unchanged('lastReviewId'))
+          || (request.resource.data.lastUpdateSource == 'review'
+              && reviewApproves(request.resource.data.lastReviewId, 'card_update', cardId))
+        );
+      allow delete: if ownerDelete();
+    }
+
+    // ── card_transactions/{txnId} ───────────────────────────────────
+    function isValidTxn(d) {
+      return d.keys().hasOnly(['userId', 'cardId', 'txnDate', 'amount', 'direction', 'description',
+                               'category', 'source', 'reviewId', 'editedAfterReview',
+                               'createdAt', 'lastUpdated'])
+        && d.keys().hasAll(['userId', 'cardId', 'txnDate', 'amount', 'direction', 'description',
+                            'source', 'createdAt', 'lastUpdated'])
+        && ownsCard(d.cardId)
+        && d.txnDate is timestamp
+        && money(d.amount) && d.amount > 0
+        && d.direction in ['debit', 'credit']
+        && str(d.description, 1, 120)
+        && optStr(d, 'category', 30)
+        && d.source in ['manual', 'email', 'demo']
+        && (!('editedAfterReview' in d) || d.editedAfterReview is bool)
+        && d.createdAt is timestamp
+        && d.lastUpdated == request.time;
+    }
+    match /card_transactions/{txnId} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate()
+        && isValidTxn(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && createdManuallyOrApproved(request.resource.data, 'transaction', txnId);
+      allow update: if ownerUpdate()
+        && isValidTxn(request.resource.data)
+        && unchanged('createdAt') && unchanged('source') && unchanged('reviewId');
+      allow delete: if ownerDelete();
+    }
+
+    // ── card_statements/{statementId} ───────────────────────────────
+    function isValidStatement(d) {
+      return d.keys().hasOnly(['userId', 'cardId', 'statementDate', 'dueDate', 'totalDue', 'minDue',
+                               'paidAmount', 'status', 'source', 'reviewId', 'createdAt', 'lastUpdated'])
+        && d.keys().hasAll(['userId', 'cardId', 'statementDate', 'dueDate', 'totalDue', 'minDue',
+                            'paidAmount', 'status', 'source', 'createdAt', 'lastUpdated'])
+        && ownsCard(d.cardId)
+        && d.statementDate is timestamp
+        && d.dueDate is timestamp
+        && d.dueDate >= d.statementDate
+        && money(d.totalDue)
+        && money(d.minDue) && d.minDue <= d.totalDue
+        && money(d.paidAmount)
+        && d.status in ['Unpaid', 'Partially Paid', 'Paid']
+        && d.source in ['manual', 'email', 'demo']
+        && d.createdAt is timestamp
+        && d.lastUpdated == request.time;
+    }
+    match /card_statements/{statementId} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate()
+        && isValidStatement(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && createdManuallyOrApproved(request.resource.data, 'statement', statementId);
+      allow update: if ownerUpdate()
+        && isValidStatement(request.resource.data)
+        && unchanged('createdAt') && unchanged('source') && unchanged('reviewId');
+      allow delete: if ownerDelete();
+    }
+
+    // ── review_items/{reviewId} ─────────────────────────────────────
+    // Gmail items are created by Cloud Functions (Admin SDK). Clients may only create 'demo' samples.
+    function isValidReviewCreate(d) {
+      return d.keys().hasOnly(['userId', 'kind', 'origin', 'cardId', 'cardHint', 'extracted',
+                               'confidence', 'email', 'status', 'createdAt'])
+        && d.kind in ['transaction', 'statement', 'card_update']
+        && d.origin == 'demo'
+        && d.status == 'pending'
+        && d.extracted is map
+        && d.email is map
+        && d.confidence is number
+        && (d.cardId == null || ownsCard(d.cardId))
+        && d.createdAt == request.time;
+    }
+    // The approved review must point at a record that exists after the batch and points back at it.
+    function targetLinked(kind, targetId, reviewId) {
+      return targetId is string && (
+        (kind == 'transaction'
+          && existsAfter(docPath('card_transactions', targetId))
+          && getAfter(docPath('card_transactions', targetId)).data.get('reviewId', '') == reviewId)
+        || (kind == 'statement'
+          && existsAfter(docPath('card_statements', targetId))
+          && getAfter(docPath('card_statements', targetId)).data.get('reviewId', '') == reviewId)
+        || (kind == 'card_update'
+          && existsAfter(docPath('cards', targetId))
+          && getAfter(docPath('cards', targetId)).data.get('lastReviewId', '') == reviewId)
+      );
+    }
+    match /review_items/{reviewId} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate() && isValidReviewCreate(request.resource.data);
+      allow update: if ownerUpdate()
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'resolvedAt', 'resolvedValues', 'edited', 'targetId', 'cardId'])
+        && request.resource.data.resolvedAt == request.time
+        && (
+          request.resource.data.status == 'rejected'
+          || (request.resource.data.status == 'approved'
+              && ownsCard(request.resource.data.cardId)
+              && request.resource.data.edited is bool
+              && request.resource.data.resolvedValues is map
+              && targetLinked(resource.data.kind, request.resource.data.targetId, reviewId))
+        );
+      allow delete: if ownerDelete() && resource.data.status != 'pending';
+    }
+
+    // ── notifications/{id} ──────────────────────────────────────────
+    // System notifications come from Cloud Functions. Clients: read, mark read, delete, demo samples.
+    match /notifications/{id} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate()
+        && request.resource.data.keys().hasOnly(['userId', 'type', 'title', 'body', 'cardId', 'link',
+                                                 'read', 'origin', 'createdAt'])
+        && request.resource.data.origin == 'demo'
+        && request.resource.data.type in ['new_transaction', 'statement_generated', 'statement_upcoming',
+                                          'payment_due', 'payment_reminder', 'card_updated', 'review_pending']
+        && str(request.resource.data.title, 1, 120)
+        && str(request.resource.data.body, 0, 300)
+        && request.resource.data.read == false
+        && request.resource.data.createdAt == request.time;
+      allow update: if ownerUpdate()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
+        && request.resource.data.read is bool;
+      allow delete: if ownerDelete();
+    }
+
+    // ── Server-only collections (Admin SDK bypasses rules) ──────────
+    match /email_sync_logs/{id} {
+      allow read, write: if false;
+    }
+    match /gmail_tokens/{id} {
+      allow read, write: if false;
+    }
+  }
+}

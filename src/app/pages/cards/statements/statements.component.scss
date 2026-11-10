@@ -1,0 +1,39 @@
+.list { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; }
+
+.stmt { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+
+.stmt-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  .card { display: block; font-size: 16px; font-weight: 700; color: #0f172a; }
+  .period { display: block; margin-top: 2px; font-size: 13px; color: #64748b; }
+}
+
+.amounts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #f8fafc;
+  span { display: block; font-size: 12px; color: #64748b; }
+  strong { font-size: 15px; color: #0f172a; }
+  strong.owing { color: #b91c1c; }
+}
+
+.stmt-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.tags, .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+@media (max-width: 600px) {
+  .list { grid-template-columns: 1fr; }
+  .amounts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cc-filters { flex-direction: column; align-items: stretch; }
+}

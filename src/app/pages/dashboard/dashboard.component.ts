@@ -15,6 +15,7 @@ import { takeUntil } from 'rxjs/operators';
 import { ReceivableService } from '../../services/receivable.service';
 import { CarryForwardService } from '../../services/carry-forward.service';
 import { StateManagementService } from '../../services/state-management.service';
+import { AuthService } from '../../services/auth.service';
 Chart.register(...registerables);
 
 
@@ -50,7 +51,13 @@ export class DashboardComponent implements OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private injector = inject(Injector);
 
-  username = 'Karthik';
+  private auth = inject(AuthService);
+
+  /** First name from the signed-in account (was hardcoded). */
+  get username(): string {
+    const u = this.auth.user();
+    return u?.displayName?.trim().split(/\s+/)[0] || u?.email?.split('@')[0] || 'there';
+  }
   today = new Date();
 
   completionPercent = 0;

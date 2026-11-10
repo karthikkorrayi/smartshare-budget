@@ -1,0 +1,87 @@
+.review-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: inherit;
+  text-decoration: none;
+
+  .icon { font-size: 26px; }
+  .text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;
+    strong { color: #92400e; }
+    small { color: #78716c; } }
+  .go { font-weight: 700; color: #b45309; white-space: nowrap; }
+}
+
+.section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 22px 0 10px;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.quiet { margin: 0; color: #64748b; font-size: 14px; }
+
+.inbox-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  .section { margin-bottom: 10px; }
+}
+.inbox-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+.list { padding: 4px 0; }
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: inherit;
+  text-decoration: none;
+  &:last-child { border-bottom: none; }
+  &.unread { background: #f0fdfa; }
+  &.unread strong::before { content: '● '; color: #0f766e; }
+}
+
+.row-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: #f1f5f9;
+  font-size: 18px;
+}
+
+.row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  strong { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: #0f172a; font-size: 15px; }
+  small { color: #475569; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+  .when { color: #94a3b8; font-size: 12px; }
+}
+
+.as-link { padding: 0; border: none; background: none; font: inherit; cursor: pointer; }
+
+.row-date { font-size: 13px; font-weight: 700; color: #475569; white-space: nowrap; }
+.row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+@media (max-width: 600px) {
+  .row { padding: 12px; }
+  .row-actions { flex-direction: column; }
+}

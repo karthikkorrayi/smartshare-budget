@@ -1,41 +1,53 @@
-import { addDoc, collection, collectionData, doc, updateDoc, deleteDoc } from '@angular/fire/firestore';
-import { Firestore } from '@angular/fire/firestore';
 import { Injectable, inject } from '@angular/core';
-import { query, where } from "firebase/firestore";
+import {
+  Firestore,
+  addDoc,
+  collection,
+  collectionData,
+  deleteDoc,
+  doc,
+  query,
+  updateDoc,
+  where,
+} from '@angular/fire/firestore';
+import { Observable } from 'rxjs';
+import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class ExpenseService {
-  firestore = inject(Firestore);
+  private firestore = inject(Firestore);
+  private auth = inject(AuthService);
+  private col = collection(this.firestore, 'expenses');
 
   addExpense(data: any) {
-    return addDoc(collection(this.firestore, 'expenses'), data);
+    return addDoc(this.col, { ...data, userId: this.auth.requireUid() });
   }
 
-  getExpenses() {
-    return collectionData(collection(this.firestore, 'expenses'), {
-      idField: 'id'
-    });
+  getExpenses(): Observable<any[]> {
+    return this.auth.forUser(
+      uid => collectionData(query(this.col, where('userId', '==', uid)), { idField: 'id' }),
+      []
+    );
   }
 
-  getExpensesByMonth(month: string) {
-    return collectionData(
-      query(
-        collection(this.firestore, 'expenses'),
-        where('month', '==', month)
-      ),
-      { idField: 'id' }
+  getExpensesByMonth(month: string): Observable<any[]> {
+    return this.auth.forUser(
+      uid =>
+        collectionData(
+          query(this.col, where('userId', '==', uid), where('month', '==', month)),
+          { idField: 'id' }
+        ),
+      []
     );
   }
 
   updateExpense(expense: any) {
-    const ref = doc(this.firestore, 'expenses', expense.id);
-    return updateDoc(ref, expense);
+    // Never write the client-side `id` into the document, and never let an update change ownership.
+    const { id, userId, ...changes } = expense;
+    return updateDoc(doc(this.firestore, 'expenses', id), changes);
   }
 
   deleteExpense(id: string) {
-    const ref = doc(this.firestore, 'expenses', id);
-    return deleteDoc(ref);
+    return deleteDoc(doc(this.firestore, 'expenses', id));
   }
-
 }
-

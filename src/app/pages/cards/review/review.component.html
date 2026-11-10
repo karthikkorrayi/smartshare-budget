@@ -1,0 +1,194 @@
+<section class="cc-heading">
+  <div>
+    <p class="eyebrow">REVIEW</p>
+    <h1>Review extracted data</h1>
+    <p>Information found in your email waits here. Only what you approve becomes verified card data.</p>
+  </div>
+</section>
+
+<section class="cc-filters">
+  <div class="cc-chips">
+    <button class="cc-chip" [class.active]="tab() === 'pending'" (click)="tab.set('pending')">
+      Pending <span class="cc-count" [class.cc-count--alert]="pending().length">{{ pending().length }}</span>
+    </button>
+    <button class="cc-chip" [class.active]="tab() === 'history'" (click)="tab.set('history')">History</button>
+  </div>
+</section>
+
+@if (tab() === 'pending') {
+  @if (loading()) {
+    <div class="cc-empty"><div class="cc-spinner"></div><p>Loading review queue…</p></div>
+  } @else if (!pending().length) {
+    <div class="cc-empty">
+      <div class="icon">✅</div>
+      <h2>Nothing to review</h2>
+      <p>When Auto Monitor finds transactions, statements or card changes in your Gmail, they'll appear here for approval.</p>
+      @if (activeCards().length) {
+        <div class="samples">
+          <p class="hint">Gmail sync isn't connected yet. Try the flow with sample items:</p>
+          <div class="samples-row">
+            <select class="cc-select" [value]="sampleCardId() || activeCards()[0].id" (change)="sampleCardId.set($any($event.target).value)" aria-label="Card for samples">
+              @for (c of activeCards(); track c.id) { <option [value]="c.id">{{ label(c) }}</option> }
+            </select>
+            <button class="cc-btn" (click)="loadSamples()" [disabled]="loadingSamples()">
+              {{ loadingSamples() ? 'Creating…' : '🧪 Load 3 sample items' }}
+            </button>
+          </div>
+          @if (sampleError()) { <p class="cc-error">{{ sampleError() }}</p> }
+        </div>
+      } @else {
+        <a class="cc-btn cc-btn--primary" routerLink="/cards">Add a card first</a>
+      }
+    </div>
+  } @else {
+    <section class="queue">
+      @for (item of pending(); track item.id) {
+        <article class="cc-panel item" [class.editing]="editingId() === item.id">
+          <header class="item-head">
+            <div class="kinds">
+              <span class="cc-badge tone-info">{{ kindLabels[item.kind] }}</span>
+              @if (item.origin === 'demo') { <span class="cc-badge tone-demo">🧪 Sample</span> }
+              <span class="cc-badge" [class]="confidenceTone(item.confidence)" title="Parser confidence">
+                {{ item.confidence | percent: '1.0-0' }} match
+              </span>
+            </div>
+            <span class="received">{{ item.email.receivedAt | date: 'd MMM, h:mm a' }}</span>
+          </header>
+
+          <div class="email">
+            <div class="subject">{{ item.email.subject }}</div>
+            <div class="from">From {{ item.email.from }} · to {{ item.email.account }}</div>
+            @if (item.email.snippet) { <blockquote>“{{ item.email.snippet }}”</blockquote> }
+          </div>
+
+          <label class="cc-field card-pick">
+            <span>
+              Card
+              @if (!item.cardId) { <small class="warn">No automatic match for ••{{ item.cardHint.lastFourDigits || '????' }} — choose one</small> }
+            </span>
+            <select [ngModel]="chosenCardId(item)" (ngModelChange)="chooseCard(item, $event)" [name]="'card-' + item.id">
+              <option value="" disabled>Select card</option>
+              @for (c of activeCards(); track c.id) { <option [value]="c.id">{{ label(c) }}</option> }
+            </select>
+          </label>
+
+          <!-- ── Extracted values (read-only) or edit form ─────────── -->
+          @if (editingId() !== item.id) {
+            @switch (item.kind) {
+              @case ('transaction') {
+                <dl class="values">
+                  <div><dt>Date</dt><dd>{{ item.extracted.txnDate ? (item.extracted.txnDate | date: 'd MMM y') : '—' }}</dd></div>
+                  <div><dt>Amount</dt><dd>{{ item.extracted.direction === 'credit' ? '+' : '' }}₹{{ item.extracted.amount | number: '1.0-2' }}</dd></div>
+                  <div><dt>Merchant</dt><dd>{{ item.extracted.description || '—' }}</dd></div>
+                  <div><dt>Category</dt><dd>{{ item.extracted.category || '—' }}</dd></div>
+                </dl>
+              }
+              @case ('statement') {
+                <dl class="values">
+                  <div><dt>Statement date</dt><dd>{{ item.extracted.statementDate ? (item.extracted.statementDate | date: 'd MMM y') : '—' }}</dd></div>
+                  <div><dt>Due date</dt><dd>{{ item.extracted.dueDate ? (item.extracted.dueDate | date: 'd MMM y') : '—' }}</dd></div>
+                  <div><dt>Total due</dt><dd>₹{{ item.extracted.totalDue | number: '1.0-2' }}</dd></div>
+                  <div><dt>Minimum due</dt><dd>₹{{ item.extracted.minDue | number: '1.0-2' }}</dd></div>
+                </dl>
+              }
+              @case ('card_update') {
+                <dl class="values changes">
+                  @for (f of proposedFields(item); track f) {
+                    <div>
+                      <dt>{{ fieldLabels[f] }}</dt>
+                      <dd><s>{{ currentValue(item, f) ?? '—' }}</s> → <strong>{{ item.extracted[f] }}</strong></dd>
+                    </div>
+                  }
+                </dl>
+              }
+            }
+          } @else {
+            <div class="edit-form">
+              @switch (item.kind) {
+                @case ('transaction') {
+                  <div class="cc-row">
+                    <label class="cc-field"><span>Date</span><input type="date" [(ngModel)]="draft.txnDate" name="txnDate" /></label>
+                    <label class="cc-field"><span>Amount (₹)</span><input type="number" inputmode="decimal" min="0.01" step="0.01" [(ngModel)]="draft.amount" name="amount" /></label>
+                  </div>
+                  <div class="cc-row">
+                    <label class="cc-field"><span>Type</span>
+                      <select [(ngModel)]="draft.direction" name="direction">
+                        <option value="debit">Spend (debit)</option>
+                        <option value="credit">Refund / payment (credit)</option>
+                      </select>
+                    </label>
+                    <label class="cc-field"><span>Category</span>
+                      <select [(ngModel)]="draft.category" name="category">
+                        @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
+                      </select>
+                    </label>
+                  </div>
+                  <label class="cc-field"><span>Description</span><input maxlength="120" [(ngModel)]="draft.description" name="description" /></label>
+                }
+                @case ('statement') {
+                  <div class="cc-row">
+                    <label class="cc-field"><span>Statement date</span><input type="date" [(ngModel)]="draft.statementDate" name="statementDate" /></label>
+                    <label class="cc-field"><span>Due date</span><input type="date" [(ngModel)]="draft.dueDate" name="dueDate" /></label>
+                  </div>
+                  <div class="cc-row">
+                    <label class="cc-field"><span>Total due (₹)</span><input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="draft.totalDue" name="totalDue" /></label>
+                    <label class="cc-field"><span>Minimum due (₹)</span><input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="draft.minDue" name="minDue" /></label>
+                  </div>
+                }
+                @case ('card_update') {
+                  <p class="hint">Leave a field empty to keep the card's current value.</p>
+                  <div class="cc-row">
+                    @for (f of cardFields; track f) {
+                      <label class="cc-field">
+                        <span>{{ fieldLabels[f] }} <small>now {{ currentValue(item, f) ?? '—' }}</small></span>
+                        <input type="number" inputmode="numeric" [(ngModel)]="draft[f]" [name]="f" />
+                      </label>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          }
+
+          @if (itemError()[item.id]; as err) { <p class="cc-error" role="alert">{{ err }}</p> }
+
+          <footer class="item-actions">
+            @if (editingId() === item.id) {
+              <button class="cc-btn" (click)="cancelEdit()" [disabled]="busyId() === item.id">Cancel edit</button>
+              <button class="cc-btn cc-btn--primary" (click)="approve(item)" [disabled]="busyId() === item.id">
+                {{ busyId() === item.id ? 'Saving…' : 'Save & approve' }}
+              </button>
+            } @else {
+              <button class="cc-btn cc-btn--danger-text" (click)="reject(item)" [disabled]="busyId() === item.id">Reject</button>
+              <button class="cc-btn" (click)="startEdit(item)" [disabled]="busyId() === item.id || !!editingId()">Edit</button>
+              <button class="cc-btn cc-btn--primary" (click)="approve(item)" [disabled]="busyId() === item.id || !!editingId()">
+                {{ busyId() === item.id ? 'Approving…' : 'Approve' }}
+              </button>
+            }
+          </footer>
+        </article>
+      }
+    </section>
+  }
+} @else {
+  @if (!resolved().length) {
+    <div class="cc-empty"><div class="icon">🗂️</div><h2>No decisions yet</h2><p>Approved and rejected items will be listed here.</p></div>
+  } @else {
+    <section class="cc-panel history">
+      @for (item of resolved(); track item.id) {
+        <div class="history-row">
+          <div class="history-main">
+            <span class="subject">{{ item.email.subject }}</span>
+            <span class="meta">{{ kindLabels[item.kind] }} · {{ cardName(item.cardId) }} · {{ item.resolvedAt | date: 'd MMM, h:mm a' }}</span>
+          </div>
+          <div class="history-tags">
+            @if (item.edited) { <span class="cc-badge tone-soon">Edited</span> }
+            <span class="cc-badge" [class]="item.status === 'approved' ? 'tone-ok' : 'tone-closed'">
+              {{ item.status === 'approved' ? '✓ Approved' : '✕ Rejected' }}
+            </span>
+          </div>
+        </div>
+      }
+    </section>
+  }
+}

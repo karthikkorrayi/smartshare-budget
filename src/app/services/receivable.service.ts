@@ -1,45 +1,49 @@
 import { Injectable, inject } from '@angular/core';
 import {
   Firestore,
-  collection,
   addDoc,
+  collection,
   collectionData,
   deleteDoc,
   doc,
-  updateDoc,
   query,
+  updateDoc,
   where,
-  orderBy
 } from '@angular/fire/firestore';
+import { Observable } from 'rxjs';
+import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class ReceivableService {
-  firestore = inject(Firestore);
+  private firestore = inject(Firestore);
+  private auth = inject(AuthService);
+  private col = collection(this.firestore, 'receivables');
 
   add(data: any) {
-    return addDoc(collection(this.firestore, 'receivables'), data);
+    return addDoc(this.col, { ...data, userId: this.auth.requireUid() });
   }
 
-  getAll() {
-    return collectionData(
-      collection(this.firestore, 'receivables'),
-      { idField: 'id' }
+  getAll(): Observable<any[]> {
+    return this.auth.forUser(
+      uid => collectionData(query(this.col, where('userId', '==', uid)), { idField: 'id' }),
+      []
     );
   }
 
-  getByMonth(month: string) {
-    return collectionData(
-      query(
-        collection(this.firestore, 'receivables'),
-        where('month', '==', month)
-      ),
-      { idField: 'id' }
+  getByMonth(month: string): Observable<any[]> {
+    return this.auth.forUser(
+      uid =>
+        collectionData(
+          query(this.col, where('userId', '==', uid), where('month', '==', month)),
+          { idField: 'id' }
+        ),
+      []
     );
   }
 
   update(id: string, data: any) {
-    const ref = doc(this.firestore, 'receivables', id);
-    return updateDoc(ref, data);
+    const { id: _id, userId, ...changes } = data ?? {};
+    return updateDoc(doc(this.firestore, 'receivables', id), changes);
   }
 
   delete(id: string) {

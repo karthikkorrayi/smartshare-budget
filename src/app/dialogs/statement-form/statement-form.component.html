@@ -1,0 +1,61 @@
+<div class="cc-dialog">
+  <div class="cc-dialog-head">
+    <span class="icon" aria-hidden="true">📄</span>
+    <div>
+      <h2>{{ isEdit ? 'Edit statement' : 'Add statement' }}</h2>
+      <p>One billing cycle: when it was generated, what's due and by when.</p>
+    </div>
+  </div>
+
+  <form class="cc-dialog-body" (ngSubmit)="save()" novalidate>
+    <label class="cc-field">
+      <span>Card</span>
+      <select name="cardId" [(ngModel)]="form.cardId" (ngModelChange)="!isEdit && prefillDates()">
+        @for (c of data.cards; track c.id) {
+          <option [value]="c.id">{{ label(c) }}{{ c.status === 'Closed' ? ' (closed)' : '' }}</option>
+        }
+      </select>
+    </label>
+
+    <div class="cc-row">
+      <label class="cc-field">
+        <span>Statement date</span>
+        <input name="statementDate" type="date" [(ngModel)]="form.statementDate" />
+      </label>
+      <label class="cc-field">
+        <span>Payment due date</span>
+        <input name="dueDate" type="date" [(ngModel)]="form.dueDate" />
+      </label>
+    </div>
+
+    <div class="cc-row-3">
+      <label class="cc-field">
+        <span>Total due (₹)</span>
+        <input name="totalDue" type="number" min="0" step="0.01" inputmode="decimal" [(ngModel)]="form.totalDue" />
+      </label>
+      <label class="cc-field">
+        <span>Minimum due (₹)</span>
+        <input name="minDue" type="number" min="0" step="0.01" inputmode="decimal" [(ngModel)]="form.minDue" />
+      </label>
+      <label class="cc-field">
+        <span>Paid so far (₹)</span>
+        <input name="paidAmount" type="number" min="0" step="0.01" inputmode="decimal" [(ngModel)]="form.paidAmount" />
+      </label>
+    </div>
+
+    <p class="cc-section-title">Status: {{ derivedStatus }}</p>
+
+    @if (errors().length) {
+      <ul class="cc-errors" role="alert">
+        @for (e of errors(); track e) { <li>{{ e }}</li> }
+      </ul>
+    }
+
+    <div class="cc-dialog-actions">
+      <button type="button" class="cc-btn" (click)="close()" [disabled]="saving()">Cancel</button>
+      <button type="submit" class="cc-btn cc-btn--primary" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : isEdit ? 'Update' : 'Save statement' }}
+      </button>
+    </div>
+  </form>
+</div>

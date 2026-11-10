@@ -1,0 +1,101 @@
+<div class="cc-dialog">
+  <div class="cc-dialog-head">
+    <span class="icon" aria-hidden="true">💳</span>
+    <div>
+      <h2>{{ isEdit ? 'Edit card' : 'Add credit card' }}</h2>
+      <p>Only the last 4 digits are stored — never the full number, CVV or PIN.</p>
+    </div>
+  </div>
+
+  <form class="cc-dialog-body" (ngSubmit)="save()" novalidate>
+    <p class="cc-section-title">Card</p>
+    <label class="cc-field">
+      <span>Cardholder's name</span>
+      <input name="cardholderName" [(ngModel)]="form.cardholderName" maxlength="60" autocomplete="cc-name" placeholder="As printed on the card" />
+    </label>
+    <div class="cc-row">
+      <label class="cc-field">
+        <span>Bank</span>
+        <input name="bankName" [(ngModel)]="form.bankName" maxlength="60" placeholder="e.g. HDFC Bank" autocomplete="off" />
+      </label>
+      <label class="cc-field">
+        <span>Nickname <small>optional</small></span>
+        <input name="nickname" [(ngModel)]="form.nickname" maxlength="40" placeholder="e.g. Millennia" autocomplete="off" />
+      </label>
+    </div>
+    <div class="cc-row-3">
+      <label class="cc-field">
+        <span>Last 4 digits</span>
+        <input name="lastFourDigits" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="off"
+               [ngModel]="form.lastFourDigits" (ngModelChange)="onLastFour($event)" />
+      </label>
+      <label class="cc-field">
+        <span>Expiry month</span>
+        <select name="expiryMonth" [(ngModel)]="form.expiryMonth">
+          <option [ngValue]="0" disabled>MM</option>
+          @for (m of months; track m; let i = $index) { <option [ngValue]="i + 1">{{ m }}</option> }
+        </select>
+      </label>
+      <label class="cc-field">
+        <span>Expiry year</span>
+        <select name="expiryYear" [(ngModel)]="form.expiryYear">
+          <option [ngValue]="0" disabled>YYYY</option>
+          @for (y of years; track y) { <option [ngValue]="y">{{ y }}</option> }
+        </select>
+      </label>
+    </div>
+
+    <p class="cc-section-title">Billing cycle</p>
+    <div class="cc-row">
+      <label class="cc-field">
+        <span>Statement generated on <small>day of month</small></span>
+        <select name="statementDay" [(ngModel)]="form.statementDay">
+          <option [ngValue]="0" disabled>Select day</option>
+          @for (d of days; track d) { <option [ngValue]="d">{{ d }}</option> }
+        </select>
+      </label>
+      <label class="cc-field">
+        <span>Payment due on <small>day of month</small></span>
+        <select name="dueDay" [(ngModel)]="form.dueDay">
+          <option [ngValue]="0" disabled>Select day</option>
+          @for (d of days; track d) { <option [ngValue]="d">{{ d }}</option> }
+        </select>
+      </label>
+    </div>
+    <div class="cc-row">
+      <label class="cc-field">
+        <span>Daily spending limit (₹) <small>0 = none</small></span>
+        <input name="dailySpendingLimit" type="number" min="0" step="1" inputmode="decimal" [(ngModel)]="form.dailySpendingLimit" />
+      </label>
+      <label class="cc-field">
+        <span>Status</span>
+        <select name="status" [(ngModel)]="form.status">
+          <option value="Active">Active</option>
+          <option value="Closed">Closed</option>
+        </select>
+      </label>
+    </div>
+
+    <p class="cc-section-title">Automation</p>
+    <label class="cc-toggle">
+      <input type="checkbox" name="autoMonitor" [(ngModel)]="form.autoMonitor" />
+      <div>
+        <strong>Auto Monitor</strong>
+        <span>Watch your connected Gmail accounts for this card's alerts and statements. Everything found goes to Review first — nothing changes without your approval.</span>
+      </div>
+    </label>
+
+    @if (errors().length) {
+      <ul class="cc-errors" role="alert">
+        @for (e of errors(); track e) { <li>{{ e }}</li> }
+      </ul>
+    }
+
+    <div class="cc-dialog-actions">
+      <button type="button" class="cc-btn" (click)="close()" [disabled]="saving()">Cancel</button>
+      <button type="submit" class="cc-btn cc-btn--primary" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : isEdit ? 'Update card' : 'Save card' }}
+      </button>
+    </div>
+  </form>
+</div>
