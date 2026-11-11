@@ -21,6 +21,7 @@ import { MONITOR_GROUPS, MonitorGroup } from './classify';
 import { open, seal, sha256, Sealed } from './crypto';
 import { OAuthError, exchangeCode, revoke } from './google';
 import { syncConnection } from './sync';
+import { ownedConnection } from './ownership';
 import { CardLite, StatementLite, computeDueReminders, digest } from './reminders';
 import { pushToUser } from './push';
 
@@ -44,14 +45,6 @@ function requireUser(req: CallableRequest): string {
   return a.uid;
 }
 
-async function ownedConnection(uid: string, connectionId: unknown) {
-  if (typeof connectionId !== 'string' || !/^[a-f0-9]{24}$/.test(connectionId)) {
-    throw new HttpsError('invalid-argument', 'Unknown connection.');
-  }
-  const snap = await db.doc(`gmail_connections/${connectionId}`).get();
-  if (!snap.exists || snap.get('userId') !== uid) throw new HttpsError('not-found', 'Connection not found.');
-  return snap;
-}
 
 const callableOpts = {
   region: REGION,

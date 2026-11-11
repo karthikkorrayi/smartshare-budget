@@ -1,0 +1,53 @@
+# Phase 7: every PR (and every push to a feature branch) runs the full test suite.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ['feature/**']
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app-build:
+    name: Angular production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci
+      - run: npx ng build --configuration production
+
+  functions-unit:
+    name: Cloud Functions — type-check + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm, cache-dependency-path: functions/package-lock.json }
+      - run: npm --prefix functions ci
+      - run: npm --prefix functions test
+
+  emulator-tests:
+    name: Firestore rules + Gmail sync (emulator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-v15
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - name: Security rules (isolation matrix, review approval, Gmail-only identity)
+        run: npx -y firebase-tools@15 emulators:exec --only firestore --project demo-smartshare-rules "node --test tests/firestore-rules/rules.test.mjs"
+      - name: Gmail sync engine (dedupe, concurrency, malformed mail, revoked access)
+        run: npx -y firebase-tools@15 emulators:exec --only firestore --project demo-smartshare-fn "npm --prefix functions run test:emulator"
