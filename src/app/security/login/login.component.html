@@ -1,0 +1,82 @@
+<section class="auth-screen">
+  <div class="auth-card">
+    <p class="auth-brand">SmartShare Budget</p>
+    <div class="auth-emblem" aria-hidden="true">💰</div>
+
+    <h1>
+      @switch (mode()) {
+        @case ('signup') { Create your account }
+        @case ('reset') { Reset your password }
+        @default { Welcome back }
+      }
+    </h1>
+    <p class="auth-hint">
+      @switch (mode()) {
+        @case ('signup') { Use your Gmail address. Google sign-in and your password open the same account. }
+        @case ('reset') { We'll email you a link to choose a new password. }
+        @default { Sign in to see your monthly money overview. }
+      }
+    </p>
+
+    @if (mode() !== 'reset') {
+      <button type="button" class="btn google" (click)="google()" [disabled]="!!busy()">
+        <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.6 13.2l7.8 6.1C12.3 13.6 17.7 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/>
+          <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C.9 16.6 0 20.2 0 24s.9 7.4 2.6 10.8l7.8-6.1z"/>
+          <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.7-4.1-13.6-9.8l-7.8 6.1C6.6 42.6 14.6 48 24 48z"/>
+        </svg>
+        {{ busy() === 'google' ? 'Opening Google…' : 'Continue with Google' }}
+      </button>
+      <div class="divider"><span>or use your Gmail + password</span></div>
+    }
+
+    <form (ngSubmit)="submit()" #f="ngForm" novalidate>
+      @if (mode() === 'signup') {
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" [(ngModel)]="displayName" autocomplete="name" placeholder="Your name" />
+      }
+
+      <label for="email">Gmail address</label>
+      <input id="email" name="email" type="email" [(ngModel)]="email" autocomplete="email"
+             placeholder="you@gmail.com" required />
+
+      @if (mode() !== 'reset') {
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" [(ngModel)]="password" required minlength="8"
+               [attr.autocomplete]="mode() === 'signup' ? 'new-password' : 'current-password'" />
+      }
+
+      @if (mode() === 'signup') {
+        <label for="confirm">Confirm password</label>
+        <input id="confirm" name="confirm" type="password" [(ngModel)]="confirmPassword" autocomplete="new-password" required />
+      }
+
+      @if (error()) { <p class="msg error" role="alert">{{ error() }}</p> }
+      @if (info()) { <p class="msg info" role="status">{{ info() }}</p> }
+
+      <button type="submit" class="btn primary" [disabled]="!!busy() || !email">
+        @if (busy() === 'email') { Please wait… }
+        @else {
+          @switch (mode()) {
+            @case ('signup') { Create account }
+            @case ('reset') { Send reset link }
+            @default { Sign in }
+          }
+        }
+      </button>
+    </form>
+
+    <div class="links">
+      @switch (mode()) {
+        @case ('signin') {
+          <button type="button" class="link" (click)="setMode('reset')">Forgot password?</button>
+          <span>New here? <button type="button" class="link" (click)="setMode('signup')">Create an account</button></span>
+        }
+        @default {
+          <span>Have an account? <button type="button" class="link" (click)="setMode('signin')">Sign in</button></span>
+        }
+      }
+    </div>
+  </div>
+</section>

@@ -1,12 +1,40 @@
-
 :host { display: block; min-height: 100dvh; }
-.top-nav { position: sticky; top: 0; z-index: 1000; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 80px; padding: 16px max(20px, calc((100vw - 1440px) / 2)); background: rgba(255,255,255,.96); border-bottom: 1px solid #e2e8f0; backdrop-filter: blur(16px); }
+.top-nav { position: sticky; top: 0; z-index: 1000; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; min-height: 80px; padding: 16px max(20px, calc((100vw - 1440px) / 2)); background: rgba(255,255,255,.96); border-bottom: 1px solid #e2e8f0; backdrop-filter: blur(16px); }
 .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .brand-badge { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: #ccfbf1; flex-shrink: 0; }
 .brand-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .app-title { font-size: 19px; font-weight: 750; letter-spacing: -.5px; color: #0f172a; }
 .app-subtitle { font-size: 12px; color: #64748b; }
-.lock-btn { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid #dbe3eb; border-radius: 12px; background: white; color: #334155; font-weight: 600; cursor: pointer; }
-.lock-btn:hover { background: #f0fdfa; border-color: #0f766e; }
+
+.main-nav { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: #f1f5f9; }
+.main-nav a { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 6px 14px; border-radius: 10px; color: #475569; font-size: 14px; font-weight: 650; text-decoration: none; white-space: nowrap; }
+.main-nav a:hover { color: #0f172a; }
+.main-nav a.active { background: #fff; color: #0f766e; box-shadow: 0 1px 4px rgba(15,23,42,.08); }
+.nav-count { min-width: 20px; padding: 1px 6px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; text-align: center; }
+
+.nav-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.nav-btn { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid #dbe3eb; border-radius: 12px; background: white; color: #334155; font-weight: 600; cursor: pointer; }
+.nav-btn:hover { background: #f0fdfa; border-color: #0f766e; }
+
+.bell { position: relative; text-decoration: none; }
+.bell.active { border-color: #0f766e; background: #f0fdfa; }
+.bell-count { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; }
+
+.profile-chip { display: flex; align-items: center; gap: 8px; max-width: 220px; min-height: 44px; padding: 4px 12px 4px 4px; border: 1px solid #dbe3eb; border-radius: 999px; background: #fff; color: #0f172a; text-decoration: none; }
+.profile-chip.active, .profile-chip:hover { border-color: #0f766e; background: #f0fdfa; }
+.avatar { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; background: #0f766e; color: #fff; font-weight: 750; }
+.profile-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+
 .app-shell { width: min(1480px, 100%); margin: auto; }
-@media (max-width: 600px) { .top-nav { min-height: 68px; padding: 12px 16px; } .app-subtitle, .lock-label { display: none; } .lock-btn { padding: 10px 12px; } .app-title { font-size: 17px; } }
+
+@media (max-width: 760px) {
+  .top-nav { min-height: 68px; padding: 12px 14px; gap: 10px; }
+  .app-subtitle, .profile-name { display: none; }
+  .profile-chip { padding: 4px; }
+  .app-title { font-size: 17px; }
+  .nav-actions { gap: 6px; }
+  .nav-btn { padding: 10px 12px; }
+  /* Nav drops to its own full-width row under the brand on phones. */
+  .main-nav { order: 3; width: 100%; }
+  .main-nav a { flex: 1; padding: 6px 4px; font-size: 13px; }
+}

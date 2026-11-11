@@ -1,0 +1,40 @@
+/** gmail_connections/{connId} — one connected Gmail mailbox (created by Cloud Functions). */
+export const MONITOR_GROUPS = ['salary', 'bank', 'cards', 'bills', 'payments'] as const;
+export type MonitorGroup = (typeof MONITOR_GROUPS)[number];
+
+export const MONITOR_GROUP_INFO: Record<MonitorGroup, { label: string; icon: string; hint: string }> = {
+  salary: { label: 'Salary', icon: '💰', hint: 'Salary credits → Income' },
+  bank: { label: 'Bank transactions', icon: '🏦', hint: 'Account credits & debits, UPI/NEFT/IMPS → Income / Expenses' },
+  cards: { label: 'Credit cards', icon: '💳', hint: 'Card spends, refunds, statements, due-date changes → Cards' },
+  bills: { label: 'Bills & dues', icon: '🧾', hint: 'Bills generated, payment due reminders → Upcoming payments' },
+  payments: { label: 'Payment confirmations', icon: '✅', hint: 'Payments received / successful → Cards or Expenses' },
+};
+
+export type ConnectionStatus = 'active' | 'reauth_required' | 'error';
+
+export interface SyncStats {
+  scanned: number;
+  matched: number;
+  created: number;
+  duplicates: number;
+  ignored: number;
+  skipped: number;
+  errors: number;
+  complete: boolean;
+}
+
+export interface GmailConnection {
+  id: string;
+  userId: string;
+  email: string;
+  status: ConnectionStatus;
+  paused: boolean;
+  groups: MonitorGroup[];
+  backfillDays: number;
+  createdAt: Date | null;
+  lastSyncAt: Date | null;
+  lastRunAt: Date | null;
+  lastRunStats: SyncStats | null;
+  lastError: string | null;
+  backfillInProgress: boolean;
+}

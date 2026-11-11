@@ -1,0 +1,131 @@
+<div class="cc-page narrow">
+  <section class="cc-heading">
+    <div>
+      <p class="eyebrow">PROFILE & ACCOUNT</p>
+      <h1>Your account</h1>
+      <p>One account per Gmail address — Google and password sign-in open the same profile and data.</p>
+    </div>
+  </section>
+
+  @if (account(); as a) {
+    <!-- Profile -->
+    <section class="cc-panel block">
+      <div class="identity">
+        <div class="avatar" aria-hidden="true">{{ initial() }}</div>
+        <div class="who">
+          @if (!editingName()) {
+            <strong class="name">{{ a.displayName || 'Add your name' }}</strong>
+          } @else {
+            <form class="name-form" (ngSubmit)="saveName()">
+              <input name="name" [(ngModel)]="name" maxlength="60" placeholder="Your name" aria-label="Name" />
+              <button class="cc-btn cc-btn--sm cc-btn--primary" type="submit" [disabled]="busy() === 'name'">Save</button>
+              <button class="cc-btn cc-btn--sm" type="button" (click)="editingName.set(false)">Cancel</button>
+            </form>
+          }
+          <span class="email">
+            {{ a.email }}
+            <span class="cc-badge" [class]="a.emailVerified ? 'tone-ok' : 'tone-soon'">{{ a.emailVerified ? '✓ Verified' : 'Not verified' }}</span>
+          </span>
+          @if (a.createdAt) { <span class="since">Member since {{ a.createdAt | date: 'd MMM y' }}</span> }
+        </div>
+        @if (!editingName()) { <button class="cc-btn cc-btn--sm" (click)="startEditName()">Edit</button> }
+      </div>
+      @if (message()?.section === 'profile') { <p class="msg" [class]="message()!.kind">{{ message()!.text }}</p> }
+    </section>
+
+    <!-- Sign-in methods -->
+    <section class="cc-panel block">
+      <h2>Sign-in methods</h2>
+      <p class="sub">Both methods use <strong>{{ a.email }}</strong> and open the same account.</p>
+
+      <div class="method">
+        <span class="m-icon">G</span>
+        <div class="m-text">
+          <strong>Google</strong>
+          <small>{{ hasGoogle() ? 'Linked · ' + (a.googleEmail || a.email) : 'Not linked — sign in with one tap using your Gmail.' }}</small>
+        </div>
+        @if (hasGoogle()) {
+          <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="unlink('google.com')"
+                  [disabled]="methodCount() < 2 || busy() === 'unlink-google'"
+                  [title]="methodCount() < 2 ? 'Add a password first — you need at least one sign-in method' : ''">Remove</button>
+        } @else {
+          <button class="cc-btn cc-btn--sm cc-btn--primary" (click)="linkGoogle()" [disabled]="busy() === 'google'">
+            {{ busy() === 'google' ? 'Opening…' : 'Link Google' }}
+          </button>
+        }
+      </div>
+
+      <div class="method">
+        <span class="m-icon">🔑</span>
+        <div class="m-text">
+          <strong>Password</strong>
+          <small>{{ hasPassword() ? 'Set — sign in with your Gmail address and password.' : 'Not set — add one to sign in without Google.' }}</small>
+        </div>
+        @if (hasPassword() && hasGoogle()) {
+          <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="unlink('password')" [disabled]="busy() === 'unlink-password'">Remove</button>
+        }
+      </div>
+      @if (message()?.section === 'methods') { <p class="msg" [class]="message()!.kind">{{ message()!.text }}</p> }
+    </section>
+
+    <!-- Password -->
+    <section class="cc-panel block">
+      <div class="block-head">
+        <div>
+          <h2>{{ hasPassword() ? 'Change password' : 'Create a password' }}</h2>
+          <p class="sub">{{ hasPassword() ? 'Enter your current password to set a new one.' : 'Add a password to this Google account.' }}</p>
+        </div>
+        <button class="cc-btn cc-btn--sm" (click)="togglePassword()">{{ showPassword() ? 'Close' : hasPassword() ? 'Change' : 'Create' }}</button>
+      </div>
+
+      @if (showPassword()) {
+        <form class="pw-form" (ngSubmit)="savePassword()">
+          @if (hasPassword()) {
+            <label class="cc-field"><span>Current password</span>
+              <input type="password" name="current" [(ngModel)]="currentPassword" autocomplete="current-password" />
+            </label>
+          }
+          <div class="cc-row">
+            <label class="cc-field"><span>New password <small>min 8 characters</small></span>
+              <input type="password" name="next" [(ngModel)]="newPassword" autocomplete="new-password" />
+            </label>
+            <label class="cc-field"><span>Confirm new password</span>
+              <input type="password" name="confirm" [(ngModel)]="confirmPassword" autocomplete="new-password" />
+            </label>
+          </div>
+          <button class="cc-btn cc-btn--primary" type="submit" [disabled]="busy() === 'password' || !newPassword">
+            {{ busy() === 'password' ? 'Saving…' : hasPassword() ? 'Change password' : 'Create password' }}
+          </button>
+        </form>
+      }
+
+      <div class="reset">
+        <span>Forgot it? We'll email a secure reset link to {{ a.email }}.</span>
+        <button class="cc-btn cc-btn--sm" (click)="sendReset()" [disabled]="busy() === 'reset'">
+          {{ busy() === 'reset' ? 'Sending…' : 'Send reset link' }}
+        </button>
+      </div>
+      @if (message()?.section === 'password') { <p class="msg" [class]="message()!.kind">{{ message()!.text }}</p> }
+    </section>
+
+    <!-- Gmail summary -->
+    <section class="cc-panel block">
+      <div class="block-head">
+        <div>
+          <h2>Google Mail integration</h2>
+          <p class="sub">
+            {{ connections().length ? connections().length + ' Gmail account' + (connections().length === 1 ? '' : 's') + ' connected for monitoring.' : 'No Gmail accounts connected for monitoring.' }}
+          </p>
+        </div>
+        <a class="cc-btn cc-btn--sm cc-btn--primary" routerLink="/gmail">Manage</a>
+      </div>
+    </section>
+
+    <section class="cc-panel block">
+      <div class="block-head">
+        <div><h2>Sign out</h2><p class="sub">Sign out of SmartShare on this device.</p></div>
+        <button class="cc-btn cc-btn--sm" (click)="auth.logout()">Sign out</button>
+      </div>
+    </section>
+  }
+</div>

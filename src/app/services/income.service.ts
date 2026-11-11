@@ -1,39 +1,52 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, addDoc, collectionData, doc, updateDoc, deleteDoc } from '@angular/fire/firestore';
-import { query, where } from "firebase/firestore";
+import {
+  Firestore,
+  addDoc,
+  collection,
+  collectionData,
+  deleteDoc,
+  doc,
+  query,
+  updateDoc,
+  where,
+} from '@angular/fire/firestore';
+import { Observable } from 'rxjs';
+import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class IncomeService {
-  firestore = inject(Firestore);
+  private firestore = inject(Firestore);
+  private auth = inject(AuthService);
+  private col = collection(this.firestore, 'income');
 
   addIncome(data: any) {
-    return addDoc(collection(this.firestore, 'income'), data);
+    return addDoc(this.col, { ...data, userId: this.auth.requireUid() });
   }
 
-  getIncome() {
-    return collectionData(collection(this.firestore, 'income'), {
-      idField: 'id'
-    });
+  getIncome(): Observable<any[]> {
+    return this.auth.forUser(
+      uid => collectionData(query(this.col, where('userId', '==', uid)), { idField: 'id' }),
+      []
+    );
   }
 
-  getIncomeByMonth(month: string) {
-    return collectionData(
-      query(
-        collection(this.firestore, 'income'),
-        where('month', '==', month)
-      ),
-      { idField: 'id' }
+  getIncomeByMonth(month: string): Observable<any[]> {
+    return this.auth.forUser(
+      uid =>
+        collectionData(
+          query(this.col, where('userId', '==', uid), where('month', '==', month)),
+          { idField: 'id' }
+        ),
+      []
     );
   }
 
   updateIncome(income: any) {
-    const ref = doc(this.firestore, 'income', income.id);
-    return updateDoc(ref, income);
+    const { id, userId, ...changes } = income;
+    return updateDoc(doc(this.firestore, 'income', id), changes);
   }
 
   deleteIncome(id: string) {
-    const ref = doc(this.firestore, 'income', id);
-    return deleteDoc(ref);
+    return deleteDoc(doc(this.firestore, 'income', id));
   }
-
 }

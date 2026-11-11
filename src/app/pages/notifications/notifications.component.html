@@ -1,0 +1,81 @@
+<div class="cc-page">
+  <section class="cc-heading">
+    <div>
+      <p class="eyebrow">NOTIFICATIONS</p>
+      <h1>Notifications</h1>
+      <p>Upcoming dates, payment reminders and what Gmail monitoring found.</p>
+    </div>
+  </section>
+
+  @if (actionError()) { <p class="cc-error" role="alert">{{ actionError() }}</p> }
+
+  <!-- Pending review call-to-action -->
+  @if (pending().length) {
+    <a class="cc-panel review-cta" routerLink="/review">
+      <span class="icon">🔍</span>
+      <span class="text">
+        <strong>{{ pending().length }} item{{ pending().length === 1 ? '' : 's' }} waiting for review</strong>
+        <small>Extracted from email — approve, edit or reject before they count.</small>
+      </span>
+      <span class="go">Review ›</span>
+    </a>
+  }
+
+  <!-- Live reminders (computed, never stale) -->
+  <h2 class="section">Upcoming <span class="cc-count">{{ reminders().length }}</span></h2>
+  @if (!reminders().length) {
+    <p class="quiet">No statements, dues or expiries in the next few days.</p>
+  } @else {
+    <section class="cc-panel list">
+      @for (r of reminders(); track r.key) {
+        <a class="row" [routerLink]="r.link">
+          <span class="row-icon" [class]="'tone-' + r.tone">{{ icons[r.type] }}</span>
+          <span class="row-text">
+            <strong>{{ r.title }}</strong>
+            <small>{{ r.body }}</small>
+          </span>
+          <span class="row-date">{{ r.date | date: 'd MMM' }}</span>
+        </a>
+      }
+    </section>
+  }
+
+  <!-- Stored event notifications -->
+  <div class="inbox-head">
+    <h2 class="section">Activity <span class="cc-count" [class.cc-count--alert]="unreadCount()">{{ unreadCount() }} new</span></h2>
+    <div class="inbox-actions">
+      <div class="cc-chips">
+        <button class="cc-chip" [class.active]="filter() === 'all'" (click)="filter.set('all')">All</button>
+        <button class="cc-chip" [class.active]="filter() === 'unread'" (click)="filter.set('unread')">Unread</button>
+      </div>
+      <button class="cc-btn cc-btn--sm" (click)="markAllRead()" [disabled]="!unreadCount()">Mark all read</button>
+      <button class="cc-btn cc-btn--sm" (click)="clearRead()" [disabled]="!hasRead()">Clear read</button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="cc-empty"><div class="cc-spinner"></div><p>Loading…</p></div>
+  } @else if (!shown().length) {
+    <p class="quiet">{{ filter() === 'unread' ? 'You are all caught up.' : 'No activity yet. Gmail monitoring events will show up here.' }}</p>
+  } @else {
+    <section class="cc-panel list">
+      @for (n of shown(); track n.id) {
+        <div class="row" [class.unread]="!n.read">
+          <span class="row-icon">{{ icons[n.type] || '🔔' }}</span>
+          <button class="row-text as-link" (click)="open(n)">
+            <strong>
+              {{ n.title }}
+              @if (n.origin === 'demo') { <span class="cc-badge tone-demo">Sample</span> }
+            </strong>
+            <small>{{ n.body }}</small>
+            <small class="when">{{ n.createdAt ? (n.createdAt | date: 'd MMM, h:mm a') : 'just now' }}</small>
+          </button>
+          <span class="row-actions">
+            @if (!n.read) { <button class="cc-btn cc-btn--sm" (click)="markRead(n)" aria-label="Mark read">✓</button> }
+            <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="remove(n)" aria-label="Delete">✕</button>
+          </span>
+        </div>
+      }
+    </section>
+  }
+</div>

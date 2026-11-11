@@ -1,37 +1,42 @@
 import { Injectable, inject } from '@angular/core';
 import {
   Firestore,
-  collection,
   addDoc,
+  collection,
   collectionData,
   deleteDoc,
   doc,
   query,
-  where
+  where,
 } from '@angular/fire/firestore';
+import { Observable } from 'rxjs';
+import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class UpcomingPaymentService {
-  firestore = inject(Firestore);
+  private firestore = inject(Firestore);
+  private auth = inject(AuthService);
+  private col = collection(this.firestore, 'upcoming_payments');
 
   add(payment: any) {
-    return addDoc(collection(this.firestore, 'upcoming_payments'), payment);
+    return addDoc(this.col, { ...payment, userId: this.auth.requireUid() });
   }
 
-  getAll() {
-    return collectionData(
-      collection(this.firestore, 'upcoming_payments'),
-      { idField: 'id' }
+  getAll(): Observable<any[]> {
+    return this.auth.forUser(
+      uid => collectionData(query(this.col, where('userId', '==', uid)), { idField: 'id' }),
+      []
     );
   }
 
-  getByMonth(month: string) {
-    return collectionData(
-      query(
-        collection(this.firestore, 'upcoming_payments'),
-        where('month', '==', month)
-      ),
-      { idField: 'id' }
+  getByMonth(month: string): Observable<any[]> {
+    return this.auth.forUser(
+      uid =>
+        collectionData(
+          query(this.col, where('userId', '==', uid), where('month', '==', month)),
+          { idField: 'id' }
+        ),
+      []
     );
   }
 

@@ -1,0 +1,235 @@
+<div class="cc-page">
+  <section class="cc-heading">
+    <div>
+      <p class="eyebrow">REVIEW CENTER</p>
+      <h1>Review extracted information</h1>
+      <p>Everything detected in your Gmail waits here. Check the category and values, then approve — only approved items reach Income, Expenses, Bills and Cards.</p>
+    </div>
+    <div class="cc-heading-actions">
+      <a class="cc-btn" routerLink="/gmail">📬 Gmail settings</a>
+    </div>
+  </section>
+
+  @if (banner(); as b) { <p class="banner" [class]="b.kind" role="status">{{ b.text }}</p> }
+
+  <section class="cc-filters">
+    <div class="cc-chips">
+      <button class="cc-chip" [class.active]="tab() === 'pending'" (click)="tab.set('pending')">
+        Pending <span class="cc-count" [class.cc-count--alert]="pending().length">{{ pending().length }}</span>
+      </button>
+      <button class="cc-chip" [class.active]="tab() === 'history'" (click)="tab.set('history')">History</button>
+    </div>
+  </section>
+
+  @if (tab() === 'pending') {
+    @if (pending().length) {
+      <section class="cc-filters toolbar">
+        <div class="cc-chips">
+          @for (g of groupFilters; track g.id) {
+            @if (g.id === 'all' || groupCount(g.id)) {
+              <button class="cc-chip" [class.active]="group() === g.id" (click)="group.set(g.id)">
+                {{ g.label }} <span class="cc-count">{{ groupCount(g.id) }}</span>
+              </button>
+            }
+          }
+        </div>
+        @if (bulkReady().length > 1) {
+          <button class="cc-btn cc-btn--sm" (click)="approveAllReady()" [disabled]="bulkBusy() || !!editingId()"
+                  title="Approves items with ≥85% confidence and complete values, as suggested">
+            {{ bulkBusy() ? 'Approving…' : '✓ Approve ' + bulkReady().length + ' high-confidence' }}
+          </button>
+        }
+      </section>
+    }
+
+    @if (loading()) {
+      <div class="cc-empty"><div class="cc-spinner"></div><p>Loading review queue…</p></div>
+    } @else if (!pending().length) {
+      <div class="cc-empty">
+        <div class="icon">✅</div>
+        <h2>All caught up</h2>
+        <p>New salary credits, bank and card transactions, statements and bills found in your connected Gmail will appear here.</p>
+        <div class="empty-actions">
+          <a class="cc-btn cc-btn--primary" routerLink="/gmail">Connect Gmail</a>
+          <button class="cc-btn" (click)="loadSamples()" [disabled]="loadingSamples()">
+            {{ loadingSamples() ? 'Creating…' : '🧪 Try with sample items' }}
+          </button>
+        </div>
+      </div>
+    } @else {
+      <section class="queue">
+        @for (item of shown(); track item.id) {
+          <article class="cc-panel item" [class.editing]="editingId() === item.id">
+            <header class="item-head">
+              <div class="kinds">
+                @if (item.category) {
+                  <span class="cc-badge tone-info">{{ categoryInfo[item.category].icon }} {{ categoryInfo[item.category].label }}</span>
+                }
+                @if (item.origin === 'demo') { <span class="cc-badge tone-demo">🧪 Sample</span> }
+                <span class="cc-badge" [class]="confidenceTone(item.confidence)" title="How sure the detector is">{{ item.confidence | percent: '1.0-0' }}</span>
+              </div>
+              <span class="received">{{ item.email.receivedAt | date: 'd MMM, h:mm a' }}</span>
+            </header>
+
+            <div class="email">
+              <div class="subject">{{ item.email.subject }}</div>
+              <div class="from">{{ item.email.from }} → {{ item.email.account }}</div>
+              @if (item.email.snippet) { <blockquote>“{{ item.email.snippet }}”</blockquote> }
+            </div>
+
+            <!-- Destination + card -->
+            <div class="route">
+              <label class="cc-field">
+                <span>Goes to</span>
+                @if (item.kind === 'card_update') {
+                  <input [value]="kindInfo['card_update'].module" disabled />
+                } @else {
+                  <select [ngModel]="kindOf(item)" (ngModelChange)="chooseKind(item, $event)" [name]="'kind-' + item.id">
+                    @for (k of switchable; track k) { <option [value]="k">{{ kindInfo[k].label }} · {{ kindInfo[k].module }}</option> }
+                  </select>
+                }
+              </label>
+              @if (needsCard(item)) {
+                <label class="cc-field">
+                  <span>Card
+                    @if (!cardIdOf(item)) { <small class="warn">{{ item.cardHint.lastFourDigits ? 'No card ending ' + item.cardHint.lastFourDigits : 'Choose' }}</small> }
+                  </span>
+                  <select [ngModel]="cardIdOf(item)" (ngModelChange)="chooseCard(item, $event)" [name]="'card-' + item.id">
+                    <option value="" disabled>Select card</option>
+                    @for (c of activeCards(); track c.id) { <option [value]="c.id">{{ label(c) }}</option> }
+                  </select>
+                </label>
+              }
+            </div>
+
+            <!-- Values -->
+            @if (editingId() !== item.id) {
+              @let v = view(item);
+              @switch (kindOf(item)) {
+                @case ('statement') {
+                  <dl class="values">
+                    <div><dt>Statement date</dt><dd>{{ v.statementDate ? (v.statementDate | date: 'd MMM y') : '—' }}</dd></div>
+                    <div><dt>Due date</dt><dd>{{ v.dueDate ? (v.dueDate | date: 'd MMM y') : '—' }}</dd></div>
+                    <div><dt>Total due</dt><dd>₹{{ v.totalDue | number: '1.0-2' }}</dd></div>
+                    <div><dt>Minimum due</dt><dd>₹{{ v.minDue | number: '1.0-2' }}</dd></div>
+                  </dl>
+                }
+                @case ('card_update') {
+                  <dl class="values">
+                    @for (f of proposedFields(item); track f) {
+                      <div><dt>{{ fieldLabels[f] }}</dt><dd><s>{{ currentValue(item, f) ?? '—' }}</s> → <strong>{{ item.extracted[f] }}</strong></dd></div>
+                    }
+                  </dl>
+                }
+                @case ('bill') {
+                  <dl class="values">
+                    <div><dt>Due date</dt><dd>{{ v.dueDate ? (v.dueDate | date: 'd MMM y') : '—' }}</dd></div>
+                    <div><dt>Amount</dt><dd>₹{{ v.amount | number: '1.0-2' }}</dd></div>
+                    <div><dt>Description</dt><dd>{{ v.description || '—' }}</dd></div>
+                    <div><dt>Category</dt><dd>{{ v.category || '—' }}</dd></div>
+                  </dl>
+                }
+                @default {
+                  <dl class="values">
+                    <div><dt>Date</dt><dd>{{ v.txnDate ? (v.txnDate | date: 'd MMM y') : '—' }}</dd></div>
+                    <div><dt>Amount</dt><dd>{{ kindOf(item) === 'transaction' && v.direction === 'credit' ? '+' : '' }}₹{{ v.amount | number: '1.0-2' }}</dd></div>
+                    <div><dt>Description</dt><dd>{{ v.description || '—' }}</dd></div>
+                    <div><dt>Category</dt><dd>{{ v.category || '—' }}</dd></div>
+                  </dl>
+                }
+              }
+            } @else {
+              <div class="edit-form">
+                @switch (kindOf(item)) {
+                  @case ('statement') {
+                    <div class="cc-row">
+                      <label class="cc-field"><span>Statement date</span><input type="date" [(ngModel)]="draft.statementDate" name="statementDate" /></label>
+                      <label class="cc-field"><span>Due date</span><input type="date" [(ngModel)]="draft.dueDate" name="dueDate" /></label>
+                    </div>
+                    <div class="cc-row">
+                      <label class="cc-field"><span>Total due (₹)</span><input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="draft.totalDue" name="totalDue" /></label>
+                      <label class="cc-field"><span>Minimum due (₹)</span><input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="draft.minDue" name="minDue" /></label>
+                    </div>
+                  }
+                  @case ('card_update') {
+                    <p class="hint">Leave a field empty to keep the card's current value.</p>
+                    <div class="cc-row">
+                      @for (f of cardFields; track f) {
+                        <label class="cc-field"><span>{{ fieldLabels[f] }} <small>now {{ currentValue(item, f) ?? '—' }}</small></span>
+                          <input type="number" inputmode="numeric" [(ngModel)]="draft[f]" [name]="f" /></label>
+                      }
+                    </div>
+                  }
+                  @default {
+                    <div class="cc-row">
+                      <label class="cc-field"><span>{{ kindOf(item) === 'bill' ? 'Due date' : 'Date' }}</span><input type="date" [(ngModel)]="draft.date" name="date" /></label>
+                      <label class="cc-field"><span>Amount (₹)</span><input type="number" inputmode="decimal" min="0.01" step="0.01" [(ngModel)]="draft.amount" name="amount" /></label>
+                    </div>
+                    <div class="cc-row">
+                      @if (kindOf(item) === 'transaction') {
+                        <label class="cc-field"><span>Type</span>
+                          <select [(ngModel)]="draft.direction" name="direction">
+                            <option value="debit">Spend (debit)</option>
+                            <option value="credit">Refund / payment (credit)</option>
+                          </select>
+                        </label>
+                      }
+                      <label class="cc-field"><span>Category</span>
+                        <select [(ngModel)]="draft.category" name="category">
+                          @for (c of categoriesFor(kindOf(item)); track c) { <option [value]="c">{{ c }}</option> }
+                        </select>
+                      </label>
+                    </div>
+                    <label class="cc-field"><span>Description</span><input maxlength="120" [(ngModel)]="draft.description" name="description" /></label>
+                  }
+                }
+              </div>
+            }
+
+            @if (itemError()[item.id]; as err) { <p class="cc-error" role="alert">{{ err }}</p> }
+
+            <footer class="item-actions">
+              @if (editingId() === item.id) {
+                <button class="cc-btn" (click)="cancelEdit()" [disabled]="busyId() === item.id">Cancel</button>
+                <button class="cc-btn cc-btn--primary" (click)="approve(item)" [disabled]="busyId() === item.id">
+                  {{ busyId() === item.id ? 'Saving…' : 'Save & approve' }}
+                </button>
+              } @else {
+                <button class="cc-btn cc-btn--danger-text" (click)="reject(item)" [disabled]="busyId() === item.id">Reject</button>
+                <button class="cc-btn" (click)="startEdit(item)" [disabled]="busyId() === item.id || !!editingId()">Edit</button>
+                <button class="cc-btn cc-btn--primary" (click)="approve(item)" [disabled]="busyId() === item.id || !!editingId()">
+                  {{ busyId() === item.id ? 'Approving…' : 'Approve' }}
+                </button>
+              }
+            </footer>
+          </article>
+        }
+      </section>
+    }
+  } @else {
+    @if (!resolved().length) {
+      <div class="cc-empty"><div class="icon">🗂️</div><h2>No decisions yet</h2><p>Approved and rejected items are listed here.</p></div>
+    } @else {
+      <section class="cc-panel history">
+        @for (item of resolved(); track item.id) {
+          <div class="history-row">
+            <div class="history-main">
+              <span class="subject">{{ item.email.subject }}</span>
+              <span class="meta">
+                {{ item.category ? categoryInfo[item.category].label : kindInfo[item.kind].label }}
+                @if (item.status === 'approved') { → {{ kindInfo[item.kind].module }} }
+                · {{ item.email.account }} · {{ item.resolvedAt | date: 'd MMM, h:mm a' }}
+              </span>
+            </div>
+            <div class="history-tags">
+              @if (item.edited) { <span class="cc-badge tone-soon">Edited</span> }
+              <span class="cc-badge" [class]="item.status === 'approved' ? 'tone-ok' : 'tone-closed'">
+                {{ item.status === 'approved' ? '✓ Approved' : '✕ Rejected' }}
+              </span>
+            </div>
+          </div>
+        }
+      </section>
+    }
+  }
+</div>

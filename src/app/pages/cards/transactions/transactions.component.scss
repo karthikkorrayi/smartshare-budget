@@ -1,0 +1,52 @@
+.month-nav { display: flex; align-items: center; gap: 6px; }
+
+.days { display: flex; flex-direction: column; gap: 14px; }
+
+.day { padding: 6px 16px; }
+
+.day-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+  .day-total { color: #0f172a; }
+}
+
+.txn {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+  &:last-child { border-bottom: none; }
+}
+
+.txn-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  .desc { font-weight: 650; color: #0f172a; overflow-wrap: anywhere; }
+  .meta { font-size: 13px; color: #64748b; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+}
+
+.txn-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  .amount { font-size: 16px; font-weight: 750; white-space: nowrap; }
+}
+
+.row-actions { display: flex; gap: 6px; }
+
+@media (max-width: 600px) {
+  .cc-filters { flex-direction: column; align-items: stretch;
+    .month-nav input { flex: 1; } }
+  .day { padding: 4px 12px; }
+}

@@ -42,3 +42,8 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 .env
+
+# Firebase emulator logs
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
