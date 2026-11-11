@@ -5,6 +5,7 @@ import { open, sha256, Sealed } from './crypto';
 import { getMessage, listMessageIds } from './gmail';
 import { OAuthError, accessToken } from './google';
 import { MAX_MESSAGES_PER_RUN } from './config';
+import { pushToUser } from './push';
 
 const db = () => getFirestore();
 
@@ -163,6 +164,16 @@ export async function syncConnection(connId: string, secrets: Secrets, budgetMs:
         origin: 'system',
         createdAt: FieldValue.serverTimestamp(),
       });
+      await pushToUser(
+        conn.userId,
+        {
+          title: `🔍 ${stats.created} new item${stats.created === 1 ? '' : 's'} to review`,
+          body: `Found in ${conn.email}. Tap to approve, edit or reject.`,
+          route: '/review',
+          tag: 'review-pending',
+        },
+        'reviews'
+      ).catch(e => logger.warn('review push failed', { err: String(e) }));
     }
     return stats;
   } catch (e: any) {

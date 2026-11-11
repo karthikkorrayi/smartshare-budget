@@ -13,6 +13,7 @@ export const NOTIFICATION_TYPES = [
   'payment_reminder',
   'card_updated',
   'review_pending',
+  'limit_exceeded',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -25,7 +26,7 @@ export interface AppNotification {
   cardId: string | null;
   link: string | null; // in-app route, e.g. '/review'
   read: boolean;
-  origin: 'system' | 'demo';
+  origin: 'system' | 'demo' | 'client';
   createdAt: Date | null;
   readAt: Date | null;
 }
@@ -52,4 +53,5 @@ export const NOTIFICATION_ICONS: Record<string, string> = {
   card_updated: '✏️',
   card_expiring: '⌛',
   review_pending: '🔍',
+  limit_exceeded: '🚦',
 };

@@ -14,6 +14,19 @@ export const GMAIL_CLIENT_SECRET = defineSecret('GMAIL_CLIENT_SECRET');
 /** 32-byte base64 key for AES-256-GCM token encryption. Set with: firebase functions:secrets:set TOKEN_ENC_KEY */
 export const TOKEN_ENC_KEY = defineSecret('TOKEN_ENC_KEY');
 
+/**
+ * Guards against the most common setup mistake: pasting the client SECRET ("GOCSPX-…")
+ * where the client ID ("….apps.googleusercontent.com") belongs.
+ */
+export function assertClientId(id: string): void {
+  if (/^GOCSPX-/i.test(id)) {
+    throw new Error('GMAIL_CLIENT_ID contains a client SECRET (GOCSPX-…). Use the client ID ending in .apps.googleusercontent.com, and rotate that secret.');
+  }
+  if (!/^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(id)) {
+    throw new Error('GMAIL_CLIENT_ID is not an OAuth client ID (expected …apps.googleusercontent.com).');
+  }
+}
+
 export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 
 /** Per-run safety limits. */

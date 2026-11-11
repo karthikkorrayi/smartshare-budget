@@ -1,15 +1,17 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from './services/auth.service';
 import { NotificationsService } from './services/notifications.service';
 import { ReviewService } from './services/review.service';
+import { PushService } from './services/push.service';
+import { AlertHostComponent } from './components/alert-host/alert-host.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AlertHostComponent],
   template: `
   <header class="top-nav">
     <div class="brand">
@@ -53,6 +55,7 @@ import { ReviewService } from './services/review.service';
   <main class="app-shell">
     <router-outlet></router-outlet>
   </main>
+  <app-alert-host></app-alert-host>
   `,
   styleUrl: './app.component.scss',
 })
@@ -62,4 +65,18 @@ export class AppComponent {
   private review = inject(ReviewService);
   badge = toSignal(this.notifications.badgeCount$, { initialValue: 0 });
   pending = toSignal(this.review.pending$.pipe(map(p => p.length)), { initialValue: 0 });
+  private push = inject(PushService);
+  private pushStartedFor: string | null = null;
+
+  constructor() {
+    // Restore push on this device once a verified user is signed in (loads firebase/messaging lazily).
+    effect(() => {
+      const a = this.auth.account();
+      if (a?.ready && this.pushStartedFor !== a.uid) {
+        this.pushStartedFor = a.uid;
+        this.push.init().catch(e => console.warn('[Push] init failed', e));
+      }
+      if (!a) this.pushStartedFor = null;
+    });
+  }
 }

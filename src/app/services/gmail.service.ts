@@ -27,7 +27,9 @@ export class GmailService {
   private col = collection(this.firestore, 'gmail_connections');
   private gisLoading?: Promise<void>;
 
-  readonly configured = !!environment.gmailOAuthClientId;
+  /** A real OAuth client ID — never a client secret ("GOCSPX-…") or the placeholder. */
+  readonly configured = /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(environment.gmailOAuthClientId ?? '');
+  readonly misconfiguredWithSecret = /^GOCSPX-/i.test(environment.gmailOAuthClientId ?? '');
 
   readonly connections$: Observable<GmailConnection[]> = this.auth
     .forUser(
@@ -45,7 +47,7 @@ export class GmailService {
 
   /** Opens Google's consent popup (Gmail read-only), then hands the code to the server. */
   async connect(backfillDays: number, groups: MonitorGroup[], loginHint?: string): Promise<{ email: string; stats: SyncStats | null }> {
-    if (!this.configured) throw new Error('Gmail integration is not configured (environment.gmailOAuthClientId is empty).');
+    if (!this.configured) throw new Error('Gmail integration is not configured: environment.gmailOAuthClientId must be the OAuth client ID ending in .apps.googleusercontent.com.');
     await this.loadGis();
     const code = await new Promise<string>((resolve, reject) => {
       const client = google.accounts.oauth2.initCodeClient({

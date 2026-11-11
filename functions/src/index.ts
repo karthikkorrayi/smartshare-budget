@@ -6,6 +6,8 @@
  *   gmailDisconnect    callable   revoke + delete stored access
  *   gmailScheduledSync schedule   every 30 min, all active connections
  *
+ *   dailyDueDigest     schedule   09:00 IST, one push per user: overdue / due-soon payments, statement tomorrow
+ *
  * Extracted data only ever becomes PENDING review_items. Nothing reaches the
  * financial collections until the user approves it in the app.
  */
@@ -14,11 +16,13 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { ALLOWED_BACKFILL_DAYS, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, REGION, TOKEN_ENC_KEY } from './config';
+import { ALLOWED_BACKFILL_DAYS, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, REGION, TOKEN_ENC_KEY, assertClientId } from './config';
 import { MONITOR_GROUPS, MonitorGroup } from './classify';
 import { open, seal, sha256, Sealed } from './crypto';
 import { OAuthError, exchangeCode, revoke } from './google';
 import { syncConnection } from './sync';
+import { CardLite, StatementLite, computeDueReminders, digest } from './reminders';
+import { pushToUser } from './push';
 
 initializeApp();
 const db = getFirestore();
@@ -63,6 +67,13 @@ export const gmailConnect = onCall(callableOpts, async req => {
   if (typeof code !== 'string' || code.length < 10 || code.length > 2048) throw new HttpsError('invalid-argument', 'Missing authorization code.');
   const days = ALLOWED_BACKFILL_DAYS.includes(Number(backfillDays)) ? Number(backfillDays) : 30;
   const chosen = (Array.isArray(groups) ? groups : []).filter((g): g is MonitorGroup => (MONITOR_GROUPS as readonly string[]).includes(g));
+
+  try {
+    assertClientId(GMAIL_CLIENT_ID.value());
+  } catch (e: any) {
+    logger.error('misconfigured GMAIL_CLIENT_ID', { err: e.message });
+    throw new HttpsError('failed-precondition', 'Gmail integration is misconfigured on the server (GMAIL_CLIENT_ID). The app owner needs to fix it.');
+  }
 
   let result;
   try {
@@ -170,5 +181,42 @@ export const gmailScheduledSync = onSchedule(
       }
     }
     logger.info('scheduled sync finished', { connections: snap.size, done });
+  }
+);
+
+/**
+ * 09:00 IST daily: one push per user who enabled notifications, summarising card payments that are
+ * overdue or due within their lead time, and statements generating tomorrow. (The in-app bell already
+ * shows these live, so nothing is stored here — this only reaches users who are away from the app.)
+ */
+export const dailyDueDigest = onSchedule(
+  { schedule: 'every day 09:00', timeZone: 'Asia/Kolkata', region: REGION, timeoutSeconds: 300, memory: '256MiB', maxInstances: 1 },
+  async () => {
+    const tokens = await db.collection('fcm_tokens').get();
+    const users = [...new Set(tokens.docs.map(d => String(d.get('userId'))))];
+    const now = new Date();
+    let sent = 0;
+    for (const uid of users) {
+      try {
+        const [cardsSnap, stmtSnap, userSnap] = await Promise.all([
+          db.collection('cards').where('userId', '==', uid).where('status', '==', 'Active').get(),
+          db.collection('card_statements').where('userId', '==', uid).where('status', 'in', ['Unpaid', 'Partially Paid']).get(),
+          db.doc(`users/${uid}`).get(),
+        ]);
+        if (cardsSnap.empty) continue;
+        const lead = Math.min(10, Math.max(1, Number(userSnap.get('settings.reminderDays')) || 3));
+        const cards = cardsSnap.docs.map(d => ({ id: d.id, ...d.data() }) as CardLite);
+        const statements = stmtSnap.docs.map(d => {
+          const x = d.data();
+          return { id: d.id, ...x, statementDate: x.statementDate.toDate(), dueDate: x.dueDate.toDate() } as StatementLite;
+        });
+        const msg = digest(computeDueReminders(cards, statements, now, lead));
+        if (!msg) continue;
+        sent += await pushToUser(uid, { ...msg, route: '/notifications', tag: 'daily-due' }, 'dues');
+      } catch (e) {
+        logger.warn('digest failed', { uid, err: String(e) });
+      }
+    }
+    logger.info('daily digest done', { users: users.length, sent });
   }
 );

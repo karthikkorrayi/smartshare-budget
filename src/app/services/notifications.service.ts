@@ -168,7 +168,7 @@ export class NotificationsService {
       cardId: d.cardId ?? null,
       link: d.link ?? null,
       read: !!d.read,
-      origin: d.origin === 'demo' ? 'demo' : 'system',
+      origin: d.origin === 'demo' ? 'demo' : d.origin === 'client' ? 'client' : 'system',
       createdAt: toDate(d.createdAt),
       readAt: toDate(d.readAt),
     };

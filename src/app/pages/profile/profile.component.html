@@ -108,6 +108,69 @@
       @if (message()?.section === 'password') { <p class="msg" [class]="message()!.kind">{{ message()!.text }}</p> }
     </section>
 
+    <!-- Budget & alerts -->
+    <section class="cc-panel block" id="budget">
+      <div>
+        <h2>Budget & alerts</h2>
+        <p class="sub">Daily limit, streaks and phone notifications.</p>
+      </div>
+
+      <form class="settings" (ngSubmit)="saveSettings()">
+        <div class="cc-row">
+          <label class="cc-field">
+            <span>Daily spending limit (₹) <small>0 = none</small></span>
+            <input type="number" min="0" step="50" inputmode="numeric" name="dailyLimit" [(ngModel)]="form.dailyLimit" />
+          </label>
+          <label class="cc-field">
+            <span>Remind me before card due dates</span>
+            <select name="reminderDays" [(ngModel)]="form.reminderDays">
+              @for (d of [1, 2, 3, 5, 7, 10]; track d) { <option [ngValue]="d">{{ d }} day{{ d === 1 ? '' : 's' }} before</option> }
+            </select>
+          </label>
+        </div>
+        <p class="sub small">The limit covers expenses and card spends together. Each card can also have its own limit (edit the card). You'll get a warning the moment a save takes you over.</p>
+
+        <label class="cc-toggle">
+          <input type="checkbox" name="celebrate" [(ngModel)]="form.celebrate" />
+          <div><strong>Streaks & appreciation</strong><span>Show no-spend and within-limit streaks with a short note on Overview.</span></div>
+        </label>
+
+        <p class="cc-section-title">Push notifications</p>
+        <div class="push-row">
+          <div class="m-text">
+            <strong>This device</strong>
+            <small>
+              @switch (push.state()) {
+                @case ('on') { On — you'll get alerts even when the app is closed. }
+                @case ('blocked') { Blocked in browser settings. Allow notifications for this site, then try again. }
+                @case ('unsupported') { This browser doesn't support web push (on iPhone, add the app to your Home Screen first). }
+                @case ('not-configured') { Not configured yet (fcmVapidKey missing in environment). }
+                @default { Off. }
+              }
+            </small>
+          </div>
+          @if (push.state() === 'on' || push.state() === 'off') {
+            <button type="button" class="cc-btn cc-btn--sm" [class.cc-btn--primary]="push.state() === 'off'" (click)="togglePush()" [disabled]="busy() === 'push'">
+              {{ busy() === 'push' ? 'Working…' : push.state() === 'on' ? 'Turn off' : 'Turn on' }}
+            </button>
+          }
+        </div>
+        <label class="cc-toggle">
+          <input type="checkbox" name="pushReviews" [(ngModel)]="form.push.reviews" />
+          <div><strong>New items to review</strong><span>When Gmail monitoring finds salary, transactions, statements or bills.</span></div>
+        </label>
+        <label class="cc-toggle">
+          <input type="checkbox" name="pushDues" [(ngModel)]="form.push.dues" />
+          <div><strong>Daily 9 AM due digest</strong><span>Card payments due soon or overdue, and statements generating tomorrow.</span></div>
+        </label>
+
+        <button class="cc-btn cc-btn--primary" type="submit" [disabled]="busy() === 'settings'">
+          {{ busy() === 'settings' ? 'Saving…' : 'Save settings' }}
+        </button>
+      </form>
+      @if (message()?.section === 'budget') { <p class="msg" [class]="message()!.kind">{{ message()!.text }}</p> }
+    </section>
+
     <!-- Gmail summary -->
     <section class="cc-panel block">
       <div class="block-head">

@@ -26,3 +26,10 @@ test('wrong key fails; tampering fails', () => {
 test('rejects short keys', () => {
   assert.throws(() => seal('x', randomBytes(16).toString('base64'), 'c'), /32 bytes/);
 });
+
+import { assertClientId } from '../config';
+test('client ID guard rejects secrets and junk', () => {
+  assert.throws(() => assertClientId('GOCSPX-dummySecretValueForTestingPurposesOnly'), /SECRET/);
+  assert.throws(() => assertClientId('hello'), /not an OAuth client ID/);
+  assert.doesNotThrow(() => assertClientId('123456789-placeholder.apps.googleusercontent.com'));
+});

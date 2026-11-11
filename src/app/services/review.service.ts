@@ -14,6 +14,7 @@ import {
 } from '@angular/fire/firestore';
 import { Observable, map, shareReplay } from 'rxjs';
 import { AuthService } from './auth.service';
+import { SpendingService } from './spending.service';
 import { EmailCategory, ExtractedValues, ReviewItem, ReviewKind } from '../models/review-item.model';
 import { Card, CARD_UPDATABLE_FIELDS } from '../models/card.model';
 import { CardTransactionsService } from './card-transactions.service';
@@ -33,6 +34,7 @@ export interface ApprovalInput {
 export class ReviewService {
   private firestore = inject(Firestore);
   private auth = inject(AuthService);
+  private spending = inject(SpendingService);
   private col = collection(this.firestore, 'review_items');
 
   /** Pending items, newest email first. Two equality filters → no composite index needed. */
@@ -192,6 +194,11 @@ export class ReviewService {
       resolvedAt: serverTimestamp(),
     });
     await batch.commit();
+
+    // Approved spends count toward daily limits just like manual ones.
+    if (a.kind === 'expense' || (a.kind === 'transaction' && (v.direction ?? 'debit') === 'debit')) {
+      void this.spending.afterSpend({ date: when, amount: Number(v.amount) || 0, cardId: a.kind === 'transaction' ? a.cardId ?? undefined : undefined });
+    }
   }
 
   async reject(item: ReviewItem): Promise<void> {

@@ -13,8 +13,10 @@
     </div>
   </section>
 
-  @if (!configured) {
-    <p class="cc-error">Gmail integration isn't configured yet: set <code>gmailOAuthClientId</code> in <code>src/environments/environment.ts</code> and deploy the Cloud Functions.</p>
+  @if (secretInClientId) {
+    <p class="cc-error"><strong>Security:</strong> <code>gmailOAuthClientId</code> contains an OAuth client <em>secret</em> (GOCSPX-…). Rotate that secret in Google Cloud and use the client ID ending in <code>.apps.googleusercontent.com</code>.</p>
+  } @else if (!configured) {
+    <p class="cc-error">Gmail integration isn't configured yet: set <code>gmailOAuthClientId</code> in <code>src/environments/environment.ts</code> to your OAuth client ID (…apps.googleusercontent.com).</p>
   }
   @if (notice(); as n) { <p class="notice" [class]="n.kind" role="status">{{ n.text }}</p> }
 

@@ -2,6 +2,7 @@
   <div><p class="eyebrow">YOUR MONEY, AT A GLANCE</p><h1>Monthly overview</h1><p>A little clarity for every rupee.</p></div>
   <div class="overview-actions"><button class="overview-secondary" (click)="openAddIncome()">+ Add income</button><button class="overview-primary" (click)="openAddExpense()">+ Add expense</button></div>
 </section>
+<app-daily-pulse></app-daily-pulse>
 <div class="dashboard" [class.loading]="isLoading">
 
   <div class="loading-overlay" *ngIf="isLoading">
