@@ -1,0 +1,136 @@
+<div class="cc-page">
+  <section class="cc-heading">
+    <div>
+      <p class="eyebrow">GOOGLE MAIL INTEGRATION</p>
+      <h1>Gmail monitoring</h1>
+      <p>Connect one or more Gmail accounts. Financial emails are detected, categorised and sent to the Review Center — nothing is saved until you approve it.</p>
+    </div>
+    <div class="cc-heading-actions">
+      @if (pendingCount().length) {
+        <a class="cc-btn" routerLink="/review">🔍 Review {{ pendingCount().length }}</a>
+      }
+      <button class="cc-btn cc-btn--primary" (click)="showConnect.set(!showConnect())" [disabled]="!configured">+ Connect Gmail</button>
+    </div>
+  </section>
+
+  @if (!configured) {
+    <p class="cc-error">Gmail integration isn't configured yet: set <code>gmailOAuthClientId</code> in <code>src/environments/environment.ts</code> and deploy the Cloud Functions.</p>
+  }
+  @if (notice(); as n) { <p class="notice" [class]="n.kind" role="status">{{ n.text }}</p> }
+
+  <!-- Connect panel -->
+  @if (showConnect()) {
+    <section class="cc-panel connect">
+      <h2>Connect a Gmail account</h2>
+      <ol class="steps">
+        <li>Google asks you to pick a Gmail account and allow <strong>read-only</strong> access to email.</li>
+        <li>Only emails matching financial keywords (credited, debited, statement, due date, bill…) are read.</li>
+        <li>From each match we keep the extracted values and a ~200-character snippet — never the full email.</li>
+        <li>Everything lands in <strong>Review</strong> first. Disconnect any time; access is revoked immediately.</li>
+      </ol>
+
+      <p class="cc-section-title">Monitor these categories</p>
+      <div class="groups">
+        @for (g of groups; track g) {
+          <label class="group" [class.on]="chosenGroups().includes(g)">
+            <input type="checkbox" [checked]="chosenGroups().includes(g)" (change)="toggleChosen(g)" />
+            <span class="g-icon">{{ groupInfo[g].icon }}</span>
+            <span class="g-text"><strong>{{ groupInfo[g].label }}</strong><small>{{ groupInfo[g].hint }}</small></span>
+          </label>
+        }
+      </div>
+
+      <p class="cc-section-title">Look back for past emails</p>
+      <div class="cc-chips">
+        @for (d of [7, 30, 90]; track d) {
+          <button class="cc-chip" [class.active]="backfillDays() === d" (click)="backfillDays.set(d)">Last {{ d }} days</button>
+        }
+      </div>
+
+      <div class="connect-actions">
+        @if (suggestOwnGmail(); as me) {
+          <button class="cc-btn cc-btn--primary" (click)="connect(me)" [disabled]="connecting()">
+            {{ connecting() ? 'Waiting for Google…' : 'Connect ' + me }}
+          </button>
+          <button class="cc-btn" (click)="connect()" [disabled]="connecting()">Another Gmail account</button>
+        } @else {
+          <button class="cc-btn cc-btn--primary" (click)="connect()" [disabled]="connecting()">
+            {{ connecting() ? 'Waiting for Google…' : 'Choose Gmail account' }}
+          </button>
+        }
+        <button class="cc-btn" (click)="showConnect.set(false)" [disabled]="connecting()">Cancel</button>
+      </div>
+      @if (connecting()) { <p class="hint">The first scan runs right after you allow access and can take up to a minute.</p> }
+    </section>
+  }
+
+  <!-- Connections -->
+  @if (loading()) {
+    <div class="cc-empty"><div class="cc-spinner"></div><p>Loading connections…</p></div>
+  } @else if (!connections().length) {
+    @if (!showConnect()) {
+      <div class="cc-empty">
+        <div class="icon">📬</div>
+        <h2>No Gmail connected</h2>
+        <p>Connect your Gmail to detect salary credits, bank and card transactions, statements, bills and due dates automatically.</p>
+        <button class="cc-btn cc-btn--primary" (click)="showConnect.set(true)" [disabled]="!configured">Connect Gmail</button>
+      </div>
+    }
+  } @else {
+    <section class="list">
+      @for (c of connections(); track c.id) {
+        <article class="cc-panel conn">
+          <header class="conn-head">
+            <div class="who">
+              <span class="avatar">{{ c.email.charAt(0).toUpperCase() }}</span>
+              <div>
+                <strong>{{ c.email }}</strong>
+                <small>Connected {{ c.createdAt ? (c.createdAt | date: 'd MMM y') : '' }} · looked back {{ c.backfillDays }} days</small>
+              </div>
+            </div>
+            <span class="cc-badge" [class]="statusTone(c)">{{ statusText(c) }}</span>
+          </header>
+
+          @if (c.status !== 'active' && c.lastError) {
+            <p class="cc-error">{{ c.lastError }}</p>
+          }
+
+          <div class="stats">
+            <div><span>Last checked</span><strong>{{ c.lastRunAt ? (c.lastRunAt | date: 'd MMM, h:mm a') : '—' }}</strong></div>
+            <div><span>Last scan</span><strong>{{ c.lastRunStats ? c.lastRunStats.scanned + ' emails' : '—' }}</strong></div>
+            <div><span>Sent to review</span><strong>{{ c.lastRunStats?.created ?? 0 }}</strong></div>
+            <div><span>Ignored</span><strong>{{ (c.lastRunStats?.ignored ?? 0) + (c.lastRunStats?.skipped ?? 0) }}</strong></div>
+          </div>
+
+          <p class="cc-section-title">Categories</p>
+          <div class="cc-chips wrap">
+            @for (g of groups; track g) {
+              <button class="cc-chip" [class.active]="c.groups.includes(g)" (click)="toggleGroup(c, g)" [disabled]="busyId() === c.id"
+                      [title]="groupInfo[g].hint">{{ groupInfo[g].icon }} {{ groupInfo[g].label }}</button>
+            }
+          </div>
+
+          <footer class="conn-actions">
+            @if (confirmDisconnectId() === c.id) {
+              <span class="confirm">Revoke access and disconnect?</span>
+              <button class="cc-btn cc-btn--sm cc-btn--danger" (click)="disconnect(c)" [disabled]="busyId() === c.id">Disconnect</button>
+              <button class="cc-btn cc-btn--sm" (click)="confirmDisconnectId.set(null)">Cancel</button>
+            } @else {
+              @if (c.status === 'reauth_required' || c.status === 'error') {
+                <button class="cc-btn cc-btn--sm cc-btn--primary" (click)="reconnect(c)" [disabled]="connecting()">Reconnect</button>
+              } @else {
+                <button class="cc-btn cc-btn--sm cc-btn--primary" (click)="syncNow(c)" [disabled]="busyId() === c.id || c.paused">
+                  {{ busyId() === c.id ? 'Working…' : '⟳ Sync now' }}
+                </button>
+              }
+              <button class="cc-btn cc-btn--sm" (click)="togglePaused(c)" [disabled]="busyId() === c.id">{{ c.paused ? '▶ Resume' : '⏸ Pause' }}</button>
+              <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="confirmDisconnectId.set(c.id)">Disconnect</button>
+            }
+          </footer>
+        </article>
+      }
+    </section>
+    <p class="footnote">Checked automatically every 30 minutes. You can also remove access from your Google Account at
+      <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.</p>
+  }
+</div>

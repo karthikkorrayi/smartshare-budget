@@ -8,7 +8,9 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:rules": "npx -y firebase-tools@14 emulators:exec --only firestore --project demo-smartshare-rules \"node --test tests/firestore-rules/rules.test.mjs\"",
-    "deploy:rules": "npx -y firebase-tools@14 deploy --only firestore:rules,firestore:indexes"
+    "deploy:rules": "npx -y firebase-tools@14 deploy --only firestore:rules,firestore:indexes",
+    "deploy:functions": "npm --prefix functions ci && npx -y firebase-tools@15 deploy --only functions",
+    "test:functions": "npm --prefix functions test"
   },
   "prettier": {
     "printWidth": 100,

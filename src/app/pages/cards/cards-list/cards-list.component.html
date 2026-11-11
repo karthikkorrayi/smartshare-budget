@@ -2,7 +2,7 @@
   <div>
     <p class="eyebrow">CREDIT CARDS</p>
     <h1>Your cards</h1>
-    <p>Billing cycles, dues and expiry — manual or auto-monitored.</p>
+    <p>Billing cycles, dues and expiry — entered manually or approved from Gmail.</p>
   </div>
   <div class="cc-heading-actions">
     <button class="cc-btn cc-btn--primary" (click)="addCard()">+ Add card</button>
@@ -17,7 +17,7 @@
   <div class="cc-stat" [class.alert]="summary().dueSoon > 0">
     <span class="label">Due ≤ 7 days / overdue</span><span class="value">{{ summary().dueSoon }}</span>
   </div>
-  <div class="cc-stat"><span class="label">Auto-monitored</span><span class="value">{{ summary().monitored }}</span></div>
+  <div class="cc-stat"><span class="label">Unpaid statements</span><span class="value">{{ summary().unpaid }}</span></div>
 </section>
 
 @if (actionError()) { <p class="cc-error" role="alert">{{ actionError() }}</p> }
@@ -28,7 +28,7 @@
   <div class="cc-empty">
     <div class="icon" aria-hidden="true">💳</div>
     <h2>No cards yet</h2>
-    <p>Add a card with its statement day and due day. You can record transactions and statements manually, or turn on Auto Monitor later.</p>
+    <p>Add a card with its statement day and due day. Record transactions and statements manually, or connect Gmail to have them detected for review.</p>
     <button class="cc-btn cc-btn--primary" (click)="addCard()">+ Add your first card</button>
   </div>
 } @else {
@@ -48,7 +48,6 @@
             <span class="name">{{ c.nickname || c.cardholderName }}</span>
           </div>
           <div class="badges">
-            @if (c.autoMonitor) { <span class="cc-badge tone-info" title="Auto Monitor on">📡 Auto</span> }
             <span class="cc-badge" [class]="c.status === 'Active' ? 'tone-ok' : 'tone-closed'">{{ c.status }}</span>
           </div>
         </header>

@@ -12,7 +12,7 @@
     </h1>
     <p class="auth-hint">
       @switch (mode()) {
-        @case ('signup') { Your data stays private to your account, on every device. }
+        @case ('signup') { Use your Gmail address. Google sign-in and your password open the same account. }
         @case ('reset') { We'll email you a link to choose a new password. }
         @default { Sign in to see your monthly money overview. }
       }
@@ -28,7 +28,7 @@
         </svg>
         {{ busy() === 'google' ? 'Opening Google…' : 'Continue with Google' }}
       </button>
-      <div class="divider"><span>or use email</span></div>
+      <div class="divider"><span>or use your Gmail + password</span></div>
     }
 
     <form (ngSubmit)="submit()" #f="ngForm" novalidate>
@@ -37,9 +37,9 @@
         <input id="name" name="name" type="text" [(ngModel)]="displayName" autocomplete="name" placeholder="Your name" />
       }
 
-      <label for="email">Email</label>
+      <label for="email">Gmail address</label>
       <input id="email" name="email" type="email" [(ngModel)]="email" autocomplete="email"
-             placeholder="you@example.com" required />
+             placeholder="you@gmail.com" required />
 
       @if (mode() !== 'reset') {
         <label for="password">Password</label>

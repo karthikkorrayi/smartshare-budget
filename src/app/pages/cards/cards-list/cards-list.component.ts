@@ -74,7 +74,7 @@ export class CardsListComponent {
       active: active.length,
       outstanding: unpaid.reduce((sum, s) => sum + Math.max(0, s.totalDue - s.paidAmount), 0),
       dueSoon: unpaid.filter(s => dueInfo(s).tone !== 'ok').length,
-      monitored: active.filter(c => c.autoMonitor).length,
+      unpaid: unpaid.length,
     };
   });
 

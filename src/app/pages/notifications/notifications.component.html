@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">NOTIFICATIONS</p>
       <h1>Notifications</h1>
-      <p>Upcoming dates, payment reminders and what Auto Monitor found.</p>
+      <p>Upcoming dates, payment reminders and what Gmail monitoring found.</p>
     </div>
   </section>
 
@@ -11,7 +11,7 @@
 
   <!-- Pending review call-to-action -->
   @if (pending().length) {
-    <a class="cc-panel review-cta" routerLink="/cards/review">
+    <a class="cc-panel review-cta" routerLink="/review">
       <span class="icon">🔍</span>
       <span class="text">
         <strong>{{ pending().length }} item{{ pending().length === 1 ? '' : 's' }} waiting for review</strong>
@@ -56,7 +56,7 @@
   @if (loading()) {
     <div class="cc-empty"><div class="cc-spinner"></div><p>Loading…</p></div>
   } @else if (!shown().length) {
-    <p class="quiet">{{ filter() === 'unread' ? 'You are all caught up.' : 'No activity yet. Auto Monitor events will show up here.' }}</p>
+    <p class="quiet">{{ filter() === 'unread' ? 'You are all caught up.' : 'No activity yet. Gmail monitoring events will show up here.' }}</p>
   } @else {
     <section class="cc-panel list">
       @for (n of shown(); track n.id) {

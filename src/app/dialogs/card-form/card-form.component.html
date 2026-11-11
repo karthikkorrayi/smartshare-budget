@@ -76,14 +76,7 @@
       </label>
     </div>
 
-    <p class="cc-section-title">Automation</p>
-    <label class="cc-toggle">
-      <input type="checkbox" name="autoMonitor" [(ngModel)]="form.autoMonitor" />
-      <div>
-        <strong>Auto Monitor</strong>
-        <span>Watch your connected Gmail accounts for this card's alerts and statements. Everything found goes to Review first — nothing changes without your approval.</span>
-      </div>
-    </label>
+    <p class="cc-hint">Want transactions and statements picked up from email? Connect Gmail in <strong>Gmail</strong> — everything found goes to the Review Center first.</p>
 
     @if (errors().length) {
       <ul class="cc-errors" role="alert">

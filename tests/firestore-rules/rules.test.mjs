@@ -28,7 +28,12 @@ before(async () => {
 after(async () => env?.cleanup());
 beforeEach(async () => env.clearFirestore());
 
-const as = uid => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).firestore();
+// Default test identity: a verified @gmail.com account (what the rules require).
+const as = (uid, token) =>
+  (uid
+    ? env.authenticatedContext(uid, token ?? { email: `${uid}@gmail.com`, email_verified: true })
+    : env.unauthenticatedContext()
+  ).firestore();
 
 async function seed(path, data) {
   await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), path), data));
@@ -373,5 +378,110 @@ describe('server-only collections', () => {
   test('gmail_tokens is never readable by clients', async () => {
     await seed('gmail_tokens/t', { userId: ALICE, enc: 'x' });
     await assertFails(getDoc(doc(as(ALICE), 'gmail_tokens/t')));
+  });
+});
+
+// ════════════════════════════════════════════════════════════════
+// Phase B: Gmail-only verified identity, centralized review → income /
+// expenses / bills, gmail_connections
+// ════════════════════════════════════════════════════════════════
+describe('identity gate (verified @gmail.com only)', () => {
+  test('unverified Gmail password account cannot touch data', async () => {
+    const db = as(ALICE, { email: 'alice@gmail.com', email_verified: false });
+    await assertFails(addDoc(collection(db, 'expenses'), { userId: ALICE, amount: 1 }));
+    await assertFails(getDoc(doc(db, `users/${ALICE}`)));
+  });
+  test('verified non-Gmail account cannot touch data', async () => {
+    const db = as(ALICE, { email: 'alice@outlook.com', email_verified: true });
+    await assertFails(addDoc(collection(db, 'expenses'), { userId: ALICE, amount: 1 }));
+  });
+  test('look-alike domains are rejected; case is ignored', async () => {
+    await assertFails(addDoc(collection(as(ALICE, { email: 'a@gmail.com.evil.io', email_verified: true }), 'expenses'), { userId: ALICE }));
+    await assertSucceeds(addDoc(collection(as(ALICE, { email: 'Alice@GMAIL.com', email_verified: true }), 'expenses'), { userId: ALICE }));
+  });
+});
+
+describe('centralized review → income / expenses / bills', () => {
+  beforeEach(async () => seed('cards/cardA', seededCard(ALICE)));
+  const income = (o = {}) => ({ userId: ALICE, source: 'Salary', amount: 85000, date: T('2026-11-01'), month: '2026-11', ...o });
+
+  test('manual income still works; imported fields cannot be self-applied', async () => {
+    const c = collection(as(ALICE), 'income');
+    await assertSucceeds(addDoc(c, income()));
+    await assertFails(addDoc(c, income({ importedFrom: 'email' })));
+    await seed('review_items/r1', seededReview(ALICE, { kind: 'income' }));
+    await assertFails(addDoc(c, income({ importedFrom: 'email', reviewId: 'r1' })));
+  });
+  test('salary review approved into income in one batch', async () => {
+    await seed('review_items/r1', seededReview(ALICE, { kind: 'income', cardId: null }));
+    const db = as(ALICE);
+    const ref = doc(collection(db, 'income'));
+    const b = writeBatch(db);
+    b.set(ref, income({ importedFrom: 'email', reviewId: 'r1' }));
+    b.update(doc(db, 'review_items/r1'), { status: 'approved', cardId: null, targetId: ref.id, edited: false, resolvedValues: {}, resolvedAt: serverTimestamp() });
+    await assertSucceeds(b.commit());
+  });
+  test('reviewer can re-route a suggestion (transaction → expense)', async () => {
+    await seed('review_items/r2', seededReview(ALICE, { kind: 'transaction' }));
+    const db = as(ALICE);
+    const ref = doc(collection(db, 'expenses'));
+    const b = writeBatch(db);
+    b.set(ref, { userId: ALICE, description: 'SWIGGY', amount: 350, category: 'Food', date: T('2026-11-07'), month: '2026-11', importedFrom: 'email', reviewId: 'r2' });
+    b.update(doc(db, 'review_items/r2'), { status: 'approved', kind: 'expense', cardId: null, targetId: ref.id, edited: true, resolvedValues: {}, resolvedAt: serverTimestamp() });
+    await assertSucceeds(b.commit());
+  });
+  test('bill review approved into upcoming_payments', async () => {
+    await seed('review_items/r3', seededReview(ALICE, { kind: 'bill', cardId: null }));
+    const db = as(ALICE);
+    const ref = doc(collection(db, 'upcoming_payments'));
+    const b = writeBatch(db);
+    b.set(ref, { userId: ALICE, description: 'Electricity bill', amount: 1845, category: 'Bills', dueDate: T('2026-11-25'), month: '2026-11', createdAt: T('2026-11-11'), importedFrom: 'email', reviewId: 'r3' });
+    b.update(doc(db, 'review_items/r3'), { status: 'approved', cardId: null, targetId: ref.id, edited: false, resolvedValues: {}, resolvedAt: serverTimestamp() });
+    await assertSucceeds(b.commit());
+  });
+  test('cannot re-route into card_update, or approve a card kind without a card', async () => {
+    await seed('review_items/r4', seededReview(ALICE, { kind: 'income' }));
+    await assertFails(updateDoc(doc(as(ALICE), 'review_items/r4'), { status: 'approved', kind: 'card_update', cardId: 'cardA', targetId: 'cardA', edited: true, resolvedValues: {}, resolvedAt: serverTimestamp() }));
+    await seed('review_items/r5', seededReview(ALICE, { kind: 'transaction', cardId: null }));
+    const db = as(ALICE);
+    const ref = doc(collection(db, 'card_transactions'));
+    const b = writeBatch(db);
+    b.set(ref, newTxn(ALICE, 'cardA', { source: 'email', reviewId: 'r5' }));
+    b.update(doc(db, 'review_items/r5'), { status: 'approved', cardId: null, targetId: ref.id, edited: false, resolvedValues: {}, resolvedAt: serverTimestamp() });
+    await assertFails(b.commit());
+  });
+  test('imported entries keep their provenance on edit', async () => {
+    await seed('expenses/e1', { userId: ALICE, amount: 350, importedFrom: 'email', reviewId: 'r9' });
+    const ref = doc(as(ALICE), 'expenses/e1');
+    await assertSucceeds(updateDoc(ref, { amount: 360 }));
+    await assertFails(updateDoc(ref, { importedFrom: 'demo' }));
+    await seed('expenses/e2', { userId: ALICE, amount: 10 });
+    await assertFails(updateDoc(doc(as(ALICE), 'expenses/e2'), { reviewId: 'r9' }));
+  });
+});
+
+describe('gmail_connections', () => {
+  const conn = (uid, o = {}) => ({ userId: uid, email: `${uid}@gmail.com`, status: 'active', paused: false, groups: ['salary', 'bank'], backfillDays: 30, ...o });
+  test('owner can read, pause and choose categories', async () => {
+    await seed('gmail_connections/c1', conn(ALICE));
+    const ref = doc(as(ALICE), 'gmail_connections/c1');
+    await assertSucceeds(getDoc(ref));
+    await assertSucceeds(getDocs(query(collection(as(ALICE), 'gmail_connections'), where('userId', '==', ALICE))));
+    await assertSucceeds(updateDoc(ref, { paused: true }));
+    await assertSucceeds(updateDoc(ref, { groups: ['cards', 'bills'] }));
+  });
+  test('owner cannot change status/email, add unknown groups, create or delete', async () => {
+    await seed('gmail_connections/c1', conn(ALICE));
+    const db = as(ALICE);
+    const ref = doc(db, 'gmail_connections/c1');
+    await assertFails(updateDoc(ref, { status: 'active', email: 'x@gmail.com' }));
+    await assertFails(updateDoc(ref, { groups: ['everything'] }));
+    await assertFails(setDoc(doc(db, 'gmail_connections/c2'), conn(ALICE)));
+    await assertFails(deleteDoc(ref));
+  });
+  test('other users cannot see or change a connection', async () => {
+    await seed('gmail_connections/c1', conn(ALICE));
+    await assertFails(getDoc(doc(as(BOB), 'gmail_connections/c1')));
+    await assertFails(updateDoc(doc(as(BOB), 'gmail_connections/c1'), { paused: true }));
   });
 });

@@ -39,7 +39,6 @@ export class CardFormComponent {
     statementDay: this.data.card?.statementDay ?? 0,
     dueDay: this.data.card?.dueDay ?? 0,
     status: this.data.card?.status ?? 'Active',
-    autoMonitor: this.data.card?.autoMonitor ?? false,
     dailySpendingLimit: this.data.card?.dailySpendingLimit ?? 0,
   };
 

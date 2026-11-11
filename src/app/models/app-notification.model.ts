@@ -23,7 +23,7 @@ export interface AppNotification {
   title: string;
   body: string;
   cardId: string | null;
-  link: string | null; // in-app route, e.g. '/cards/review'
+  link: string | null; // in-app route, e.g. '/review'
   read: boolean;
   origin: 'system' | 'demo';
   createdAt: Date | null;

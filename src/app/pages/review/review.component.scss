@@ -71,3 +71,20 @@
   .item-actions .cc-btn { flex: 1; }
   .history-row { flex-direction: column; align-items: flex-start; }
 }
+
+// ── Review Center additions (Phase B) ─────────────────────
+.banner { margin: 0 0 14px; padding: 12px 16px; border-radius: 12px; font-size: 14px;
+  &.ok { background: #f0fdfa; color: #0f766e; }
+  &.error { background: #fef2f2; color: #b91c1c; } }
+
+.toolbar { justify-content: space-between; }
+
+.route { display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  input:disabled { color: #475569; } }
+
+.empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; }
+
+@media (max-width: 600px) {
+  .route { grid-template-columns: 1fr; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+}

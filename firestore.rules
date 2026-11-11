@@ -7,8 +7,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Helpers ─────────────────────────────────────────────────────
+    // Only verified @gmail.com identities may touch data. Email/password sign-ups must verify
+    // their address first; Google sign-ins are verified by Google. This also makes Google and
+    // password sign-in safely resolve to the SAME account (Firebase links verified emails).
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && request.auth.token.email.lower().matches('^[^@]+@gmail[.]com$');
     }
     function isUser(uid) {
       return signedIn() && request.auth.uid == uid;
@@ -88,16 +94,28 @@ service cloud.firestore {
     }
 
     // ── Core budget collections ─────────────────────────────────────
+    // Manual entries carry neither field. Imported entries (from an approved email review)
+    // carry importedFrom + reviewId, and can only be created in the approval batch.
+    function importedOk(d, kind, id) {
+      return (!('reviewId' in d) && !('importedFrom' in d))
+          || (d.importedFrom in ['email', 'demo']
+              && reviewApproves(d.reviewId, kind, id)
+              && sourceMatchesReview(d.reviewId, d.importedFrom));
+    }
+    function importUnchanged() {
+      return unchanged('reviewId') && unchanged('importedFrom');
+    }
+
     match /expenses/{id} {
       allow read: if ownerRead();
-      allow create: if ownerCreate();
-      allow update: if ownerUpdate();
+      allow create: if ownerCreate() && importedOk(request.resource.data, 'expense', id);
+      allow update: if ownerUpdate() && importUnchanged();
       allow delete: if ownerDelete();
     }
     match /income/{id} {
       allow read: if ownerRead();
-      allow create: if ownerCreate();
-      allow update: if ownerUpdate();
+      allow create: if ownerCreate() && importedOk(request.resource.data, 'income', id);
+      allow update: if ownerUpdate() && importUnchanged();
       allow delete: if ownerDelete();
     }
     match /receivables/{id} {
@@ -108,8 +126,8 @@ service cloud.firestore {
     }
     match /upcoming_payments/{id} {
       allow read: if ownerRead();
-      allow create: if ownerCreate();
-      allow update: if ownerUpdate();
+      allow create: if ownerCreate() && importedOk(request.resource.data, 'bill', id);
+      allow update: if ownerUpdate() && importUnchanged();
       allow delete: if ownerDelete();
     }
     match /categories/{id} {
@@ -126,7 +144,7 @@ service cloud.firestore {
                                'autoMonitor', 'monitoredConnectionIds', 'dailySpendingLimit',
                                'createdAt', 'lastUpdated', 'lastUpdateSource', 'lastReviewId'])
         && d.keys().hasAll(['userId', 'cardholderName', 'bankName', 'lastFourDigits', 'expiryMonth',
-                            'expiryYear', 'statementDay', 'dueDay', 'status', 'autoMonitor',
+                            'expiryYear', 'statementDay', 'dueDay', 'status',
                             'createdAt', 'lastUpdated', 'lastUpdateSource'])
         && str(d.cardholderName, 1, 60)
         && str(d.bankName, 1, 60)
@@ -137,7 +155,7 @@ service cloud.firestore {
         && intIn(d.statementDay, 1, 31)
         && intIn(d.dueDay, 1, 31)
         && d.status in ['Active', 'Closed']
-        && d.autoMonitor is bool
+        && (!('autoMonitor' in d) || d.autoMonitor is bool)            // legacy (Phase A)
         && (!('monitoredConnectionIds' in d) || (d.monitoredConnectionIds is list && d.monitoredConnectionIds.size() <= 10))
         && (!('dailySpendingLimit' in d) || money(d.dailySpendingLimit))
         && d.createdAt is timestamp
@@ -222,12 +240,19 @@ service cloud.firestore {
       allow delete: if ownerDelete();
     }
 
-    // ── review_items/{reviewId} ─────────────────────────────────────
+    // ── review_items/{reviewId} — the centralized Review Center ─────
     // Gmail items are created by Cloud Functions (Admin SDK). Clients may only create 'demo' samples.
+    // `kind` is the destination module; the reviewer may change it (except card_update).
+    function reviewKinds() {
+      return ['income', 'expense', 'bill', 'transaction', 'statement', 'card_update'];
+    }
+    function cardKind(kind) {
+      return kind in ['transaction', 'statement', 'card_update'];
+    }
     function isValidReviewCreate(d) {
-      return d.keys().hasOnly(['userId', 'kind', 'origin', 'cardId', 'cardHint', 'extracted',
-                               'confidence', 'email', 'status', 'createdAt'])
-        && d.kind in ['transaction', 'statement', 'card_update']
+      return d.keys().hasOnly(['userId', 'kind', 'category', 'origin', 'cardId', 'cardHint', 'accountHint',
+                               'extracted', 'confidence', 'email', 'status', 'createdAt'])
+        && d.kind in reviewKinds()
         && d.origin == 'demo'
         && d.status == 'pending'
         && d.extracted is map
@@ -237,17 +262,18 @@ service cloud.firestore {
         && d.createdAt == request.time;
     }
     // The approved review must point at a record that exists after the batch and points back at it.
+    function linkedBack(col, targetId, field, reviewId) {
+      return existsAfter(docPath(col, targetId))
+        && getAfter(docPath(col, targetId)).data.get(field, '') == reviewId;
+    }
     function targetLinked(kind, targetId, reviewId) {
       return targetId is string && (
-        (kind == 'transaction'
-          && existsAfter(docPath('card_transactions', targetId))
-          && getAfter(docPath('card_transactions', targetId)).data.get('reviewId', '') == reviewId)
-        || (kind == 'statement'
-          && existsAfter(docPath('card_statements', targetId))
-          && getAfter(docPath('card_statements', targetId)).data.get('reviewId', '') == reviewId)
-        || (kind == 'card_update'
-          && existsAfter(docPath('cards', targetId))
-          && getAfter(docPath('cards', targetId)).data.get('lastReviewId', '') == reviewId)
+           (kind == 'transaction' && linkedBack('card_transactions', targetId, 'reviewId', reviewId))
+        || (kind == 'statement'   && linkedBack('card_statements', targetId, 'reviewId', reviewId))
+        || (kind == 'card_update' && linkedBack('cards', targetId, 'lastReviewId', reviewId))
+        || (kind == 'income'      && linkedBack('income', targetId, 'reviewId', reviewId))
+        || (kind == 'expense'     && linkedBack('expenses', targetId, 'reviewId', reviewId))
+        || (kind == 'bill'        && linkedBack('upcoming_payments', targetId, 'reviewId', reviewId))
       );
     }
     match /review_items/{reviewId} {
@@ -256,15 +282,17 @@ service cloud.firestore {
       allow update: if ownerUpdate()
         && resource.data.status == 'pending'
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['status', 'resolvedAt', 'resolvedValues', 'edited', 'targetId', 'cardId'])
+             .hasOnly(['status', 'resolvedAt', 'resolvedValues', 'edited', 'targetId', 'cardId', 'kind'])
         && request.resource.data.resolvedAt == request.time
+        && request.resource.data.kind in reviewKinds()
+        && ((request.resource.data.kind == 'card_update') == (resource.data.kind == 'card_update'))
         && (
           request.resource.data.status == 'rejected'
           || (request.resource.data.status == 'approved'
-              && ownsCard(request.resource.data.cardId)
+              && (!cardKind(request.resource.data.kind) || ownsCard(request.resource.data.cardId))
               && request.resource.data.edited is bool
               && request.resource.data.resolvedValues is map
-              && targetLinked(resource.data.kind, request.resource.data.targetId, reviewId))
+              && targetLinked(request.resource.data.kind, request.resource.data.targetId, reviewId))
         );
       allow delete: if ownerDelete() && resource.data.status != 'pending';
     }
@@ -289,12 +317,26 @@ service cloud.firestore {
       allow delete: if ownerDelete();
     }
 
+    // ── gmail_connections/{connId} — Google Mail Integration ────────
+    // Created/deleted only by Cloud Functions (connect / disconnect). The owner may pause
+    // monitoring or choose which categories are scanned; nothing else.
+    match /gmail_connections/{connId} {
+      allow read: if ownerRead();
+      allow update: if ownerUpdate()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paused', 'groups'])
+        && request.resource.data.paused is bool
+        && request.resource.data.groups is list
+        && request.resource.data.groups.size() <= 5
+        && request.resource.data.groups.hasOnly(['salary', 'bank', 'cards', 'bills', 'payments']);
+      allow create, delete: if false;
+    }
+
     // ── Server-only collections (Admin SDK bypasses rules) ──────────
     match /email_sync_logs/{id} {
       allow read, write: if false;
     }
     match /gmail_tokens/{id} {
-      allow read, write: if false;
+      allow read, write: if false;   // encrypted refresh tokens — never readable by any client
     }
   }
 }

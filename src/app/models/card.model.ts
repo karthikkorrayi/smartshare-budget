@@ -24,8 +24,6 @@ export interface Card {
   statementDay: number; // 1–31
   dueDay: number; // 1–31
   status: CardStatus;
-  autoMonitor: boolean;
-  monitoredConnectionIds: string[];
   dailySpendingLimit: number; // 0 = none
   createdAt: Date | null;
   lastUpdated: Date | null;
@@ -43,7 +41,6 @@ export type CardInput = Pick<
   | 'statementDay'
   | 'dueDay'
   | 'status'
-  | 'autoMonitor'
   | 'dailySpendingLimit'
 >;
 

@@ -46,7 +46,6 @@ export class CardsService {
   add(input: CardInput) {
     return addDoc(this.col, {
       ...this.clean(input),
-      monitoredConnectionIds: [],
       userId: this.auth.requireUid(),
       createdAt: serverTimestamp(),
       lastUpdated: serverTimestamp(),
@@ -97,7 +96,6 @@ export class CardsService {
       statementDay: Math.trunc(Number(input.statementDay)),
       dueDay: Math.trunc(Number(input.dueDay)),
       status: input.status,
-      autoMonitor: !!input.autoMonitor,
       dailySpendingLimit: Math.max(0, Number(input.dailySpendingLimit) || 0),
     };
   }
@@ -115,8 +113,6 @@ export class CardsService {
       statementDay: Number(d.statementDay) || 1,
       dueDay: Number(d.dueDay) || 1,
       status: d.status === 'Closed' ? 'Closed' : 'Active',
-      autoMonitor: !!d.autoMonitor,
-      monitoredConnectionIds: Array.isArray(d.monitoredConnectionIds) ? d.monitoredConnectionIds : [],
       dailySpendingLimit: Number(d.dailySpendingLimit) || 0,
       createdAt: toDate(d.createdAt),
       lastUpdated: toDate(d.lastUpdated),
