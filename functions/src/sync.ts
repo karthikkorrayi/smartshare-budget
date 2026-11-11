@@ -2,7 +2,7 @@ import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 import { CATEGORY_GROUP, Classification, Extracted, MonitorGroup, classify, gmailQuery, makeSnippet } from './classify';
 import { open, sha256, Sealed } from './crypto';
-import { getMessage, listMessageIds } from './gmail';
+import { GmailMessage, getMessage, listMessageIds } from './gmail';
 import { OAuthError, accessToken } from './google';
 import { MAX_MESSAGES_PER_RUN } from './config';
 import { pushToUser } from './push';
@@ -40,15 +40,32 @@ interface Secrets {
 
 const LOCK_MS = 6 * 60 * 1000;
 
-/** Claims a short lease so the schedule and "Sync now" never process the same mailbox at once. */
+/** External calls, injectable so the emulator tests can use a fake Gmail inbox. */
+export interface SyncDeps {
+  accessToken: (clientId: string, clientSecret: string, refreshToken: string) => Promise<string>;
+  listMessageIds: (token: string, q: string, pageToken?: string) => Promise<{ ids: string[]; next?: string }>;
+  getMessage: (token: string, id: string) => Promise<GmailMessage>;
+}
+export const realDeps: SyncDeps = { accessToken, listMessageIds, getMessage };
+
+/** Claims a short lease atomically with version tracking so concurrent schedule and "Sync now" runs conflict and serialize correctly. */
 async function acquireLock(connId: string): Promise<Connection | null> {
   const ref = db().doc(`gmail_connections/${connId}`);
   return db().runTransaction(async tx => {
     const snap = await tx.get(ref);
     if (!snap.exists) return null;
     const c = snap.data() as Connection;
-    if (c.syncLockUntil && c.syncLockUntil.toMillis() > Date.now()) return null;
-    tx.update(ref, { syncLockUntil: Timestamp.fromMillis(Date.now() + LOCK_MS) });
+    const now = Date.now();
+    
+    // Strict atomic check for active locks
+    if (c.syncLockUntil && c.syncLockUntil.toMillis() > now) {
+      return null;
+    }
+    
+    tx.update(ref, { 
+      syncLockUntil: Timestamp.fromMillis(now + LOCK_MS),
+      lockVersion: FieldValue.increment(1) 
+    });
     return c;
   });
 }
@@ -84,10 +101,15 @@ function matchCard(c: Classification, cards: CardLite[]): string | null {
 }
 
 /**
- * Scans one Gmail connection for new financial emails and files them as PENDING review items.
- * Never writes to income/expenses/cards directly — approval happens in the app.
+- Scans one Gmail connection for new financial emails and files them as PENDING review items.
+- Never writes to income/expenses/cards directly — approval happens in the app.
  */
-export async function syncConnection(connId: string, secrets: Secrets, budgetMs: number): Promise<SyncStats | 'busy' | 'missing'> {
+export async function syncConnection(
+  connId: string,
+  secrets: Secrets,
+  budgetMs: number,
+  deps: SyncDeps = realDeps
+): Promise<SyncStats | 'busy' | 'missing'> {
   const started = Date.now();
   const conn = await acquireLock(connId);
   if (!conn) {
@@ -102,7 +124,7 @@ export async function syncConnection(connId: string, secrets: Secrets, budgetMs:
     const tokenSnap = await db().doc(`gmail_tokens/${connId}`).get();
     if (!tokenSnap.exists) throw new OAuthError('invalid_grant', 'Stored Gmail access is missing. Reconnect this account.');
     const refresh = open(tokenSnap.get('sealed') as Sealed, secrets.encKey, connId);
-    const token = await accessToken(secrets.clientId, secrets.clientSecret, refresh);
+    const token = await deps.accessToken(secrets.clientId, secrets.clientSecret, refresh);
 
     // 2. Resume an unfinished scan, or start a new one from the last sync (10-min overlap; dedupe handles repeats).
     const now = Timestamp.now();
@@ -122,12 +144,12 @@ export async function syncConnection(connId: string, secrets: Secrets, budgetMs:
     let pageToken = cursor.pageToken;
     let finished = false;
     outer: while (true) {
-      const page = await listMessageIds(token, cursor.query, pageToken);
+      const page = await deps.listMessageIds(token, cursor.query, pageToken);
       for (const id of page.ids) {
         if (stats.scanned >= MAX_MESSAGES_PER_RUN || Date.now() - started > budgetMs) break outer;
         stats.scanned++;
         try {
-          await processMessage(conn, connId, token, id, cards, groups, stats);
+          await processMessage(conn, connId, token, id, cards, groups, stats, deps);
         } catch (e) {
           stats.errors++;
           logger.warn('message failed', { connId, id, err: String(e) });
@@ -209,7 +231,8 @@ async function processMessage(
   gmailId: string,
   cards: CardLite[],
   groups: Set<MonitorGroup>,
-  stats: SyncStats
+  stats: SyncStats,
+  deps: SyncDeps
 ): Promise<void> {
   // Cheap pre-check by Gmail id before downloading the message.
   const seenRef = db().doc(`email_sync_logs/${sha256(`${conn.userId}|gid|${connId}|${gmailId}`)}`);
@@ -218,7 +241,7 @@ async function processMessage(
     return;
   }
 
-  const msg = await getMessage(token, gmailId);
+  const msg = await deps.getMessage(token, gmailId);
   // Same email delivered to two connected Gmail accounts shares the RFC 822 Message-ID → one review item.
   const dedupeKey = sha256(`${conn.userId}|mid|${msg.messageIdHeader || `${connId}:${gmailId}`}`);
   const logRef = db().doc(`email_sync_logs/${dedupeKey}`);

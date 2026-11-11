@@ -531,3 +531,74 @@ describe('client limit warnings', () => {
     await assertFails(addDoc(collection(as(ALICE), 'notifications'), warn({ origin: 'system' })));
   });
 });
+
+// ════════════════════════════════════════════════════════════════
+// Phase 7.1: cross-user isolation matrix — every collection, every operation
+// Alice owns one document in each collection; Bob (a valid, verified Gmail user)
+// tries to read it directly, find it by query, change it, take it over and delete it.
+// ════════════════════════════════════════════════════════════════
+describe('isolation matrix (Bob vs Alice\'s data)', () => {
+  const owned = {
+    expenses: { userId: ALICE, amount: 100, description: 'x', date: T('2026-11-10'), month: '2026-11' },
+    income: { userId: ALICE, amount: 100, source: 'x', date: T('2026-11-10'), month: '2026-11' },
+    receivables: { userId: ALICE, amount: 100, month: '2026-11' },
+    upcoming_payments: { userId: ALICE, amount: 100, month: '2026-11' },
+    categories: { userId: ALICE, name: 'x' },
+    cards: { ...seededCard(ALICE) },
+    card_transactions: { ...newTxn(ALICE, 'cardA'), createdAt: T('2026-11-10'), lastUpdated: T('2026-11-10') },
+    card_statements: { ...newStmt(ALICE, 'cardA'), createdAt: T('2026-11-10'), lastUpdated: T('2026-11-10') },
+    review_items: seededReview(ALICE),
+    notifications: { userId: ALICE, type: 'review_pending', title: 't', body: 'b', read: false, origin: 'system', createdAt: T('2026-11-10') },
+    gmail_connections: { userId: ALICE, email: 'alice@gmail.com', status: 'active', paused: false, groups: ['bank'] },
+    fcm_tokens: { userId: ALICE, token: 'x'.repeat(100), appUrl: 'https://a/', createdAt: T('2026-11-10'), lastSeenAt: T('2026-11-10') },
+  };
+  const serverOnly = ['gmail_tokens', 'email_sync_logs'];
+
+  beforeEach(async () => {
+    await seed('cards/cardA', seededCard(ALICE));
+    for (const [col, data] of Object.entries(owned)) await seed(`${col}/victim`, data);
+    await seed(`users/${ALICE}`, { uid: ALICE, email: 'alice@gmail.com', settings: { dailyLimit: 1000 } });
+    await seed(`metadata/${ALICE}`, { processedMonths: {} });
+    for (const col of serverOnly) await seed(`${col}/victim`, { userId: ALICE, secret: 'x' });
+  });
+
+  for (const col of Object.keys(owned)) {
+    test(`${col}: Bob cannot get, list, query-by-Alice, update, take over or delete`, async () => {
+      const db = as(BOB);
+      const ref = doc(db, `${col}/victim`);
+      await assertFails(getDoc(ref));
+      await assertFails(getDocs(collection(db, col)));
+      await assertFails(getDocs(query(collection(db, col), where('userId', '==', ALICE))));
+      await assertFails(updateDoc(ref, { read: true, paused: true, amount: 1 }));
+      await assertFails(setDoc(ref, { ...owned[col], userId: BOB }));
+      await assertFails(deleteDoc(ref));
+      // Bob's own scoped query works and simply returns nothing of Alice's.
+      const mine = await assertSucceeds(getDocs(query(collection(db, col), where('userId', '==', BOB))));
+      if (mine.size !== 0) throw new Error(`${col}: Bob's query returned ${mine.size} docs`);
+    });
+  }
+
+  test('users/{uid} and metadata/{uid}: Bob cannot read or overwrite Alice\'s', async () => {
+    const db = as(BOB);
+    await assertFails(getDoc(doc(db, `users/${ALICE}`)));
+    await assertFails(setDoc(doc(db, `users/${ALICE}`), { uid: ALICE, settings: { dailyLimit: 0 } }, { merge: true }));
+    await assertFails(getDoc(doc(db, `metadata/${ALICE}`)));
+    await assertFails(setDoc(doc(db, `metadata/${ALICE}`), { processedMonths: {} }));
+  });
+
+  for (const col of serverOnly) {
+    test(`${col}: no client access at all, not even for the owner`, async () => {
+      await assertFails(getDoc(doc(as(ALICE), `${col}/victim`)));
+      await assertFails(getDocs(query(collection(as(ALICE), col), where('userId', '==', ALICE))));
+      await assertFails(setDoc(doc(as(ALICE), `${col}/mine`), { userId: ALICE }));
+    });
+  }
+
+  test('a signed-out visitor gets nothing anywhere', async () => {
+    const db = as(null);
+    for (const col of [...Object.keys(owned), ...serverOnly]) {
+      await assertFails(getDoc(doc(db, `${col}/victim`)));
+    }
+    await assertFails(getDoc(doc(db, `users/${ALICE}`)));
+  });
+});
