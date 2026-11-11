@@ -13,5 +13,5 @@ export const environment = {
    * OAuth 2.0 *Web application* client ID for the Gmail consent popup (public, not a secret).
    * Google Cloud Console → APIs & Services → Credentials. Same value as the functions' GMAIL_CLIENT_ID.
    */
-  gmailOAuthClientId: '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'
+  gmailOAuthClientId: '231457872788-9mi04snf3q4tl600ik0ptc4hp5jqcm6c.apps.googleusercontent.com',
 };
