@@ -1,7 +1,4 @@
 import { Routes } from '@angular/router';
-import { DashboardComponent } from './pages/dashboard/dashboard.component';
-import { IncomeComponent } from './pages/income/income.component';
-import { ExpensesComponent } from './pages/expenses/expenses.component';
 import { LoginComponent } from './security/login/login.component';
 import { authGuard, guestGuard, verifyGuard } from './security/auth.guard';
 
@@ -20,9 +17,10 @@ export const routes: Routes = [
   },
 
   // ── Financial modules ───────────────────────────────────────────
-  { path: '', component: DashboardComponent, canActivate: [authGuard] },
-  { path: 'income', component: IncomeComponent, canActivate: [authGuard] },
-  { path: 'expenses', component: ExpensesComponent, canActivate: [authGuard] },
+  // Lazy-loaded (Phase 6) to keep the first download small.
+  { path: '', canActivate: [authGuard], loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent) },
+  { path: 'income', canActivate: [authGuard], loadComponent: () => import('./pages/income/income.component').then(m => m.IncomeComponent) },
+  { path: 'expenses', canActivate: [authGuard], loadComponent: () => import('./pages/expenses/expenses.component').then(m => m.ExpensesComponent) },
   {
     path: 'cards',
     canActivate: [authGuard],

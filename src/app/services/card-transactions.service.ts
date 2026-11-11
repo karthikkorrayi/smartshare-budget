@@ -15,6 +15,7 @@ import {
 } from '@angular/fire/firestore';
 import { Observable, map } from 'rxjs';
 import { AuthService } from './auth.service';
+import { SpendingService } from './spending.service';
 import { CardTransaction, TransactionInput } from '../models/card-transaction.model';
 import { toDate } from '../utils/firestore.util';
 import { monthRange } from '../utils/date-input.util';
@@ -23,6 +24,7 @@ import { monthRange } from '../utils/date-input.util';
 export class CardTransactionsService {
   private firestore = inject(Firestore);
   private auth = inject(AuthService);
+  private spending = inject(SpendingService);
   private col = collection(this.firestore, 'card_transactions');
 
   /**
@@ -47,8 +49,8 @@ export class CardTransactionsService {
     );
   }
 
-  add(input: TransactionInput) {
-    return addDoc(this.col, {
+  async add(input: TransactionInput) {
+    const ref = await addDoc(this.col, {
       ...CardTransactionsService.clean(input),
       userId: this.auth.requireUid(),
       source: 'manual',
@@ -56,6 +58,8 @@ export class CardTransactionsService {
       createdAt: serverTimestamp(),
       lastUpdated: serverTimestamp(),
     });
+    if (input.direction === 'debit') void this.spending.afterSpend({ date: input.txnDate, amount: input.amount, cardId: input.cardId });
+    return ref;
   }
 
   /** Editing an email-sourced transaction keeps its source + reviewId and flags the manual correction. */

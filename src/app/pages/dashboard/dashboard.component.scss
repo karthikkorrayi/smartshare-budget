@@ -1786,3 +1786,7 @@ mat-progress-bar {
   .modal-body { padding: 8px; }
 }
 @media (max-width: 360px) { .stats-row { grid-template-columns: 1fr; } .stats-row .kpi-card { min-height: 90px; } .stats-row .kpi-label { min-height: auto; } }
+
+/* Phase 6: today's spend / streak card under the heading */
+app-daily-pulse { display: block; padding: 16px 28px 0; }
+@media (max-width: 900px) { app-daily-pulse { padding: 12px 16px 0; } }

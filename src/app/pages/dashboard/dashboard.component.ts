@@ -16,6 +16,7 @@ import { ReceivableService } from '../../services/receivable.service';
 import { CarryForwardService } from '../../services/carry-forward.service';
 import { StateManagementService } from '../../services/state-management.service';
 import { AuthService } from '../../services/auth.service';
+import { DailyPulseComponent } from '../../components/daily-pulse/daily-pulse.component';
 Chart.register(...registerables);
 
 
@@ -42,7 +43,7 @@ const hoverGuideLinePlugin = {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatCardModule, MatProgressBarModule],
+  imports: [DailyPulseComponent, CommonModule, FormsModule, MatCardModule, MatProgressBarModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })

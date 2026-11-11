@@ -1,12 +1,15 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService, authMessage } from '../../services/auth.service';
 import { GmailService } from '../../services/gmail.service';
+import { SettingsService } from '../../services/settings.service';
+import { PushService } from '../../services/push.service';
+import { DEFAULT_SETTINGS, UserSettings } from '../../models/settings.model';
 
-type Busy = '' | 'name' | 'password' | 'google' | 'unlink-google' | 'unlink-password' | 'reset' | 'verify';
+type Busy = '' | 'name' | 'password' | 'google' | 'unlink-google' | 'unlink-password' | 'reset' | 'verify' | 'settings' | 'push';
 
 @Component({
   selector: 'app-profile',
@@ -15,9 +18,16 @@ type Busy = '' | 'name' | 'password' | 'google' | 'unlink-google' | 'unlink-pass
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
 })
-export class ProfileComponent {
+export class ProfileComponent implements OnInit {
   auth = inject(AuthService);
   private gmail = inject(GmailService);
+  private settingsService = inject(SettingsService);
+  push = inject(PushService);
+
+  settings = toSignal(this.settingsService.settings$, { initialValue: DEFAULT_SETTINGS });
+  /** Editable copy of the settings form. */
+  form: UserSettings = structuredClone(DEFAULT_SETTINGS);
+  formLoaded = false;
 
   account = this.auth.account;
   connections = toSignal(this.gmail.connections$, { initialValue: [] });
@@ -39,6 +49,36 @@ export class ProfileComponent {
   currentPassword = '';
   newPassword = '';
   confirmPassword = '';
+
+  async ngOnInit(): Promise<void> {
+    await this.push.init();
+    // Load the form once the real settings arrive (not the defaults).
+    const sub = this.settingsService.settings$.subscribe(s => {
+      if (!this.formLoaded) {
+        this.form = structuredClone(s);
+        this.formLoaded = true;
+      }
+    });
+    setTimeout(() => sub.unsubscribe(), 10_000);
+  }
+
+  async saveSettings(): Promise<void> {
+    await this.run('settings', 'budget', async () => {
+      await this.settingsService.save(this.form);
+      return 'Budget & alert settings saved.';
+    });
+  }
+
+  async togglePush(): Promise<void> {
+    await this.run('push', 'budget', async () => {
+      if (this.push.state() === 'on') {
+        await this.push.disable();
+        return 'Push notifications turned off on this device.';
+      }
+      await this.push.enable();
+      return 'Push notifications are on for this device.';
+    });
+  }
 
   startEditName(): void {
     this.name = this.account()?.displayName ?? '';

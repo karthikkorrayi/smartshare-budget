@@ -23,7 +23,7 @@ import {
   updateProfile,
   user as userChanges,
 } from '@angular/fire/auth';
-import { Firestore, doc, serverTimestamp, setDoc } from '@angular/fire/firestore';
+import { Firestore, deleteDoc, doc, serverTimestamp, setDoc } from '@angular/fire/firestore';
 import { Observable, catchError, distinctUntilChanged, map, of, shareReplay, switchMap } from 'rxjs';
 
 /** Only @gmail.com identities are supported — for sign-in and for Gmail sync. */
@@ -156,6 +156,15 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
+    // Stop pushes to this device for the account that is leaving (a shared phone must not keep
+    // receiving the previous user's alerts). Must run while still signed in.
+    try {
+      const deviceId = localStorage.getItem('ssb_push_device');
+      if (deviceId) {
+        await deleteDoc(doc(this.firestore, 'fcm_tokens', deviceId)).catch(() => undefined);
+        localStorage.removeItem('ssb_push_device');
+      }
+    } catch { /* storage unavailable */ }
     await signOut(this.auth);
     await this.router.navigateByUrl('/login');
   }

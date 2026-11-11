@@ -485,3 +485,49 @@ describe('gmail_connections', () => {
     await assertFails(updateDoc(doc(as(BOB), 'gmail_connections/c1'), { paused: true }));
   });
 });
+
+// ════════════════════════════════════════════════════════════════
+// Phase 6: settings, push devices, client limit warnings
+// ════════════════════════════════════════════════════════════════
+describe('users/{uid}.settings', () => {
+  const ok = { dailyLimit: 1500, reminderDays: 3, celebrate: true, push: { reviews: true, dues: false } };
+  test('owner can save valid settings', async () => {
+    await assertSucceeds(setDoc(doc(as(ALICE), `users/${ALICE}`), { uid: ALICE, settings: ok }, { merge: true }));
+  });
+  test('rejects invalid settings', async () => {
+    const ref = doc(as(ALICE), `users/${ALICE}`);
+    await assertFails(setDoc(ref, { uid: ALICE, settings: { ...ok, dailyLimit: -1 } }, { merge: true }));
+    await assertFails(setDoc(ref, { uid: ALICE, settings: { ...ok, reminderDays: 30 } }, { merge: true }));
+    await assertFails(setDoc(ref, { uid: ALICE, settings: { ...ok, isAdmin: true } }, { merge: true }));
+    await assertFails(setDoc(ref, { uid: ALICE, settings: { ...ok, push: { reviews: true, marketing: true } } }, { merge: true }));
+  });
+});
+
+describe('fcm_tokens', () => {
+  const tok = (uid, o = {}) => ({ userId: uid, token: 'x'.repeat(152), appUrl: 'https://karthikkorrayi.github.io/smartshare-budget/', userAgent: 'Android Chrome', createdAt: serverTimestamp(), lastSeenAt: serverTimestamp(), ...o });
+  test('device registers, refreshes and removes its own token', async () => {
+    const ref = doc(as(ALICE), 'fcm_tokens/dev1');
+    await assertSucceeds(setDoc(ref, tok(ALICE)));
+    await assertSucceeds(setDoc(ref, { lastSeenAt: serverTimestamp() }, { merge: true }));
+    await assertSucceeds(deleteDoc(ref));
+  });
+  test('cannot register for someone else, take over a token, or add fields', async () => {
+    await assertFails(setDoc(doc(as(ALICE), 'fcm_tokens/dev2'), tok(BOB)));
+    await seed('fcm_tokens/dev3', { ...tok(BOB), createdAt: T('2026-11-01'), lastSeenAt: T('2026-11-01') });
+    await assertFails(setDoc(doc(as(ALICE), 'fcm_tokens/dev3'), tok(ALICE)));
+    await assertFails(getDoc(doc(as(ALICE), 'fcm_tokens/dev3')));
+    await assertFails(deleteDoc(doc(as(ALICE), 'fcm_tokens/dev3')));
+    await assertFails(setDoc(doc(as(ALICE), 'fcm_tokens/dev4'), tok(ALICE, { admin: true })));
+  });
+});
+
+describe('client limit warnings', () => {
+  const warn = (o = {}) => ({ userId: ALICE, type: 'limit_exceeded', title: 'Daily limit crossed', body: 'x', cardId: null, link: '/', read: false, origin: 'client', createdAt: serverTimestamp(), ...o });
+  test('client may record its own limit warning', async () => {
+    await assertSucceeds(addDoc(collection(as(ALICE), 'notifications'), warn()));
+  });
+  test('client origin cannot be used for other notification types', async () => {
+    await assertFails(addDoc(collection(as(ALICE), 'notifications'), warn({ type: 'review_pending' })));
+    await assertFails(addDoc(collection(as(ALICE), 'notifications'), warn({ origin: 'system' })));
+  });
+});

@@ -22,6 +22,7 @@ export class GmailComponent {
   readonly groups = MONITOR_GROUPS;
   readonly groupInfo = MONITOR_GROUP_INFO;
   readonly configured = this.gmail.configured;
+  readonly secretInClientId = this.gmail.misconfiguredWithSecret;
 
   private raw = toSignal(this.gmail.connections$);
   connections = computed(() => this.raw() ?? []);

@@ -82,9 +82,20 @@ service cloud.firestore {
     }
 
     // ── Profile: users/{uid} ────────────────────────────────────────
+    // settings (Phase 6) are read by Cloud Functions for push preferences and reminder lead time.
+    function validSettings(d) {
+      return !('settings' in d) || (
+        d.settings is map
+        && d.settings.keys().hasOnly(['dailyLimit', 'reminderDays', 'celebrate', 'push'])
+        && (!('dailyLimit' in d.settings) || money(d.settings.dailyLimit))
+        && (!('reminderDays' in d.settings) || intIn(d.settings.reminderDays, 1, 10))
+        && (!('celebrate' in d.settings) || d.settings.celebrate is bool)
+        && (!('push' in d.settings) || (d.settings.push is map && d.settings.push.keys().hasOnly(['reviews', 'dues'])))
+      );
+    }
     match /users/{uid} {
       allow get: if isUser(uid);
-      allow create, update: if isUser(uid) && request.resource.data.uid == uid;
+      allow create, update: if isUser(uid) && request.resource.data.uid == uid && validSettings(request.resource.data);
       allow list, delete: if false;
     }
 
@@ -298,15 +309,19 @@ service cloud.firestore {
     }
 
     // ── notifications/{id} ──────────────────────────────────────────
-    // System notifications come from Cloud Functions. Clients: read, mark read, delete, demo samples.
+    // System notifications come from Cloud Functions. Clients: read, mark read, delete, demo samples,
+    // and their own spending-limit warnings (origin 'client', type 'limit_exceeded').
     match /notifications/{id} {
       allow read: if ownerRead();
       allow create: if ownerCreate()
         && request.resource.data.keys().hasOnly(['userId', 'type', 'title', 'body', 'cardId', 'link',
                                                  'read', 'origin', 'createdAt'])
-        && request.resource.data.origin == 'demo'
-        && request.resource.data.type in ['new_transaction', 'statement_generated', 'statement_upcoming',
-                                          'payment_due', 'payment_reminder', 'card_updated', 'review_pending']
+        && (
+          (request.resource.data.origin == 'demo'
+            && request.resource.data.type in ['new_transaction', 'statement_generated', 'statement_upcoming',
+                                              'payment_due', 'payment_reminder', 'card_updated', 'review_pending'])
+          || (request.resource.data.origin == 'client' && request.resource.data.type == 'limit_exceeded')
+        )
         && str(request.resource.data.title, 1, 120)
         && str(request.resource.data.body, 0, 300)
         && request.resource.data.read == false
@@ -329,6 +344,19 @@ service cloud.firestore {
         && request.resource.data.groups.size() <= 5
         && request.resource.data.groups.hasOnly(['salary', 'bank', 'cards', 'bills', 'payments']);
       allow create, delete: if false;
+    }
+
+    // ── fcm_tokens/{id} — push-enabled devices (Phase 6) ────────────
+    // Each device registers its own token; Cloud Functions read them to send pushes.
+    match /fcm_tokens/{id} {
+      allow read: if ownerRead();
+      allow create, update: if ownsIncoming()
+        && (resource == null || ownsExisting())
+        && request.resource.data.keys().hasOnly(['userId', 'token', 'appUrl', 'userAgent', 'createdAt', 'lastSeenAt'])
+        && str(request.resource.data.token, 20, 4096)
+        && str(request.resource.data.appUrl, 1, 300)
+        && optStr(request.resource.data, 'userAgent', 200);
+      allow delete: if ownerDelete();
     }
 
     // ── Server-only collections (Admin SDK bypasses rules) ──────────
