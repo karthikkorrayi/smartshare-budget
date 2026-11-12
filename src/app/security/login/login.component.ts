@@ -21,6 +21,8 @@ export class LoginComponent {
   busy = signal<'' | 'google' | 'email'>('');
   error = signal('');
   info = signal('');
+  /** Set after a rejected email+password sign-in, to offer the two ways back in. */
+  credentialHelp = signal(false);
 
   displayName = '';
   email = '';
@@ -31,6 +33,7 @@ export class LoginComponent {
     this.mode.set(mode);
     this.error.set('');
     this.info.set('');
+    this.credentialHelp.set(false);
     this.password = '';
     this.confirmPassword = '';
   }
@@ -65,9 +68,19 @@ export class LoginComponent {
     await this.run('email', () => this.authService.signInWithEmail(this.email, this.password));
   }
 
+  /** One-tap reset for the Gmail that was just rejected. */
+  async sendResetFor(): Promise<void> {
+    await this.run('email', async () => {
+      await this.authService.resetPassword(this.email);
+      this.credentialHelp.set(false);
+      this.info.set(`If ${this.email.trim().toLowerCase()} has an account, a reset link is on its way (check Spam too). If you only ever used Google, use "Continue with Google" instead.`);
+    }, false);
+  }
+
   private async run(kind: 'google' | 'email', action: () => Promise<void>, navigate = true): Promise<void> {
     this.error.set('');
     this.info.set('');
+    this.credentialHelp.set(false);
     this.busy.set(kind);
     try {
       await action();
@@ -78,7 +91,14 @@ export class LoginComponent {
         }
       }
     } catch (err: any) {
-      this.error.set(authMessage(err));
+      if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password' || err?.code === 'auth/user-not-found') {
+        // Firebase deliberately doesn't say which part is wrong (email-enumeration protection),
+        // so offer both recovery paths instead of a dead end.
+        this.error.set("We couldn't sign you in with that Gmail and password.");
+        this.credentialHelp.set(this.mode() === 'signin');
+      } else {
+        this.error.set(authMessage(err));
+      }
     } finally {
       this.busy.set('');
     }

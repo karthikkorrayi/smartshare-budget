@@ -19,8 +19,10 @@ export const routes: Routes = [
   // ── Financial modules ───────────────────────────────────────────
   // Lazy-loaded (Phase 6) to keep the first download small.
   { path: '', canActivate: [authGuard], loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent) },
-  { path: 'income', canActivate: [authGuard], loadComponent: () => import('./pages/income/income.component').then(m => m.IncomeComponent) },
-  { path: 'expenses', canActivate: [authGuard], loadComponent: () => import('./pages/expenses/expenses.component').then(m => m.ExpensesComponent) },
+  // The old standalone Income / Expenses pages were unreachable (no link anywhere) and skipped
+  // validation; Overview's add buttons replace them. Old bookmarks land on Overview.
+  { path: 'income', redirectTo: '' },
+  { path: 'expenses', redirectTo: '' },
   {
     path: 'cards',
     canActivate: [authGuard],

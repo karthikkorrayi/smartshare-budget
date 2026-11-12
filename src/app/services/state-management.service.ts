@@ -5,6 +5,8 @@ import { ReceivableService } from './receivable.service';
 import { ExpenseService } from './expense.service';
 import { IncomeService } from './income.service';
 
+import { monthKey } from '../utils/date-input.util';
+
 @Injectable({ providedIn: 'root' })
 export class StateManagementService {
   private receivableService = inject(ReceivableService);
@@ -64,77 +66,81 @@ export class StateManagementService {
     this.currentMonthSubject.next('');
   }
 
+  /**
+   * Lending money (receivables).
+   * - "Add to Spending Summary" ON  → a Lent expense today; repayment later = income on the day it's received.
+   *   Net effect over time: 0 (money out, money back in).
+   * - OFF → nothing is booked now, so nothing is booked on repayment either (watch-only).
+   * The Lent expense is linked by id (lentExpenseId), not by matching its description text.
+   */
   async addReceivable(receivableData: any) {
-    const { title, amount, monthKey, trackInExpenses } = receivableData;
+    const { title, amount, trackInExpenses } = receivableData;
+    const today = new Date();
 
-    // No 'month' stored on the document — receivables are global
-    await this.receivableService.add({
-      title,
-      amount,
-      createdAt: new Date(),
-      status: 'PENDING',
-      trackInExpenses: !!trackInExpenses
-    });
-
-    // Only create a Lent expense when the user opted in
+    let lentExpenseId: string | null = null;
     if (trackInExpenses) {
-      await this.expenseService.addExpense({
+      const ref = await this.expenseService.addExpense({
         description: `Lent: ${title}`,
         amount,
         category: 'Lent',
-        date: new Date(),
-        month: monthKey
+        date: today,
+        month: monthKey(today),
       });
+      lentExpenseId = ref.id;
     }
+
+    await this.receivableService.add({
+      title,
+      amount,
+      createdAt: today,
+      status: 'PENDING',
+      trackInExpenses: !!trackInExpenses,
+      ...(lentExpenseId ? { lentExpenseId } : {}),
+    });
   }
 
   async addExpense(expenseData: any) {
     await this.expenseService.addExpense(expenseData);
   }
 
-  async markReceivableAsPaid(receivable: any, monthKey: string, expenses: any[]) {
+  /**
+   * Repayment received. Previously this BOTH marked the Lent expense as PAID (removing the outflow)
+   * AND added income — so lending ₹1,000 and getting it back showed ₹1,000 extra. Now:
+   * tracked → income on the repayment day (the Lent expense stays as the original outflow);
+   * watch-only → no income (nothing was booked when lending).
+   */
+  async markReceivableAsPaid(receivable: any) {
     if (receivable.status === 'PAID') return;
+    const today = new Date();
 
     await this.receivableService.update(receivable.id, {
       status: 'PAID',
-      paidDate: new Date(),
-      paidInMonth: monthKey   // record which month the action happened
+      paidDate: today,
+      paidInMonth: monthKey(today),
     });
 
-    await this.incomeService.addIncome({
-      source: `Received from ${receivable.title}`,
-      amount: receivable.amount,
-      date: new Date(),
-      month: monthKey,
-      isSystemGenerated: true
-    });
-
-    // Only touch the linked expense if this receivable was tracked in spending
     if (receivable.trackInExpenses) {
-      const linkedExpense = expenses.find(
-        (exp: any) => exp.description === `Lent: ${receivable.title}`
-      );
-      if (linkedExpense) {
-        await this.expenseService.updateExpense({
-          ...linkedExpense,
-          status: 'PAID',
-          paidDate: new Date()
-        });
-      }
+      await this.incomeService.addIncome({
+        source: `Received from ${receivable.title}`,
+        amount: receivable.amount,
+        date: today,
+        month: monthKey(today),
+        isSystemGenerated: true,
+      });
     }
   }
 
   async deleteReceivable(receivableId: string, receivables: any[], expenses: any[]) {
     const receivable = receivables.find((r: any) => r.id === receivableId);
-
     if (!receivable || receivable.status === 'PAID') return;
 
     if (receivable.trackInExpenses) {
-      const linkedExpense = expenses.find(
-        (exp: any) => exp.description === `Lent: ${receivable.title}`
-      );
-      if (linkedExpense) {
-        await this.expenseService.deleteExpense(linkedExpense.id);
+      if (receivable.lentExpenseId) {
+        await this.expenseService.deleteExpense(receivable.lentExpenseId);
+      } else {
+        // Older receivables (before lentExpenseId existed): best-effort match in the loaded month.
+        const linked = expenses.find((exp: any) => exp.description === `Lent: ${receivable.title}` && exp.amount === receivable.amount);
+        if (linked) await this.expenseService.deleteExpense(linked.id);
       }
     }
 

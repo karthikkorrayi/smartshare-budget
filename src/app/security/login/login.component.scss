@@ -141,3 +141,17 @@ input {
 @media (max-width: 400px) {
   .auth-card { padding: 28px 20px; }
 }
+
+.recover {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #334155;
+
+  p { margin: 0 0 6px; }
+  ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .link { font-size: 13px; }
+}

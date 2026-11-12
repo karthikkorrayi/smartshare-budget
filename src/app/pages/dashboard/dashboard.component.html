@@ -102,8 +102,8 @@
             <span class="toggle-title">Add to Spending Summary</span>
             <span class="toggle-hint">
               {{ newReceivable.trackInExpenses
-                ? 'Will appear as a Lent expense'
-                : 'Track only — no expense created' }}
+                ? 'Lent expense today; repayment is added as income'
+                : 'Watch only — nothing is booked now or on repayment' }}
             </span>
           </div>
         </label>
@@ -123,7 +123,7 @@
           type="checkbox"
           [checked]="r.status === 'PAID'"
           [disabled]="r.status === 'PAID'"
-          (change)="markReceivableReceived(r)"
+          (change)="markReceivableReceived(r, $event)"
         />
 
         <div class="row-content">
@@ -433,7 +433,7 @@
         <div class="left">
           <input
             type="checkbox"
-            (change)="markAsPaid(pay)"
+            (change)="markAsPaid(pay, $event)"
           />
 
           <div class="details">
@@ -442,8 +442,9 @@
             <span
               class="due-badge"
               [class.urgent]="pay.dueIn <= 3"
+              [class.overdue]="pay.dueIn < 0"
             >
-              Due in {{ pay.dueIn }} day{{ pay.dueIn > 1 ? 's' : '' }}
+              {{ dueLabel(pay.dueIn) }}
             </span>
           </div>
         </div>
