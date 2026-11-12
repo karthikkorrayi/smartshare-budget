@@ -1790,3 +1790,6 @@ mat-progress-bar {
 /* Phase 6: today's spend / streak card under the heading */
 app-daily-pulse { display: block; padding: 16px 28px 0; }
 @media (max-width: 900px) { app-daily-pulse { padding: 12px 16px 0; } }
+
+/* Overdue upcoming payments stay visible (they used to disappear) */
+.due-badge.overdue { color: #fff; background: #dc2626; }

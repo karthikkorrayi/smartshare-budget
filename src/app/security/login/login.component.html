@@ -53,6 +53,17 @@
       }
 
       @if (error()) { <p class="msg error" role="alert">{{ error() }}</p> }
+      @if (credentialHelp()) {
+        <div class="recover" role="group" aria-label="Ways to get back in">
+          <p>This usually means one of these:</p>
+          <ol>
+            <li><strong>You created the account with Google</strong> (or signed in with Google before verifying your email), so it has no password yet.
+              <button type="button" class="link" (click)="google()" [disabled]="!!busy()">Continue with Google</button>, then add a password in Profile.</li>
+            <li><strong>The password is wrong.</strong>
+              <button type="button" class="link" (click)="sendResetFor()" [disabled]="!!busy()">Email me a reset link</button></li>
+          </ol>
+        </div>
+      }
       @if (info()) { <p class="msg info" role="status">{{ info() }}</p> }
 
       <button type="submit" class="btn primary" [disabled]="!!busy() || !email">

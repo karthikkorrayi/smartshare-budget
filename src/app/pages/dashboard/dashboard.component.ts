@@ -17,6 +17,11 @@ import { CarryForwardService } from '../../services/carry-forward.service';
 import { StateManagementService } from '../../services/state-management.service';
 import { AuthService } from '../../services/auth.service';
 import { DailyPulseComponent } from '../../components/daily-pulse/daily-pulse.component';
+import { toDate } from '../../utils/firestore.util';
+import { daysBetween, monthKey as monthKeyOf } from '../../utils/date-input.util';
+
+/** Firestore Timestamp/Date → epoch ms; 0 for missing dates (one bad record can't break Overview). */
+const ms = (v: unknown): number => toDate(v)?.getTime() ?? 0;
 Chart.register(...registerables);
 
 
@@ -161,9 +166,7 @@ export class DashboardComponent implements OnDestroy {
       takeUntil(this.destroy$)
     ).subscribe(data => {
       const sorted = [...data].sort((a: any, b: any) => {
-        const da = a['createdAt']?.seconds ? new Date(a['createdAt'].seconds * 1000).getTime() : 0;
-        const db = b['createdAt']?.seconds ? new Date(b['createdAt'].seconds * 1000).getTime() : 0;
-        return db - da;
+        return ms(b['createdAt']) - ms(a['createdAt']);
       });
       this.receivables = sorted;
       this.totalReceivable = sorted.reduce(
@@ -177,12 +180,12 @@ export class DashboardComponent implements OnDestroy {
     this.upcomingService.getAll().pipe(
       takeUntil(this.destroy$)
     ).subscribe(data => {
+      // Overdue payments used to be filtered out (dueIn < 0) and silently vanished. Now they stay, on top.
       this.upcomingPayments = data
         .map((p: any) => ({
           ...p,
           dueIn: this.calculateDueInDays(p['dueDate'])
         }))
-        .filter((p: any) => p.dueIn >= 0)
         .sort((a: any, b: any) => a.dueIn - b.dueIn);
       this.cdr.markForCheck();
     });
@@ -208,8 +211,8 @@ export class DashboardComponent implements OnDestroy {
       this.expenses = expenses;
       const activeExpenses = expenses.filter((e: any) => e.status !== 'PAID');
 
-      this.totalIncome = incomes.reduce((sum: number, i: any) => sum + i.amount, 0);
-      this.totalExpenses = activeExpenses.reduce((sum: number, e: any) => sum + e.amount, 0);
+      this.totalIncome = incomes.reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0);
+      this.totalExpenses = activeExpenses.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
       this.availableBalance = this.totalIncome - this.totalExpenses;
 
       this.prepareRecentIncome(incomes);
@@ -240,7 +243,6 @@ export class DashboardComponent implements OnDestroy {
     await this.stateManagement.addReceivable({
       title: this.newReceivable.title,
       amount: this.newReceivable.amount,
-      monthKey: this.getSelectedMonthKey(),   // used only for the optional Lent expense
       trackInExpenses: this.newReceivable.trackInExpenses
     });
 
@@ -248,13 +250,19 @@ export class DashboardComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  async markReceivableReceived(item: any) {
-    if (item.status === 'PAID') {
-      alert('This receivable has already been marked as paid.');
+  async markReceivableReceived(item: any, event?: Event) {
+    if (item.status === 'PAID') return;
+    const note = item.trackInExpenses ? ` ₹${item.amount} will be added to today's income.` : '';
+    if (!confirm(`Mark "${item.title}" as received?${note}`)) {
+      if (event?.target) (event.target as HTMLInputElement).checked = false; // undo the tick
       return;
     }
-    // Income will be booked to the currently selected month
-    await this.stateManagement.markReceivableAsPaid(item, this.getSelectedMonthKey(), this.expenses);
+    try {
+      await this.stateManagement.markReceivableAsPaid(item);
+    } catch (err) {
+      console.error('[Overview] receivable update failed', err);
+      alert('Could not update. Check your connection and try again.');
+    }
     this.cdr.markForCheck();
   }
 
@@ -270,17 +278,26 @@ export class DashboardComponent implements OnDestroy {
     }
   }
 
-  markAsPaid(payment: any) {
-    // Expense booked to the currently selected month
-    this.expenseService.addExpense({
-      description: payment.description,
-      amount: payment.amount,
-      category: payment.category,
-      date: new Date(),
-      month: this.getSelectedMonthKey()
-    });
-
-    this.upcomingService.delete(payment.id);
+  /** Pays an upcoming item: books it as today's expense, then removes it from the list. */
+  async markAsPaid(payment: any, event?: Event) {
+    if (!confirm(`Mark "${payment.description}" (₹${payment.amount}) as paid? It will be added to today's expenses.`)) {
+      if (event?.target) (event.target as HTMLInputElement).checked = false;
+      return;
+    }
+    const today = new Date();
+    try {
+      await this.expenseService.addExpense({
+        description: payment.description,
+        amount: payment.amount,
+        category: payment.category || 'Bills',
+        date: today,
+        month: monthKeyOf(today) // was the month being viewed, which mismatched today's date
+      });
+      await this.upcomingService.delete(payment.id);
+    } catch (err) {
+      console.error('[Overview] mark paid failed', err);
+      alert('Could not mark as paid. Check your connection and try again.');
+    }
     this.cdr.markForCheck();
   }
 
@@ -291,10 +308,17 @@ export class DashboardComponent implements OnDestroy {
     }
   }
 
+  /** Whole calendar days until the due date (0 = today, negative = overdue). */
   calculateDueInDays(dueDate: any): number {
-    const due = new Date(dueDate.seconds * 1000);
-    const today = new Date();
-    return Math.ceil((due.getTime() - today.getTime()) / 86400000);
+    const due = toDate(dueDate);
+    return due ? daysBetween(new Date(), due) : 0;
+  }
+
+  dueLabel(days: number): string {
+    if (days < 0) return `Overdue by ${-days} day${days === -1 ? '' : 's'}`;
+    if (days === 0) return 'Due today';
+    if (days === 1) return 'Due tomorrow';
+    return `Due in ${days} days`;
   }
 
   generateMonths() {
@@ -354,8 +378,10 @@ export class DashboardComponent implements OnDestroy {
     this.dailyTotals = new Array(daysInMonth).fill(0);
 
     expenses.forEach(exp => {
-      const day = new Date(exp.date.seconds * 1000).getDate();
-      this.dailyTotals[day - 1] += exp.amount;
+      const d = toDate(exp.date);
+      if (!d) return;
+      const day = d.getDate();
+      if (day >= 1 && day <= daysInMonth) this.dailyTotals[day - 1] += Number(exp.amount) || 0;
     });
 
     this.cumulativeTotals = [...this.dailyTotals];
@@ -530,11 +556,7 @@ export class DashboardComponent implements OnDestroy {
   }
 
   prepareRecentExpenses(expenses: any[]) {
-    const sorted = [...expenses].sort((a, b) => {
-      const da = new Date(a.date.seconds * 1000).getTime();
-      const db = new Date(b.date.seconds * 1000).getTime();
-      return db - da;
-    });
+    const sorted = [...expenses].sort((a, b) => ms(b.date) - ms(a.date));
     this.allExpenses = sorted;
     this.recentExpenses = sorted.slice(0, 5);
   }
@@ -557,9 +579,11 @@ export class DashboardComponent implements OnDestroy {
 
     const dailyTotals = new Array(daysInMonth).fill(0);
     expenses.forEach(exp => {
-      const day = new Date(exp.date.seconds * 1000).getDate();
+      const d = toDate(exp.date);
+      if (!d) return;
+      const day = d.getDate();
       if (day >= 1 && day <= daysInMonth) {
-        dailyTotals[day - 1] += exp.amount;
+        dailyTotals[day - 1] += Number(exp.amount) || 0;
       }
     });
 
@@ -734,11 +758,7 @@ export class DashboardComponent implements OnDestroy {
   }
 
   prepareRecentIncome(income: any[]) {
-    const sorted = [...income].sort((a, b) => {
-      const da = new Date(a.date.seconds * 1000).getTime();
-      const db = new Date(b.date.seconds * 1000).getTime();
-      return db - da;
-    });
+    const sorted = [...income].sort((a, b) => ms(b.date) - ms(a.date));
     this.allIncome = sorted;
     this.recentIncome = sorted.slice(0, 3);
   }
