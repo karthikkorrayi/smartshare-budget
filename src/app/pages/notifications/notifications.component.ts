@@ -6,6 +6,7 @@ import { NotificationsService } from '../../services/notifications.service';
 import { ReviewService } from '../../services/review.service';
 import { AppNotification, NOTIFICATION_ICONS, Reminder } from '../../models/app-notification.model';
 import { ReviewItem } from '../../models/review-item.model';
+import { UndoService } from '../../services/undo.service';
 
 type Filter = 'all' | 'unread';
 
@@ -20,6 +21,7 @@ export class NotificationsComponent {
   private notifications = inject(NotificationsService);
   private review = inject(ReviewService);
   private router = inject(Router);
+  private undo = inject(UndoService);
 
   readonly icons = NOTIFICATION_ICONS;
 
@@ -31,7 +33,8 @@ export class NotificationsComponent {
   filter = signal<Filter>('all');
   actionError = signal('');
 
-  stored = computed(() => this.rawStored() ?? []);
+  /** Notifications held for Undo are hidden immediately. */
+  stored = computed(() => (this.rawStored() ?? []).filter(n => !this.undo.hidden().has(n.id)));
   unreadCount = computed(() => this.stored().filter(n => !n.read).length);
   shown = computed(() => (this.filter() === 'unread' ? this.stored().filter(n => !n.read) : this.stored()));
   hasRead = computed(() => this.stored().some(n => n.read));
@@ -50,11 +53,15 @@ export class NotificationsComponent {
   }
 
   clearRead(): void {
-    this.safe(() => this.notifications.clearRead(this.stored()));
+    const read = this.stored().filter(n => n.read);
+    if (!read.length) return;
+    this.undo.defer(`Cleared ${read.length} read notification${read.length === 1 ? '' : 's'}`, read.map(n => n.id), () =>
+      this.notifications.clearRead(read)
+    );
   }
 
   remove(n: AppNotification): void {
-    this.safe(() => this.notifications.delete(n.id));
+    this.undo.defer('Notification deleted', [n.id], () => this.notifications.delete(n.id));
   }
 
   private async safe(fn: () => Promise<unknown>): Promise<void> {

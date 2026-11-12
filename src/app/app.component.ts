@@ -7,11 +7,12 @@ import { NotificationsService } from './services/notifications.service';
 import { ReviewService } from './services/review.service';
 import { PushService } from './services/push.service';
 import { AlertHostComponent } from './components/alert-host/alert-host.component';
+import { UndoBarComponent } from './components/undo-bar/undo-bar.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, AlertHostComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AlertHostComponent, UndoBarComponent],
   template: `
   <header class="top-nav">
     <div class="brand">
@@ -56,6 +57,7 @@ import { AlertHostComponent } from './components/alert-host/alert-host.component
     <router-outlet></router-outlet>
   </main>
   <app-alert-host></app-alert-host>
+  <app-undo-bar></app-undo-bar>
   `,
   styleUrl: './app.component.scss',
 })

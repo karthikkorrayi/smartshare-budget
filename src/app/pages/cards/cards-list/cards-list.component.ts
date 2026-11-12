@@ -11,6 +11,8 @@ import { CardFormComponent, CardFormData } from '../../../dialogs/card-form/card
 import { TransactionFormComponent, TransactionFormData } from '../../../dialogs/transaction-form/transaction-form.component';
 import { StatementFormComponent, StatementFormData } from '../../../dialogs/statement-form/statement-form.component';
 import { daysBetween, relativeDays } from '../../../utils/date-input.util';
+import { UndoService } from '../../../services/undo.service';
+import { VisiblePipe } from '../../../pipes/visible.pipe';
 
 interface CardView extends Card {
   expiry: ReturnType<typeof expiryInfo>;
@@ -27,7 +29,7 @@ const DIALOG = { width: 'min(94vw, 560px)', maxWidth: '96vw', autoFocus: 'first-
 @Component({
   selector: 'app-cards-list',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, RouterLink],
+  imports: [DatePipe, DecimalPipe, RouterLink, VisiblePipe],
   templateUrl: './cards-list.component.html',
   styleUrl: './cards-list.component.scss',
 })
@@ -35,6 +37,7 @@ export class CardsListComponent {
   private cardsService = inject(CardsService);
   private statementsService = inject(CardStatementsService);
   private dialog = inject(MatDialog);
+  private undo = inject(UndoService);
 
   private rawCards = toSignal(this.cardsService.cards$);
   private statements = toSignal(this.statementsService.statements$, { initialValue: [] as CardStatement[] });
@@ -103,6 +106,7 @@ export class CardsListComponent {
   async markPaid(s: CardStatement): Promise<void> {
     try {
       await this.statementsService.markPaid(s);
+      this.undo.offer('Statement marked paid', () => this.statementsService.restorePayment(s));
     } catch (err) {
       console.error(err);
       this.actionError.set('Could not mark the statement as paid.');
@@ -114,16 +118,9 @@ export class CardsListComponent {
     this.confirmDeleteId.set(id);
   }
 
-  async confirmDelete(id: string): Promise<void> {
-    this.deleting.set(true);
-    try {
-      await this.cardsService.deleteWithHistory(id);
-    } catch (err) {
-      console.error('[CardsList] delete failed', err);
-      this.actionError.set('Could not delete the card. Please try again.');
-    } finally {
-      this.deleting.set(false);
-      this.confirmDeleteId.set(null);
-    }
+  /** Card + its transactions and statements are removed after 5 s; Undo cancels. */
+  confirmDelete(c: Card): void {
+    this.confirmDeleteId.set(null);
+    this.undo.defer(`Deleted card ${c.nickname || c.bankName} ••${c.lastFourDigits} and its history`, [c.id], () => this.cardsService.deleteWithHistory(c.id));
   }
 }

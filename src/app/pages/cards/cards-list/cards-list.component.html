@@ -40,7 +40,7 @@
   }
 
   <section class="grid">
-    @for (c of visible(); track c.id) {
+    @for (c of visible() | visible; track c.id) {
       <article class="cc-panel tile" [class.closed]="c.status === 'Closed'">
         <header class="tile-head">
           <div class="tile-title">
@@ -48,7 +48,7 @@
             <span class="name">{{ c.nickname || c.cardholderName }}</span>
           </div>
           <div class="badges">
-            <span class="cc-badge" [class]="c.status === 'Active' ? 'tone-ok' : 'tone-closed'">{{ c.status }}</span>
+            @if (c.status === 'Closed') { <span class="cc-badge tone-closed">Closed</span> }
           </div>
         </header>
 
@@ -105,17 +105,12 @@
         </div>
 
         <footer class="tile-foot">
-          <span class="source">
-            {{ c.lastUpdateSource === 'review' ? '📧 Updated from approved email' : '✍️ Manual' }}
-            @if (c.lastUpdated) { · {{ c.lastUpdated | date: 'd MMM' }} }
-          </span>
+          <span class="source"></span>
           @if (confirmDeleteId() === c.id) {
             <div class="actions confirm">
               <span>Delete card + its history?</span>
-              <button class="cc-btn cc-btn--sm cc-btn--danger" (click)="confirmDelete(c.id)" [disabled]="deleting()">
-                {{ deleting() ? 'Deleting…' : 'Delete' }}
-              </button>
-              <button class="cc-btn cc-btn--sm" (click)="confirmDeleteId.set(null)" [disabled]="deleting()">Cancel</button>
+              <button class="cc-btn cc-btn--sm cc-btn--danger" (click)="confirmDelete(c)">Delete</button>
+              <button class="cc-btn cc-btn--sm" (click)="confirmDeleteId.set(null)">Cancel</button>
             </div>
           } @else {
             <div class="actions">

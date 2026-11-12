@@ -98,7 +98,7 @@ export interface ReviewItem {
 }
 
 /** Category options per destination (expenses keep the existing Overview categories). */
-export const EXPENSE_CATEGORIES = ['Food', 'Shopping', 'Transport', 'Bills', 'Petrol', 'Tickets', 'Lent', 'Others'];
+export const EXPENSE_CATEGORIES = ['Food', 'Shopping', 'Transport', 'Bills', 'Petrol', 'Tickets', 'Lent', 'Card Bill', 'Others'];
 export const INCOME_CATEGORIES = ['Salary', 'Other income', 'Refund', 'Interest', 'Cashback'];
 export const BILL_CATEGORIES = ['Bills', 'Card Payment', 'Rent', 'Insurance', 'EMI', 'Others'];
 
@@ -109,7 +109,7 @@ export function categoryFor(kind: ReviewKind, suggested: string | undefined, txn
     list.includes(s) ? s : list.includes(aliases[s]) ? aliases[s] : fallback;
   switch (kind) {
     case 'expense':
-      return pick(EXPENSE_CATEGORIES, 'Others', { Groceries: 'Food', Travel: 'Transport', Fuel: 'Petrol', Entertainment: 'Tickets', 'Card Payment': 'Bills', EMI: 'Bills' });
+      return pick(EXPENSE_CATEGORIES, 'Others', { Groceries: 'Food', Travel: 'Transport', Fuel: 'Petrol', Entertainment: 'Tickets', 'Card Payment': 'Card Bill', EMI: 'Bills' });
     case 'income':
       return pick(INCOME_CATEGORIES, 'Other income');
     case 'bill':

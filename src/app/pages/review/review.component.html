@@ -15,9 +15,11 @@
   <section class="cc-filters">
     <div class="cc-chips">
       <button class="cc-chip" [class.active]="tab() === 'pending'" (click)="tab.set('pending')">
-        Pending <span class="cc-count" [class.cc-count--alert]="pending().length">{{ pending().length }}</span>
+        To review <span class="cc-count" [class.cc-count--alert]="pending().length">{{ pending().length }}</span>
       </button>
-      <button class="cc-chip" [class.active]="tab() === 'history'" (click)="tab.set('history')">History</button>
+      <button class="cc-chip" [class.active]="tab() === 'history'" (click)="tab.set('history')">
+        History <span class="cc-count">{{ resolved().length }}</span>
+      </button>
     </div>
   </section>
 
@@ -34,9 +36,9 @@
           }
         </div>
         @if (bulkReady().length > 1) {
-          <button class="cc-btn cc-btn--sm" (click)="approveAllReady()" [disabled]="bulkBusy() || !!editingId()"
-                  title="Approves items with ≥85% confidence and complete values, as suggested">
-            {{ bulkBusy() ? 'Approving…' : '✓ Approve ' + bulkReady().length + ' high-confidence' }}
+          <button class="cc-btn cc-btn--sm" (click)="approveAllReady()" [disabled]="!!editingId()"
+                  title="Approves the items the detector is sure about and that have every value filled in">
+            ✓ Approve {{ bulkReady().length }} ready items
           </button>
         }
       </section>
@@ -66,7 +68,7 @@
                   <span class="cc-badge tone-info">{{ categoryInfo[item.category].icon }} {{ categoryInfo[item.category].label }}</span>
                 }
                 @if (item.origin === 'demo') { <span class="cc-badge tone-demo">🧪 Sample</span> }
-                <span class="cc-badge" [class]="confidenceTone(item.confidence)" title="How sure the detector is">{{ item.confidence | percent: '1.0-0' }}</span>
+                @if (needsCheck(item)) { <span class="cc-badge tone-soon" title="The detector wasn't sure, or a value is missing">⚠ Check carefully</span> }
               </div>
               <span class="received">{{ item.email.receivedAt | date: 'd MMM, h:mm a' }}</span>
             </header>
@@ -190,16 +192,12 @@
 
             <footer class="item-actions">
               @if (editingId() === item.id) {
-                <button class="cc-btn" (click)="cancelEdit()" [disabled]="busyId() === item.id">Cancel</button>
-                <button class="cc-btn cc-btn--primary" (click)="approve(item)" [disabled]="busyId() === item.id">
-                  {{ busyId() === item.id ? 'Saving…' : 'Save & approve' }}
-                </button>
+                <button class="cc-btn" (click)="cancelEdit()">Cancel</button>
+                <button class="cc-btn cc-btn--primary" (click)="approve(item)">Save &amp; approve</button>
               } @else {
-                <button class="cc-btn cc-btn--danger-text" (click)="reject(item)" [disabled]="busyId() === item.id">Reject</button>
-                <button class="cc-btn" (click)="startEdit(item)" [disabled]="busyId() === item.id || !!editingId()">Edit</button>
-                <button class="cc-btn cc-btn--primary" (click)="approve(item)" [disabled]="busyId() === item.id || !!editingId()">
-                  {{ busyId() === item.id ? 'Approving…' : 'Approve' }}
-                </button>
+                <button class="cc-btn cc-btn--danger-text" (click)="reject(item)">Reject</button>
+                <button class="cc-btn" (click)="startEdit(item)" [disabled]="!!editingId()">Edit</button>
+                <button class="cc-btn cc-btn--primary" (click)="approve(item)" [disabled]="!!editingId()">Approve</button>
               }
             </footer>
           </article>
@@ -208,28 +206,70 @@
     }
   } @else {
     @if (!resolved().length) {
-      <div class="cc-empty"><div class="icon">🗂️</div><h2>No decisions yet</h2><p>Approved and rejected items are listed here.</p></div>
+      <div class="cc-empty"><div class="icon">🗂️</div><h2>No decisions yet</h2><p>Everything you approve or reject is kept here, with what was saved and where it went.</p></div>
     } @else {
-      <section class="cc-panel history">
-        @for (item of resolved(); track item.id) {
-          <div class="history-row">
-            <div class="history-main">
-              <span class="subject">{{ item.email.subject }}</span>
-              <span class="meta">
-                {{ item.category ? categoryInfo[item.category].label : kindInfo[item.kind].label }}
-                @if (item.status === 'approved') { → {{ kindInfo[item.kind].module }} }
-                · {{ item.email.account }} · {{ item.resolvedAt | date: 'd MMM, h:mm a' }}
-              </span>
-            </div>
-            <div class="history-tags">
-              @if (item.edited) { <span class="cc-badge tone-soon">Edited</span> }
-              <span class="cc-badge" [class]="item.status === 'approved' ? 'tone-ok' : 'tone-closed'">
-                {{ item.status === 'approved' ? '✓ Approved' : '✕ Rejected' }}
-              </span>
-            </div>
-          </div>
+      <section class="cc-filters toolbar">
+        <div class="cc-chips">
+          <button class="cc-chip" [class.active]="historyStatus() === 'all'" (click)="historyStatus.set('all')">All <span class="cc-count">{{ historyCounts().all }}</span></button>
+          <button class="cc-chip" [class.active]="historyStatus() === 'approved'" (click)="historyStatus.set('approved')">✓ Approved <span class="cc-count">{{ historyCounts().approved }}</span></button>
+          <button class="cc-chip" [class.active]="historyStatus() === 'rejected'" (click)="historyStatus.set('rejected')">✕ Rejected <span class="cc-count">{{ historyCounts().rejected }}</span></button>
+        </div>
+        <input class="history-search" type="search" placeholder="Search subject, sender, amount…" aria-label="Search history"
+               [ngModel]="historyQuery()" (ngModelChange)="historyQuery.set($event)" />
+      </section>
+      <section class="cc-chips group-row">
+        @for (g of groupFilters; track g.id) {
+          <button class="cc-chip" [class.active]="group() === g.id" (click)="group.set(g.id)">{{ g.label }}</button>
         }
       </section>
+
+      @if (!history().length) {
+        <div class="cc-empty"><p>Nothing matches these filters.</p></div>
+      } @else {
+        <section class="cc-panel history">
+          @for (item of history(); track item.id) {
+            <div class="history-row" [class.open]="openHistoryId() === item.id">
+              <button class="history-summary" type="button" (click)="toggleHistory(item.id)" [attr.aria-expanded]="openHistoryId() === item.id">
+                <span class="history-main">
+                  <span class="subject">{{ item.resolvedValues?.description || item.extracted.description || item.email.subject }}</span>
+                  <span class="meta">
+                    {{ item.category ? categoryInfo[item.category].label : kindInfo[item.kind].label }}
+                    @if (item.status === 'approved') { → {{ kindInfo[item.kind].module }} }
+                    · {{ item.resolvedAt | date: 'd MMM yyyy, h:mm a' }}
+                  </span>
+                </span>
+                <span class="history-tags">
+                  @if (item.resolvedValues?.amount ?? item.extracted.amount; as amt) { <span class="amt">₹{{ amt | number: '1.0-2' }}</span> }
+                  @if (item.edited) { <span class="cc-badge tone-soon">Edited</span> }
+                  <span class="cc-badge" [class]="item.status === 'approved' ? 'tone-ok' : 'tone-closed'">
+                    {{ item.status === 'approved' ? '✓ Approved' : '✕ Rejected' }}
+                  </span>
+                  <span class="chev" aria-hidden="true">▾</span>
+                </span>
+              </button>
+              @if (openHistoryId() === item.id) {
+                <div class="history-detail">
+                  @if (item.status === 'approved') {
+                    <dl class="values">
+                      @for (r of historyRows(item); track r.label) {
+                        <div><dt>{{ r.label }}</dt><dd>{{ r.value }} @if (r.was) { <s class="was" title="What the email said">{{ r.was }}</s> }</dd></div>
+                      }
+                      @if (cardName(item.cardId); as cn) { <div><dt>Card</dt><dd>{{ cn }}</dd></div> }
+                    </dl>
+                    <a class="cc-btn cc-btn--sm" [routerLink]="destinationLink(item)">Open in {{ kindInfo[item.kind].module }} →</a>
+                  } @else {
+                    <p class="muted">Rejected — nothing was saved from this email.</p>
+                  }
+                  <div class="email-meta">
+                    <div><strong>Email:</strong> {{ item.email.subject }}</div>
+                    <div>{{ item.email.from }} → {{ item.email.account }} · received {{ item.email.receivedAt | date: 'd MMM, h:mm a' }}</div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      }
     }
   }
 </div>

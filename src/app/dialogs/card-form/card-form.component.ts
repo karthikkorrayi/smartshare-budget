@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Card, CardInput } from '../../models/card.model';
 import { CardsService } from '../../services/cards.service';
+import { UndoService } from '../../services/undo.service';
 
 export interface CardFormData {
   card?: Card;
@@ -19,6 +20,7 @@ const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'
 export class CardFormComponent {
   private dialogRef = inject(MatDialogRef<CardFormComponent>);
   private cards = inject(CardsService);
+  private undo = inject(UndoService);
   data: CardFormData = inject(MAT_DIALOG_DATA, { optional: true }) ?? {};
 
   readonly months = MONTHS;
@@ -57,8 +59,18 @@ export class CardFormComponent {
     if (problems.length) return;
     this.saving.set(true);
     try {
-      if (this.isEdit) await this.cards.update(this.data.card!.id, this.form);
-      else await this.cards.add(this.form);
+      if (this.isEdit) {
+        const b = this.data.card!;
+        await this.cards.update(b.id, this.form);
+        this.undo.offer(`Updated card ••${b.lastFourDigits}`, () => this.cards.update(b.id, {
+          cardholderName: b.cardholderName, bankName: b.bankName, nickname: b.nickname, lastFourDigits: b.lastFourDigits,
+          expiryMonth: b.expiryMonth, expiryYear: b.expiryYear, statementDay: b.statementDay, dueDay: b.dueDay,
+          status: b.status, dailySpendingLimit: b.dailySpendingLimit,
+        }));
+      } else {
+        const ref = await this.cards.add(this.form);
+        this.undo.offer(`Added card ••${this.form.lastFourDigits}`, () => this.cards.deleteWithHistory(ref.id));
+      }
       this.dialogRef.close(true);
     } catch (err: any) {
       console.error('[CardForm] save failed', err);

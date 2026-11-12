@@ -5,6 +5,7 @@ import { Card, cardLabel } from '../../models/card.model';
 import { CardTransaction, TXN_CATEGORIES, TxnDirection } from '../../models/card-transaction.model';
 import { CardTransactionsService } from '../../services/card-transactions.service';
 import { fromDateInput, toDateInput } from '../../utils/date-input.util';
+import { UndoService } from '../../services/undo.service';
 
 export interface TransactionFormData {
   cards: Card[];
@@ -21,6 +22,7 @@ export interface TransactionFormData {
 export class TransactionFormComponent {
   private dialogRef = inject(MatDialogRef<TransactionFormComponent>);
   private txns = inject(CardTransactionsService);
+  private undo = inject(UndoService);
   data: TransactionFormData = inject(MAT_DIALOG_DATA);
 
   readonly categories = TXN_CATEGORIES;
@@ -62,8 +64,14 @@ export class TransactionFormComponent {
     };
     this.saving.set(true);
     try {
-      if (this.isEdit) await this.txns.update(this.data.txn!, input);
-      else await this.txns.add(input);
+      if (this.isEdit) {
+        const b = this.data.txn!;
+        await this.txns.update(b, input);
+        this.undo.offer(`Updated "${input.description}"`, () => this.txns.restore(b));
+      } else {
+        const ref = await this.txns.add(input);
+        this.undo.offer(`Added "${input.description}" · ₹${input.amount}`, () => this.txns.delete(ref.id));
+      }
       this.dialogRef.close(true);
     } catch (err: any) {
       console.error('[TransactionForm] save failed', err);

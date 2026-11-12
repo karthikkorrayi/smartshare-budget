@@ -89,7 +89,7 @@ export class StateManagementService {
       lentExpenseId = ref.id;
     }
 
-    await this.receivableService.add({
+    const ref = await this.receivableService.add({
       title,
       amount,
       createdAt: today,
@@ -97,6 +97,13 @@ export class StateManagementService {
       trackInExpenses: !!trackInExpenses,
       ...(lentExpenseId ? { lentExpenseId } : {}),
     });
+    return { receivableId: ref.id, lentExpenseId };
+  }
+
+  /** Undo for addReceivable: removes the receivable and its Lent expense. */
+  async removeReceivableCompletely(created: { receivableId: string; lentExpenseId: string | null }) {
+    if (created.lentExpenseId) await this.expenseService.deleteExpense(created.lentExpenseId);
+    await this.receivableService.delete(created.receivableId);
   }
 
   async addExpense(expenseData: any) {

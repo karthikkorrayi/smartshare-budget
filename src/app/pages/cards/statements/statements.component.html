@@ -41,7 +41,7 @@
   </div>
 } @else {
   <section class="list">
-    @for (s of rows(); track s.id) {
+    @for (s of rows() | visible; track s.id) {
       <article class="cc-panel stmt">
         <header class="stmt-head">
           <div>
@@ -60,25 +60,14 @@
 
         <footer class="stmt-foot">
           <span class="tags">
-            @switch (s.source) {
-              @case ('email') { <span class="cc-badge tone-info">📧 Verified email</span> }
-              @case ('demo') { <span class="cc-badge tone-demo">🧪 Sample</span> }
-              @default { <span class="cc-badge">✍️ Manual</span> }
-            }
-            <span class="cc-badge">{{ s.status }}</span>
+            @if (s.source === 'email') { <span class="cc-badge tone-info" title="Approved from Gmail">✉ Gmail</span> }
+            @if (s.source === 'demo') { <span class="cc-badge tone-demo">Sample</span> }
           </span>
-          @if (confirmDeleteId() === s.id) {
-            <span class="actions">
-              <button class="cc-btn cc-btn--sm cc-btn--danger" (click)="remove(s.id)">Delete</button>
-              <button class="cc-btn cc-btn--sm" (click)="confirmDeleteId.set(null)">Keep</button>
-            </span>
-          } @else {
-            <span class="actions">
-              @if (s.status !== 'Paid') { <button class="cc-btn cc-btn--sm cc-btn--primary" (click)="markPaid(s)">✓ Paid</button> }
-              <button class="cc-btn cc-btn--sm" (click)="edit(s)">Edit</button>
-              <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="confirmDeleteId.set(s.id)" aria-label="Delete">✕</button>
-            </span>
-          }
+          <span class="actions">
+            @if (s.status !== 'Paid') { <button class="cc-btn cc-btn--sm cc-btn--primary" (click)="markPaid(s)">✓ Paid</button> }
+            <button class="cc-btn cc-btn--sm" (click)="edit(s)">Edit</button>
+            <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="remove(s)" aria-label="Delete">✕</button>
+          </span>
         </footer>
       </article>
     }

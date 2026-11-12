@@ -52,14 +52,30 @@
 .samples-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 
 .history { padding: 4px 16px; }
+.history-search {
+  flex: 1 1 220px; max-width: 320px; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font: inherit; font-size: 14px;
+  &:focus { outline: 2px solid #c7d2fe; border-color: #6366f1; }
+}
+.group-row { margin: -4px 0 12px; }
 .history-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
   border-bottom: 1px solid #f1f5f9;
   &:last-child { border-bottom: none; }
+  &.open .chev { transform: rotate(180deg); }
+}
+.history-summary {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 12px 0; background: none; border: 0; text-align: left; font: inherit; cursor: pointer; color: inherit;
+}
+.history-tags .amt { font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; }
+.chev { color: #94a3b8; transition: transform .15s; }
+.history-detail {
+  padding: 0 0 14px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
+  .values { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px 16px; width: 100%;
+    dt { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; }
+    dd { margin: 0; font-weight: 600; color: #0f172a; }
+    .was { margin-left: 6px; font-weight: 400; color: #94a3b8; } }
+  .email-meta { font-size: 12px; color: #64748b; overflow-wrap: anywhere; }
+  .muted { margin: 0; color: #64748b; }
 }
 .history-main { display: flex; flex-direction: column; gap: 2px; min-width: 0;
   .subject { font-weight: 650; color: #0f172a; overflow-wrap: anywhere; }
@@ -69,7 +85,8 @@
 @media (max-width: 600px) {
   .queue { grid-template-columns: 1fr; }
   .item-actions .cc-btn { flex: 1; }
-  .history-row { flex-direction: column; align-items: flex-start; }
+  .history-summary { flex-direction: column; align-items: flex-start; }
+  .history-search { max-width: none; }
 }
 
 // ── Review Center additions (Phase B) ─────────────────────

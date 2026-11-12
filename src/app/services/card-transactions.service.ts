@@ -71,6 +71,15 @@ export class CardTransactionsService {
     });
   }
 
+  /** Undo for an edit: writes the original values (and correction flag) back. */
+  restore(before: CardTransaction) {
+    return updateDoc(doc(this.firestore, 'card_transactions', before.id), {
+      ...CardTransactionsService.clean(before),
+      editedAfterReview: before.editedAfterReview,
+      lastUpdated: serverTimestamp(),
+    });
+  }
+
   delete(id: string) {
     return deleteDoc(doc(this.firestore, 'card_transactions', id));
   }

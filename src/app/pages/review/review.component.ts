@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApprovalInput, ReviewService } from '../../services/review.service';
@@ -20,6 +20,7 @@ import {
 import { CARD_FIELD_LABELS, CARD_UPDATABLE_FIELDS, Card, CardUpdateField, cardLabel } from '../../models/card.model';
 import { TXN_CATEGORIES } from '../../models/card-transaction.model';
 import { fromDateInput, toDateInput } from '../../utils/date-input.util';
+import { UndoService } from '../../services/undo.service';
 
 type GroupFilter = 'all' | 'salary' | 'bank' | 'cards' | 'bills' | 'payments';
 
@@ -44,13 +45,14 @@ const BULK_CONFIDENCE = 0.85;
 @Component({
   selector: 'app-review-center',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, PercentPipe, FormsModule, RouterLink],
+  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink],
   templateUrl: './review.component.html',
   styleUrl: './review.component.scss',
 })
 export class ReviewComponent {
   private review = inject(ReviewService);
   private cardsService = inject(CardsService);
+  private undo = inject(UndoService);
 
   readonly categoryInfo = CATEGORY_INFO;
   readonly kindInfo = KIND_INFO;
@@ -72,11 +74,32 @@ export class ReviewComponent {
   cards = toSignal(this.cardsService.cards$, { initialValue: [] as Card[] });
 
   loading = computed(() => this.rawPending() === undefined);
-  pending = computed(() => this.rawPending() ?? []);
+  /** Items held for Undo disappear (and leave the counts) straight away. */
+  pending = computed(() => (this.rawPending() ?? []).filter(i => !this.undo.hidden().has(i.id)));
   tab = signal<'pending' | 'history'>('pending');
   group = signal<GroupFilter>('all');
 
-  shown = computed(() => this.pending().filter(i => this.group() === 'all' || this.groupOf(i) === this.group()));
+  shown = computed(() => this.pending().filter(i => (this.group() === 'all' || this.groupOf(i) === this.group()) ));
+
+  // ── History ──────────────────────────────────────────────────
+  historyStatus = signal<'all' | 'approved' | 'rejected'>('all');
+  historyQuery = signal('');
+  openHistoryId = signal<string | null>(null);
+  history = computed(() => {
+    const q = this.historyQuery().trim().toLowerCase();
+    return this.resolved().filter(i =>
+      (this.historyStatus() === 'all' || i.status === this.historyStatus()) &&
+      (this.group() === 'all' || this.groupOf(i) === this.group()) &&
+      (!q || [i.email.subject, i.email.from, i.email.account, i.extracted.description, i.resolvedValues?.description,
+              String(i.resolvedValues?.amount ?? i.extracted.amount ?? ''), this.cardName(i.cardId)]
+              .some(v => (v ?? '').toString().toLowerCase().includes(q)))
+    );
+  });
+  historyCounts = computed(() => ({
+    all: this.resolved().length,
+    approved: this.resolved().filter(i => i.status === 'approved').length,
+    rejected: this.resolved().filter(i => i.status === 'rejected').length,
+  }));
   groupCount = (g: GroupFilter) => (g === 'all' ? this.pending().length : this.pending().filter(i => this.groupOf(i) === g).length);
 
   /** Reviewer choices (default to the parser's suggestion). */
@@ -93,6 +116,38 @@ export class ReviewComponent {
 
   activeCards = computed(() => this.cards().filter(c => c.status === 'Active'));
   private cardMap = computed(() => new Map(this.cards().map(c => [c.id, c])));
+
+  /** Final values next to what the email said — changed fields are flagged. */
+  historyRows(i: ReviewItem): { label: string; value: string; was: string | null }[] {
+    const fmt = (k: string, v: unknown): string => {
+      if (v === undefined || v === null || v === '') return '—';
+      if (v instanceof Date) return v.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      if (['amount', 'totalDue', 'minDue'].includes(k)) return '₹' + Number(v).toLocaleString('en-IN');
+      return String(v);
+    };
+    const labels: Record<string, string> = {
+      txnDate: 'Date', dueDate: 'Due date', statementDate: 'Statement date', amount: 'Amount', totalDue: 'Total due', minDue: 'Minimum due',
+      description: 'Description', category: 'Category', direction: 'Type', expiryMonth: 'Expiry month', expiryYear: 'Expiry year',
+      statementDay: 'Statement day', dueDay: 'Due day',
+    };
+    const final = (i.resolvedValues ?? this.valuesFor(i, i.kind)) as Record<string, unknown>;
+    const original = this.valuesFor(i, i.kind) as Record<string, unknown>;
+    return Object.keys(labels)
+      .filter(k => final[k] !== undefined)
+      .map(k => {
+        const now = fmt(k, final[k]);
+        const before = fmt(k, original[k]);
+        return { label: labels[k], value: now, was: i.edited && before !== now ? before : null };
+      });
+  }
+
+  destinationLink(i: ReviewItem): string {
+    return i.kind === 'transaction' ? '/cards/transactions' : i.kind === 'statement' ? '/cards/statements' : i.kind === 'card_update' ? '/cards' : '/';
+  }
+
+  toggleHistory(id: string): void {
+    this.openHistoryId.update(v => (v === id ? null : id));
+  }
 
   /** Items that can be approved as-is in one tap. */
   bulkReady = computed(() =>
@@ -122,8 +177,9 @@ export class ReviewComponent {
     return c ? cardLabel(c) : '—';
   }
 
-  confidenceTone(c: number): string {
-    return c >= 0.85 ? 'tone-ok' : c >= 0.6 ? 'tone-soon' : 'tone-overdue';
+  /** Only flag what needs attention: low-confidence matches get a "check carefully" chip; others show nothing. */
+  needsCheck(i: ReviewItem): boolean {
+    return i.confidence < 0.6 || (KIND_INFO[this.kindOf(i)].needsCard && !this.cardIdOf(i));
   }
 
   categoriesFor(kind: ReviewKind): readonly string[] {
@@ -222,50 +278,29 @@ export class ReviewComponent {
     return { kind, values, cardId, edited };
   }
 
-  async approve(i: ReviewItem): Promise<void> {
+  /** Validates now; the approval itself is held for 5 s (Undo cancels it). */
+  approve(i: ReviewItem): void {
     const input = this.inputFor(i);
     if (typeof input === 'string') return this.setError(i.id, input);
-    this.busyId.set(i.id);
     this.clearError(i.id);
-    try {
-      await this.review.approve(i, input);
-      if (this.editingId() === i.id) this.cancelEdit();
-      this.banner.set({ kind: 'ok', text: `Approved → ${KIND_INFO[input.kind].module}.` });
-    } catch (err: any) {
-      console.error('[Review] approve failed', err);
-      this.setError(i.id, err?.code === 'permission-denied'
-        ? 'The server rejected this approval. Check the values (e.g. due date after statement date, card selected).'
-        : 'Could not approve. Check your connection and try again.');
-    } finally {
-      this.busyId.set(null);
-    }
+    if (this.editingId() === i.id) this.cancelEdit();
+    this.undo.defer(`Approved → ${KIND_INFO[input.kind].module}`, [i.id], () => this.review.approve(i, input));
   }
 
-  async approveAllReady(): Promise<void> {
+  approveAllReady(): void {
     const batch = this.bulkReady()
       .map(item => ({ item, input: this.inputFor(item) }))
       .filter((x): x is { item: ReviewItem; input: ApprovalInput } => typeof x.input !== 'string');
     if (!batch.length) return;
-    this.bulkBusy.set(true);
-    try {
+    this.undo.defer(`Approved ${batch.length} items`, batch.map(b => b.item.id), async () => {
       const r = await this.review.approveMany(batch);
-      this.banner.set({ kind: r.failed ? 'error' : 'ok', text: `Approved ${r.ok} item${r.ok === 1 ? '' : 's'}${r.failed ? `, ${r.failed} failed — review them individually` : ''}.` });
-    } finally {
-      this.bulkBusy.set(false);
-    }
+      if (r.failed) this.banner.set({ kind: 'error', text: `${r.failed} item${r.failed === 1 ? '' : 's'} couldn't be approved — review ${r.failed === 1 ? 'it' : 'them'} individually.` });
+    });
   }
 
-  async reject(i: ReviewItem): Promise<void> {
-    this.busyId.set(i.id);
-    try {
-      await this.review.reject(i);
-      if (this.editingId() === i.id) this.cancelEdit();
-    } catch (err) {
-      console.error('[Review] reject failed', err);
-      this.setError(i.id, 'Could not reject. Try again.');
-    } finally {
-      this.busyId.set(null);
-    }
+  reject(i: ReviewItem): void {
+    if (this.editingId() === i.id) this.cancelEdit();
+    this.undo.defer('Rejected — nothing was saved', [i.id], () => this.review.reject(i));
   }
 
   async loadSamples(): Promise<void> {

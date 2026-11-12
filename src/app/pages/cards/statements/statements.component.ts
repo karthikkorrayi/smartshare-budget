@@ -7,13 +7,15 @@ import { CardStatementsService } from '../../../services/card-statements.service
 import { Card, cardLabel } from '../../../models/card.model';
 import { CardStatement, dueInfo } from '../../../models/card-statement.model';
 import { StatementFormComponent, StatementFormData } from '../../../dialogs/statement-form/statement-form.component';
+import { UndoService } from '../../../services/undo.service';
+import { VisiblePipe } from '../../../pipes/visible.pipe';
 
 type StatusFilter = 'open' | 'all' | 'Paid';
 
 @Component({
   selector: 'app-card-statements',
   standalone: true,
-  imports: [DatePipe, DecimalPipe],
+  imports: [DatePipe, DecimalPipe, VisiblePipe],
   templateUrl: './statements.component.html',
   styleUrl: './statements.component.scss',
 })
@@ -21,6 +23,7 @@ export class StatementsComponent {
   private cardsService = inject(CardsService);
   private statementsService = inject(CardStatementsService);
   private dialog = inject(MatDialog);
+  private undo = inject(UndoService);
 
   cards = toSignal(this.cardsService.cards$, { initialValue: [] as Card[] });
   private raw = toSignal(this.statementsService.statements$);
@@ -68,21 +71,15 @@ export class StatementsComponent {
   async markPaid(s: CardStatement): Promise<void> {
     try {
       await this.statementsService.markPaid(s);
+      this.undo.offer(`Statement marked paid · ${this.cardName(s.cardId)}`, () => this.statementsService.restorePayment(s));
     } catch (err) {
       console.error(err);
       this.actionError.set('Could not mark the statement as paid.');
     }
   }
 
-  async remove(id: string): Promise<void> {
-    try {
-      await this.statementsService.delete(id);
-    } catch (err) {
-      console.error(err);
-      this.actionError.set('Could not delete the statement.');
-    } finally {
-      this.confirmDeleteId.set(null);
-    }
+  remove(s: CardStatement): void {
+    this.undo.defer(`Deleted statement · ${this.cardName(s.cardId)}`, [s.id], () => this.statementsService.delete(s.id));
   }
 
   private open(data: StatementFormData): void {

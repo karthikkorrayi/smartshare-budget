@@ -120,6 +120,8 @@ export class SpendingService {
   }
 
   private expenseEntry(d: any): SpendEntry | null {
+    // Same rule as Overview: card bill payments and repaid loans aren't spending.
+    if (d?.category === 'Card Bill' || d?.status === 'PAID') return null;
     const date = toDate(d?.date);
     const amount = Number(d?.amount) || 0;
     return date && amount > 0 ? { date, amount, source: 'expense' } : null;

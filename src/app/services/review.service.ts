@@ -5,8 +5,6 @@ import {
   collection,
   collectionData,
   doc,
-  limit,
-  orderBy,
   query,
   serverTimestamp,
   where,
@@ -54,15 +52,25 @@ export class ReviewService {
     )
     .pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
-  /** Last 50 decisions. Needs index review_items(userId ASC, status ASC, resolvedAt DESC). */
-  readonly resolved$: Observable<ReviewItem[]> = this.auth.forUser(
-    uid =>
-      collectionData(
-        query(this.col, where('userId', '==', uid), where('status', 'in', ['approved', 'rejected']), orderBy('resolvedAt', 'desc'), limit(50)),
-        { idField: 'id' }
-      ).pipe(map(docs => docs.map(d => ReviewService.fromFirestore(d)))),
-    [] as ReviewItem[]
-  );
+  /**
+   * Every decision, newest first. Equality filters only, so it works without a composite index
+   * (the old ordered query returned nothing when its index wasn't deployed — an empty History tab).
+   */
+  readonly resolved$: Observable<ReviewItem[]> = this.auth
+    .forUser(
+      uid =>
+        collectionData(query(this.col, where('userId', '==', uid), where('status', 'in', ['approved', 'rejected'])), {
+          idField: 'id',
+        }).pipe(
+          map(docs =>
+            docs
+              .map(d => ReviewService.fromFirestore(d))
+              .sort((a, b) => (b.resolvedAt?.getTime() ?? Date.now()) - (a.resolvedAt?.getTime() ?? Date.now()))
+          )
+        ),
+      [] as ReviewItem[]
+    )
+    .pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
   /**
    * Approves an item: writes the verified record into its destination module AND marks the review

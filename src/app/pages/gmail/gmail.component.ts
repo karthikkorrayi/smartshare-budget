@@ -6,6 +6,7 @@ import { GmailService, gmailMessage } from '../../services/gmail.service';
 import { ReviewService } from '../../services/review.service';
 import { GmailConnection, MONITOR_GROUPS, MONITOR_GROUP_INFO, MonitorGroup } from '../../models/gmail.model';
 import { AuthService } from '../../services/auth.service';
+import { UndoService } from '../../services/undo.service';
 
 @Component({
   selector: 'app-gmail',
@@ -16,6 +17,7 @@ import { AuthService } from '../../services/auth.service';
 })
 export class GmailComponent {
   private gmail = inject(GmailService);
+  private undo = inject(UndoService);
   private review = inject(ReviewService);
   private auth = inject(AuthService);
 
@@ -80,7 +82,10 @@ export class GmailComponent {
   async togglePaused(c: GmailConnection): Promise<void> {
     await this.act(c.id, async () => {
       await this.gmail.setPaused(c, !c.paused);
-      return c.paused ? `Monitoring resumed for ${c.email}.` : `Monitoring paused for ${c.email}.`;
+      this.undo.offer(c.paused ? `Monitoring resumed for ${c.email}` : `Monitoring paused for ${c.email}`, () =>
+        this.gmail.setPaused(c, c.paused)
+      );
+      return ''; // the Undo bar confirms it
     });
   }
 

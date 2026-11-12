@@ -5,6 +5,7 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { IncomeService } from '../../services/income.service';
 import { fromDateInput, monthKey, toDateInput } from '../../utils/date-input.util';
 import { toDate } from '../../utils/firestore.util';
+import { UndoService } from '../../services/undo.service';
 
 /**
  * Add / edit income.
@@ -71,6 +72,7 @@ export class AddIncomeComponent {
   constructor(
     private dialogRef: MatDialogRef<AddIncomeComponent>,
     private incomeService: IncomeService,
+    private undo: UndoService,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     if (data?.income) this.income = { ...data.income };
@@ -104,8 +106,15 @@ export class AddIncomeComponent {
 
     this.saving.set(true);
     try {
-      if (this.income.id) await this.incomeService.updateIncome({ id: this.income.id, ...fields });
-      else await this.incomeService.addIncome(fields);
+      if (this.income.id) {
+        const b = this.data.income;
+        await this.incomeService.updateIncome({ id: this.income.id, ...fields });
+        this.undo.offer(`Updated income "${fields.source}"`, () =>
+          this.incomeService.updateIncome({ id: b.id, source: b.source, amount: b.amount, date: toDate(b.date) ?? date, month: b.month }));
+      } else {
+        const ref = await this.incomeService.addIncome(fields);
+        this.undo.offer(`Added income "${fields.source}" · ₹${fields.amount}`, () => this.incomeService.deleteIncome(ref.id));
+      }
       this.dialogRef.close(true);
     } catch (err) {
       console.error('[AddIncome] save failed', err);

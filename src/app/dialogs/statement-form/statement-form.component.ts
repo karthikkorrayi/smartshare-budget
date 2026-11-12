@@ -5,6 +5,7 @@ import { Card, cardLabel } from '../../models/card.model';
 import { CardStatement, StatementStatus, statusFromPaid } from '../../models/card-statement.model';
 import { CardStatementsService } from '../../services/card-statements.service';
 import { dayInMonth, fromDateInput, toDateInput } from '../../utils/date-input.util';
+import { UndoService } from '../../services/undo.service';
 
 export interface StatementFormData {
   cards: Card[];
@@ -21,6 +22,7 @@ export interface StatementFormData {
 export class StatementFormComponent {
   private dialogRef = inject(MatDialogRef<StatementFormComponent>);
   private statements = inject(CardStatementsService);
+  private undo = inject(UndoService);
   data: StatementFormData = inject(MAT_DIALOG_DATA);
 
   readonly label = cardLabel;
@@ -89,8 +91,14 @@ export class StatementFormComponent {
     };
     this.saving.set(true);
     try {
-      if (this.isEdit) await this.statements.update(this.data.statement!.id, input);
-      else await this.statements.add(input);
+      if (this.isEdit) {
+        const b = this.data.statement!;
+        await this.statements.update(b.id, input);
+        this.undo.offer('Statement updated', () => this.statements.update(b.id, b));
+      } else {
+        const ref = await this.statements.add(input);
+        this.undo.offer('Statement added', () => this.statements.delete(ref.id));
+      }
       this.dialogRef.close(true);
     } catch (err: any) {
       console.error('[StatementForm] save failed', err);

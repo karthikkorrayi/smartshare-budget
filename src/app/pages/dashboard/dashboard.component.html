@@ -1,8 +1,17 @@
 <section class="overview-heading">
-  <div><p class="eyebrow">YOUR MONEY, AT A GLANCE</p><h1>Monthly overview</h1><p>A little clarity for every rupee.</p></div>
+  <div>
+    <p class="eyebrow">HELLO, {{ username | uppercase }} · {{ today | date: 'd MMM, EEE' }}</p>
+    <div class="month-picker">
+      <label for="overview-month" class="visually-hidden">Month</label>
+      <select id="overview-month" [(ngModel)]="selectedMonth" (change)="onMonthChange()">
+        <option *ngFor="let m of months" [value]="m.value">{{ m.label }}</option>
+      </select>
+    </div>
+  </div>
   <div class="overview-actions"><button class="overview-secondary" (click)="openAddIncome()">+ Add income</button><button class="overview-primary" (click)="openAddExpense()">+ Add expense</button></div>
 </section>
-<app-daily-pulse></app-daily-pulse>
+<app-budget-hero class="hero-host" [s]="summary" [monthLabel]="selectedMonthLabel"></app-budget-hero>
+<app-daily-pulse *ngIf="summary?.isCurrentMonth"></app-daily-pulse>
 <div class="dashboard" [class.loading]="isLoading">
 
   <div class="loading-overlay" *ngIf="isLoading">
@@ -13,49 +22,6 @@
   <!-- LEFT COLUMN -->
   <div class="left-column">
 
-    <!-- Greeting Card -->
-    <mat-card class="card greeting-card greeting-modern">
-
-    <!-- Header -->
-    <div class="greeting-header">
-      <div>
-        <h4 class="greet-text">Hello 👋</h4>
-        <h1 class="username">{{ username }}</h1>
-        <p class="date-text">
-          {{ today | date: 'dd MMMM, EEEE' }}
-        </p>
-      </div>
-
-      <div class="month-select">
-        <label for="overview-month">Month</label>
-        <select id="overview-month" [(ngModel)]="selectedMonth" (change)="onMonthChange()">
-          <option *ngFor="let m of months" [value]="m.value">
-            {{ m.label }}
-          </option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Progress -->
-    <div class="progress-section">
-      <div class="progress-info">
-        <span class="progress-label">
-          {{ completionPercent }}% completed
-        </span>
-        <span class="remaining" *ngIf="completionPercent < 100">
-          {{ remainingDays }} days left
-        </span>
-      </div>
-
-      <mat-progress-bar
-        mode="determinate"
-        [value]="completionPercent">
-      </mat-progress-bar>
-    </div>
-
-  </mat-card>
-
-    <!-- Category Gauge -->
     <mat-card class="card receivable-card">
 
       <!-- Header -->
@@ -118,7 +84,7 @@
         <small>Add a person/reason and amount to track money you should receive.</small>
       </div>
 
-      <div *ngFor="let r of receivables" class="receivable-row" [class.paid]="r.status === 'PAID'">
+      <div *ngFor="let r of receivables | visible" class="receivable-row" [class.paid]="r.status === 'PAID'">
         <input
           type="checkbox"
           [checked]="r.status === 'PAID'"
@@ -146,7 +112,7 @@
 
     <!-- Category Summary -->
    <mat-card class="card category-summary">
-      <h3>Category Summary</h3>
+      <h3>Where the money went</h3>
 
       <div
         *ngFor="let cat of categorySummary"
@@ -160,7 +126,7 @@
           </div>
 
           <div class="category-right">
-            <span class="category-amount">₹{{ cat.amount }}</span>
+            <span class="category-amount">₹{{ cat.amount | number:'1.0-0' }}</span>
           </div>
         </div>
 
@@ -182,25 +148,7 @@
 
   <!-- CENTER COLUMN -->
   <div class="center-column">
-    <!-- Top Stats -->
-    <div class="stats-row">
-      <div class="kpi-card income" [class.active]="availableBalance > 0">
-        <p class="kpi-label">Total Income</p>
-        <h2 class="kpi-value income-value">₹{{ totalIncome | number:'1.0-0' }}</h2>
-      </div>
 
-      <div class="kpi-card expense">
-        <p class="kpi-label">Total Spending</p>
-        <h2 class="kpi-value expense-value">₹{{ totalExpenses | number:'1.0-0' }}</h2>
-      </div>
-
-      <div class="kpi-card balance" [class.active]="availableBalance > totalIncome * 0.5">
-        <p class="kpi-label">Available Balance</p>
-        <h2 class="kpi-value balance-value">
-          ₹{{ availableBalance | number:'1.0-0' }}
-        </h2>
-      </div>
-    </div>
 
 
 
@@ -231,7 +179,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let inc of recentIncome" [class.system-generated-row]="inc.isSystemGenerated">
+            <tr *ngFor="let inc of recentIncome | visible" [class.system-generated-row]="inc.isSystemGenerated">
               <td>
                 <div class="description-cell">
                   <span class="category-icon">💸</span>
@@ -317,7 +265,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let exp of recentExpenses" class="table-row" [class.paid-row]="exp.status === 'PAID'">
+            <tr *ngFor="let exp of recentExpenses | visible" class="table-row" [class.paid-row]="exp.status === 'PAID'">
               <td>
                 <div class="description-cell">
                   <span class="category-icon">{{ getCategoryIcon(exp.category) }}</span>
@@ -395,11 +343,11 @@
       <div class="trend-metrics">
         <div class="metric this">
           <span>This Month</span>
-          <strong>₹{{ totalExpenses }}</strong>
+          <strong>₹{{ totalExpenses | number:'1.0-0' }}</strong>
         </div>
         <div class="metric last">
           <span>Last Month</span>
-          <strong>₹{{ lastMonthExpense }}</strong>
+          <strong>₹{{ lastMonthExpense | number:'1.0-0' }}</strong>
         </div>
         <div class="metric diff">
           <span>Difference</span>
@@ -429,7 +377,7 @@
       </div>
 
       <!-- LIST -->
-      <div *ngFor="let pay of upcomingPayments" class="upcoming-item">
+      <div *ngFor="let pay of upcomingPayments | visible" class="upcoming-item">
         <div class="left">
           <input
             type="checkbox"
@@ -509,7 +457,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let exp of allExpenses" class="table-row" [class.paid-row]="exp.status === 'PAID'">
+          <tr *ngFor="let exp of allExpenses | visible" class="table-row" [class.paid-row]="exp.status === 'PAID'">
             <td>
               <div class="description-cell">
                 <span class="category-icon">{{ getCategoryIcon(exp.category) }}</span>
@@ -575,7 +523,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let inc of allIncome" [class.system-generated-row]="inc.isSystemGenerated">
+          <tr *ngFor="let inc of allIncome | visible" [class.system-generated-row]="inc.isSystemGenerated">
             <td>
               <div class="description-cell">
                 <span class="category-icon">💸</span>

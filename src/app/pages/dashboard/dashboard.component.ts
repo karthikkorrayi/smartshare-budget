@@ -11,13 +11,18 @@ import { AddExpenseComponent } from '../../dialogs/add-expense/add-expense.compo
 import { AddIncomeComponent } from '../../dialogs/add-income/add-income.component';
 import { UpcomingPaymentService } from '../../services/upcoming-payment.service';
 import { combineLatest, Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { filter, switchMap, takeUntil } from 'rxjs/operators';
 import { ReceivableService } from '../../services/receivable.service';
 import { CarryForwardService } from '../../services/carry-forward.service';
 import { StateManagementService } from '../../services/state-management.service';
 import { AuthService } from '../../services/auth.service';
 import { DailyPulseComponent } from '../../components/daily-pulse/daily-pulse.component';
 import { toDate } from '../../utils/firestore.util';
+import { CardTransactionsService } from '../../services/card-transactions.service';
+import { UndoService } from '../../services/undo.service';
+import { VisiblePipe } from '../../pipes/visible.pipe';
+import { BudgetHeroComponent } from '../../components/budget-hero/budget-hero.component';
+import { BudgetSummary, MoneyItem, dailySpend, spendValue, summarizeMonth } from '../../utils/budget.util';
 import { daysBetween, monthKey as monthKeyOf } from '../../utils/date-input.util';
 
 /** Firestore Timestamp/Date → epoch ms; 0 for missing dates (one bad record can't break Overview). */
@@ -48,7 +53,7 @@ const hoverGuideLinePlugin = {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DailyPulseComponent, CommonModule, FormsModule, MatCardModule, MatProgressBarModule],
+  imports: [DailyPulseComponent, BudgetHeroComponent, VisiblePipe, CommonModule, FormsModule, MatCardModule, MatProgressBarModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -66,8 +71,10 @@ export class DashboardComponent implements OnDestroy {
   }
   today = new Date();
 
-  completionPercent = 0;
-  remainingDays = 0;
+  /** Budget-first summary shown at the top of Overview (expenses + card spends vs income). */
+  summary: BudgetSummary | null = null;
+  private undo = inject(UndoService);
+  private cardTxns = inject(CardTransactionsService);
 
   totalIncome = 0;
   totalExpenses = 0;
@@ -88,10 +95,6 @@ export class DashboardComponent implements OnDestroy {
 
   fabOpen = false;
 
-  gaugeChart!: Chart;
-  gaugeCategory = '';
-  gaugeSpent = 0;
-  gaugeLimit = 50000;
 
   recentExpenses: any[] = [];
   allExpenses: any[] = [];
@@ -151,10 +154,10 @@ export class DashboardComponent implements OnDestroy {
   }
 
   private async loadMonthData(monthKey: string): Promise<void> {
-    await this.carryForwardService.checkAndProcessCarryForward(monthKey);
     this.stateManagement.setCurrentMonth(monthKey);
-    this.calculateMonthStats();
     this.cdr.markForCheck();
+    // Runs after the month is shown; only acts on the current month.
+    this.carryForwardService.checkAndProcessCarryForward(monthKey).catch(err => console.warn('[Overview] carry-forward', err));
   }
 
   // ── Global subscriptions — set up ONCE, never re-trigger on month change ──
@@ -201,111 +204,125 @@ export class DashboardComponent implements OnDestroy {
       this.cdr.markForCheck();
     });
 
+    const month$ = this.stateManagement.currentMonth$.pipe(filter(m => !!m));
+    const cards$ = month$.pipe(switchMap(m => this.cardTxns.byMonth$(m)));
+    // Last month (for "vs last month" and the trend line). One listener at a time via switchMap —
+    // the old code opened a new listener on every data change and never closed them.
+    const lastExpenses$ = month$.pipe(switchMap(m => runInInjectionContext(this.injector, () => this.expenseService.getExpensesByMonth(this.prevMonth(m)))));
+    const lastCards$ = month$.pipe(switchMap(m => this.cardTxns.byMonth$(this.prevMonth(m))));
+
     combineLatest([
       this.stateManagement.incomes$,
       this.stateManagement.expenses$,
-      this.stateManagement.currentMonth$
+      this.stateManagement.currentMonth$,
+      cards$,
+      lastExpenses$,
+      lastCards$,
     ]).pipe(
       takeUntil(this.destroy$)
-    ).subscribe(([incomes, expenses, currentMonth]) => {
+    ).subscribe(([incomes, expenses, currentMonth, cards, lastExpenses, lastCards]) => {
       this.expenses = expenses;
-      const activeExpenses = expenses.filter((e: any) => e.status !== 'PAID');
+      const items = [...expenses.map(e => this.expenseItem(e)), ...cards.map(c => this.cardItem(c))];
+      const lastItems = [...lastExpenses.map((e: any) => this.expenseItem(e)), ...lastCards.map(c => this.cardItem(c))];
 
       this.totalIncome = incomes.reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0);
-      this.totalExpenses = activeExpenses.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
-      this.availableBalance = this.totalIncome - this.totalExpenses;
+      this.summary = summarizeMonth(currentMonth, this.totalIncome, items, lastItems);
+      this.totalExpenses = this.summary.spent;
+      this.availableBalance = this.summary.balance;
 
       this.prepareRecentIncome(incomes);
-      this.prepareDailyExpenses(activeExpenses);
-      this.prepareCategorySummary(activeExpenses);
+      this.prepareDailyExpenses(items);
+      this.prepareCategorySummary(items);
       this.prepareRecentExpenses(expenses);
 
-      this.thisMonthCumulative = this.prepareCumulativeData(activeExpenses, currentMonth);
+      const [y, m] = currentMonth.split('-').map(Number);
+      this.thisMonthCumulative = this.cumulative(dailySpend(items, y, m - 1));
+      const [ly, lm] = this.prevMonth(currentMonth).split('-').map(Number);
+      this.lastMonthCumulative = this.cumulative(dailySpend(lastItems, ly, lm - 1));
+      this.renderLineChart();
       this.cdr.markForCheck();
-
-      const lastMonthKey = this.getLastMonthKey();
-      runInInjectionContext(this.injector, () =>
-        this.expenseService.getExpensesByMonth(lastMonthKey)
-      ).pipe(
-        takeUntil(this.destroy$)
-      ).subscribe((lastMonthExpenses: any[]) => {
-        const activeLastMonth = lastMonthExpenses.filter((e: any) => e.status !== 'PAID');
-        this.lastMonthCumulative = this.prepareCumulativeData(activeLastMonth, lastMonthKey);
-        this.renderLineChart();
-        this.cdr.markForCheck();
-      });
     });
+  }
+
+  private expenseItem(e: any): MoneyItem {
+    return { source: 'expense', amount: Number(e.amount) || 0, date: toDate(e.date), category: e.category, status: e.status };
+  }
+
+  private cardItem(c: any): MoneyItem {
+    return { source: 'card', amount: Number(c.amount) || 0, date: toDate(c.txnDate), category: c.category, direction: c.direction };
+  }
+
+  private prevMonth(month: string): string {
+    const [y, m] = month.split('-').map(Number);
+    return monthKeyOf(new Date(y, m - 2, 1));
+  }
+
+  private cumulative(daily: number[]): number[] {
+    const out = [...daily];
+    for (let i = 1; i < out.length; i++) out[i] = Math.round((out[i] + out[i - 1]) * 100) / 100;
+    return out;
   }
 
   async addReceivable() {
     if (!this.newReceivable.title || this.newReceivable.amount <= 0) return;
 
-    await this.stateManagement.addReceivable({
+    const created = await this.stateManagement.addReceivable({
       title: this.newReceivable.title,
       amount: this.newReceivable.amount,
       trackInExpenses: this.newReceivable.trackInExpenses
     });
+    this.undo.offer(`Added "${this.newReceivable.title}" to receivables`, () => this.stateManagement.removeReceivableCompletely(created));
 
     this.newReceivable = { title: '', amount: 0, trackInExpenses: true };
     this.cdr.markForCheck();
   }
 
-  async markReceivableReceived(item: any, event?: Event) {
+  /** Marked as received after 5 s (Undo cancels it). Tracked loans add today's income. */
+  markReceivableReceived(item: any, event?: Event) {
     if (item.status === 'PAID') return;
-    const note = item.trackInExpenses ? ` ₹${item.amount} will be added to today's income.` : '';
-    if (!confirm(`Mark "${item.title}" as received?${note}`)) {
-      if (event?.target) (event.target as HTMLInputElement).checked = false; // undo the tick
-      return;
-    }
-    try {
-      await this.stateManagement.markReceivableAsPaid(item);
-    } catch (err) {
-      console.error('[Overview] receivable update failed', err);
-      alert('Could not update. Check your connection and try again.');
-    }
-    this.cdr.markForCheck();
+    const box = event?.target as HTMLInputElement | undefined;
+    this.undo.defer(
+      `Marked "${item.title}" as received${item.trackInExpenses ? ` · ₹${item.amount} added to income` : ''}`,
+      [],
+      () => this.stateManagement.markReceivableAsPaid(item),
+      () => { if (box) box.checked = false; }
+    );
   }
 
-  async deleteReceivable(id: string) {
+  deleteReceivable(id: string) {
     const receivable = this.receivables.find(r => r.id === id);
-    if (receivable?.status === 'PAID') {
-      alert('Cannot delete a receivable that has been marked as paid.');
-      return;
-    }
-    if (confirm('Delete this receivable?')) {
-      await this.stateManagement.deleteReceivable(id, this.receivables, this.expenses);
-      this.cdr.markForCheck();
-    }
+    if (!receivable || receivable.status === 'PAID') return;
+    this.undo.defer(
+      `Deleted receivable "${receivable.title}"`,
+      [id, ...(receivable.lentExpenseId ? [receivable.lentExpenseId] : [])],
+      () => this.stateManagement.deleteReceivable(id, this.receivables, this.expenses)
+    );
   }
 
-  /** Pays an upcoming item: books it as today's expense, then removes it from the list. */
-  async markAsPaid(payment: any, event?: Event) {
-    if (!confirm(`Mark "${payment.description}" (₹${payment.amount}) as paid? It will be added to today's expenses.`)) {
-      if (event?.target) (event.target as HTMLInputElement).checked = false;
-      return;
-    }
-    const today = new Date();
-    try {
-      await this.expenseService.addExpense({
-        description: payment.description,
-        amount: payment.amount,
-        category: payment.category || 'Bills',
-        date: today,
-        month: monthKeyOf(today) // was the month being viewed, which mismatched today's date
-      });
-      await this.upcomingService.delete(payment.id);
-    } catch (err) {
-      console.error('[Overview] mark paid failed', err);
-      alert('Could not mark as paid. Check your connection and try again.');
-    }
-    this.cdr.markForCheck();
+  /** Pays an upcoming item: after 5 s it's booked as today's expense and removed (Undo cancels). */
+  markAsPaid(payment: any, event?: Event) {
+    const box = event?.target as HTMLInputElement | undefined;
+    this.undo.defer(
+      `Paid "${payment.description}" · ₹${payment.amount} added to today's expenses`,
+      [payment.id],
+      async () => {
+        const today = new Date();
+        await this.expenseService.addExpense({
+          description: payment.description,
+          amount: payment.amount,
+          category: payment.category || 'Bills',
+          date: today,
+          month: monthKeyOf(today)
+        });
+        await this.upcomingService.delete(payment.id);
+      },
+      () => { if (box) box.checked = false; }
+    );
   }
 
   deleteUpcoming(id: string) {
-    if (confirm('Delete this upcoming payment?')) {
-      this.upcomingService.delete(id);
-      this.cdr.markForCheck();
-    }
+    const p = this.upcomingPayments.find(x => x.id === id);
+    this.undo.defer(`Deleted "${p?.description ?? 'payment'}"`, [id], () => this.upcomingService.delete(id));
   }
 
   /** Whole calendar days until the due date (0 = today, negative = overdue). */
@@ -340,28 +357,6 @@ export class DashboardComponent implements OnDestroy {
     return `${y}-${m}`;
   }
 
-  calculateMonthStats() {
-    const [year, month] = this.selectedMonth.split('-').map(Number);
-    const totalDays = new Date(year, month, 0).getDate();
-    const today = new Date();
-
-    const isCurrentMonth =
-      year === today.getFullYear() &&
-      month === today.getMonth() + 1;
-
-    if (isCurrentMonth) {
-      const todayDate = today.getDate();
-      this.completionPercent = Math.round((todayDate / totalDays) * 100);
-      this.remainingDays = totalDays - todayDate;
-    } else if (new Date(year, month - 1) < new Date(today.getFullYear(), today.getMonth())) {
-      this.completionPercent = 100;
-      this.remainingDays = 0;
-    } else {
-      this.completionPercent = 0;
-      this.remainingDays = totalDays;
-    }
-  }
-
   async onMonthChange() {
     const monthKey = this.getSelectedMonthKey();
     await this.loadMonthData(monthKey);
@@ -372,24 +367,12 @@ export class DashboardComponent implements OnDestroy {
     return monthIndex !== -1 ? this.months[monthIndex].value : this.selectedMonth;
   }
 
-  prepareDailyExpenses(expenses: any[]) {
+  /** Daily bars + running total — expenses and card spends together. */
+  prepareDailyExpenses(items: MoneyItem[]) {
     const [year, month] = this.selectedMonth.split('-').map(Number);
-    const daysInMonth = new Date(year, month, 0).getDate();
-    this.dailyTotals = new Array(daysInMonth).fill(0);
-
-    expenses.forEach(exp => {
-      const d = toDate(exp.date);
-      if (!d) return;
-      const day = d.getDate();
-      if (day >= 1 && day <= daysInMonth) this.dailyTotals[day - 1] += Number(exp.amount) || 0;
-    });
-
-    this.cumulativeTotals = [...this.dailyTotals];
-    for (let i = 1; i < this.cumulativeTotals.length; i++) {
-      this.cumulativeTotals[i] += this.cumulativeTotals[i - 1];
-    }
-
-    this.renderBarChart(daysInMonth);
+    this.dailyTotals = dailySpend(items, year, month - 1);
+    this.cumulativeTotals = this.cumulative(this.dailyTotals);
+    this.renderBarChart(this.dailyTotals.length);
   }
 
   renderBarChart(daysInMonth: number) {
@@ -485,23 +468,24 @@ export class DashboardComponent implements OnDestroy {
     return found ? found.label : '';
   }
 
-  prepareCategorySummary(expenses: any[]) {
-    const categoryMap: any = {};
-    expenses.forEach(exp => {
-      const cat = exp.category || 'Others';
-      categoryMap[cat] = (categoryMap[cat] || 0) + exp.amount;
-    });
-
-    const maxAmount = Math.max(...(Object.values(categoryMap) as number[]));
-
-    this.categorySummary = Object.keys(categoryMap).map(cat => ({
-      name: cat,
-      amount: categoryMap[cat],
-      percentage: Math.round((categoryMap[cat] / maxAmount) * 100),
-      icon: this.getCategoryIcon(cat)
-    }));
-    this.categorySummary.sort((a, b) => b.amount - a.amount);
-    this.prepareCategoryGauge();
+  /** Spending by category (expenses + card purchases); % = share of this month's spending. */
+  prepareCategorySummary(items: MoneyItem[]) {
+    const byCat: Record<string, number> = {};
+    for (const it of items) {
+      const v = spendValue(it);
+      if (v <= 0) continue; // refunds reduce the total, not a category
+      const cat = it.category || 'Others';
+      byCat[cat] = (byCat[cat] || 0) + v;
+    }
+    const total = Object.values(byCat).reduce((a, b) => a + b, 0);
+    this.categorySummary = Object.keys(byCat)
+      .map(cat => ({
+        name: cat,
+        amount: Math.round(byCat[cat]),
+        percentage: total > 0 ? Math.round((byCat[cat] / total) * 100) : 0,
+        icon: this.getCategoryIcon(cat),
+      }))
+      .sort((a, b) => b.amount - a.amount);
   }
 
   getCategoryIcon(category: string): string {
@@ -513,84 +497,21 @@ export class DashboardComponent implements OnDestroy {
       case 'lent': return '🤝';
       case 'petrol': return '⛽';
       case 'tickets': return '🎟️';
+      case 'groceries': return '🛒';
+      case 'travel': return '✈️';
+      case 'fuel': return '⛽';
+      case 'entertainment': return '🎬';
+      case 'health': return '💊';
+      case 'education': return '📚';
+      case 'emi': return '🏦';
       default: return '📦';
     }
-  }
-
-  prepareCategoryGauge() {
-    if (!this.categorySummary.length) return;
-    const topCategory = this.categorySummary[0];
-    this.gaugeCategory = topCategory.name;
-    this.gaugeSpent = topCategory.amount;
-    this.renderGaugeChart();
-  }
-
-  renderGaugeChart() {
-    const gaugeCanvas = document.getElementById('categoryGauge') as HTMLCanvasElement | null;
-    if (!gaugeCanvas) return;
-
-    const used = this.gaugeSpent;
-    const remaining = Math.max(this.gaugeLimit - used, 0);
-
-    if (this.gaugeChart) this.gaugeChart.destroy();
-
-    this.gaugeChart = new Chart(gaugeCanvas, {
-      type: 'doughnut',
-      data: {
-        datasets: [{
-          data: [used, remaining],
-          backgroundColor: ['#1e88e5', '#e0e0e0'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        circumference: 180,
-        rotation: -90,
-        cutout: '75%',
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: ctx => `₹ ${ctx.raw}` } }
-        }
-      }
-    });
   }
 
   prepareRecentExpenses(expenses: any[]) {
     const sorted = [...expenses].sort((a, b) => ms(b.date) - ms(a.date));
     this.allExpenses = sorted;
     this.recentExpenses = sorted.slice(0, 5);
-  }
-
-  getLastMonthKey(): string {
-    const [year, month] = this.selectedMonth.split('-').map(Number);
-    const date = new Date(year, month - 2);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-  }
-
-  prepareCumulativeData(expenses: any[], monthKey: string): number[] {
-    const [yearRaw, monthRaw] = monthKey.split('-').map(Number);
-    const year = Number.isFinite(yearRaw) ? yearRaw : this.today.getFullYear();
-    const month = Number.isFinite(monthRaw) && monthRaw >= 1 && monthRaw <= 12
-      ? monthRaw
-      : this.today.getMonth() + 1;
-
-    const daysInMonth = new Date(year, month, 0).getDate();
-    if (!Number.isFinite(daysInMonth) || daysInMonth <= 0) return [];
-
-    const dailyTotals = new Array(daysInMonth).fill(0);
-    expenses.forEach(exp => {
-      const d = toDate(exp.date);
-      if (!d) return;
-      const day = d.getDate();
-      if (day >= 1 && day <= daysInMonth) {
-        dailyTotals[day - 1] += Number(exp.amount) || 0;
-      }
-    });
-
-    for (let i = 1; i < dailyTotals.length; i++) {
-      dailyTotals[i] += dailyTotals[i - 1];
-    }
-    return dailyTotals;
   }
 
   renderLineChart() {
@@ -736,10 +657,8 @@ export class DashboardComponent implements OnDestroy {
   }
 
   deleteExpense(id: string) {
-    if (confirm('Delete this expense?')) {
-      this.expenseService.deleteExpense(id);
-      this.cdr.markForCheck();
-    }
+    const e = this.allExpenses.find(x => x.id === id);
+    this.undo.defer(`Deleted "${e?.description ?? 'expense'}"`, [id], () => this.expenseService.deleteExpense(id));
   }
 
   toggleFab() {
@@ -786,10 +705,7 @@ export class DashboardComponent implements OnDestroy {
       alert('System-generated transactions cannot be deleted.');
       return;
     }
-    if (confirm('Delete this income?')) {
-      this.incomeService.deleteIncome(id);
-      this.cdr.markForCheck();
-    }
+    this.undo.defer(`Deleted income "${income?.source ?? ''}"`, [id], () => this.incomeService.deleteIncome(id));
   }
 
   openAllExpensesModal() {

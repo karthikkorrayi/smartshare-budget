@@ -6,8 +6,11 @@ import { ExpenseService } from '../../services/expense.service';
 import { UpcomingPaymentService } from '../../services/upcoming-payment.service';
 import { fromDateInput, monthKey, toDateInput } from '../../utils/date-input.util';
 import { toDate } from '../../utils/firestore.util';
+import { UndoService } from '../../services/undo.service';
 
-const CATEGORIES = ['Food', 'Shopping', 'Transport', 'Bills', 'Petrol', 'Tickets', 'Lent', 'Others'];
+// 'Card Bill' = paying a credit-card bill. Not counted as spending (the card's purchases already are).
+const CATEGORIES = ['Food', 'Shopping', 'Transport', 'Bills', 'Petrol', 'Tickets', 'Lent', 'Card Bill', 'Others'];
+const CARD_BILL_HINT = /credit\s*card|card\s*(bill|payment|dues)|cc\s*(bill|payment)/i;
 
 /**
  * Add / edit an expense, or schedule it as an upcoming payment.
@@ -33,7 +36,7 @@ const CATEGORIES = ['Food', 'Shopping', 'Transport', 'Bills', 'Petrol', 'Tickets
 
       <div class="form-content">
         <div class="input-group">
-          <input type="text" id="description" [(ngModel)]="expense.description" class="floating-input" placeholder=" " maxlength="120">
+          <input type="text" id="description" [(ngModel)]="expense.description" (blur)="suggestCardBill()" class="floating-input" placeholder=" " maxlength="120">
           <label for="description" class="floating-label">Description</label>
         </div>
 
@@ -50,6 +53,10 @@ const CATEGORIES = ['Food', 'Shopping', 'Transport', 'Bills', 'Petrol', 'Tickets
             <label for="category" class="floating-label">Category</label>
           </div>
         </div>
+
+        <p class="field-hint" *ngIf="expense.category === 'Card Bill'">
+          Card bill payments aren't counted as spending — the purchases on that card already are.
+        </p>
 
         <div class="input-group" *ngIf="!isUpcoming">
           <input type="date" id="date" [(ngModel)]="dateInput" class="floating-input" placeholder=" " [max]="todayInput">
@@ -84,6 +91,7 @@ const CATEGORIES = ['Food', 'Shopping', 'Transport', 'Bills', 'Petrol', 'Tickets
     </div>
   `,
   styles: [`
+    .field-hint { margin: -4px 0 0; padding: 8px 12px; border-radius: 10px; background: #f0f9ff; color: #075985; font-size: 13px; line-height: 1.45; }
     .form-errors { margin: 4px 0 0; padding: 10px 14px 10px 30px; border-radius: 12px; background: #fef2f2; color: #b91c1c; font-size: 14px; line-height: 1.5; }
   `],
 })
@@ -104,6 +112,7 @@ export class AddExpenseComponent {
     private dialogRef: MatDialogRef<AddExpenseComponent>,
     private expenseService: ExpenseService,
     private upcomingService: UpcomingPaymentService,
+    private undo: UndoService,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     if (data?.expense) {
@@ -113,6 +122,13 @@ export class AddExpenseComponent {
       }
     }
     this.dateInput = toDateInput(toDate(data?.expense?.date) ?? this.defaultDate(data?.month));
+  }
+
+  /** "HDFC credit card bill" → suggest the Card Bill category (only for new entries, never overrides a choice). */
+  suggestCardBill(): void {
+    if (!this.expense.id && this.expense.category === 'Food' && CARD_BILL_HINT.test(this.expense.description ?? '')) {
+      this.expense.category = 'Card Bill';
+    }
   }
 
   /** Today when adding to the current month; otherwise the 1st of the month being viewed. */
@@ -148,6 +164,7 @@ export class AddExpenseComponent {
     try {
       if (this.expense.id) {
         const date = this.withTime(fromDateInput(this.dateInput)!);
+        const before = this.data.expense;
         await this.expenseService.updateExpense({
           id: this.expense.id,
           description,
@@ -157,9 +174,12 @@ export class AddExpenseComponent {
           month: monthKey(date),
           ...(this.expense.status ? { status: this.expense.status } : {}),
         });
+        this.undo.offer(`Updated "${description}"`, () => this.expenseService.updateExpense({
+          id: before.id, description: before.description, amount: before.amount, category: before.category, date: toDate(before.date) ?? date, month: before.month,
+        }));
       } else if (this.isUpcoming) {
         const due = fromDateInput(this.dueDate)!;
-        await this.upcomingService.add({
+        const ref = await this.upcomingService.add({
           description,
           amount,
           category,
@@ -167,9 +187,11 @@ export class AddExpenseComponent {
           month: monthKey(due),
           createdAt: new Date(),
         });
+        this.undo.offer(`Upcoming payment "${description}" added`, () => this.upcomingService.delete(ref.id));
       } else {
         const date = this.withTime(fromDateInput(this.dateInput)!);
-        await this.expenseService.addExpense({ description, amount, category, date, month: monthKey(date) });
+        const ref = await this.expenseService.addExpense({ description, amount, category, date, month: monthKey(date) });
+        this.undo.offer(`Added "${description}" · ₹${amount}`, () => this.expenseService.deleteExpense(ref.id));
       }
       this.dialogRef.close(true);
     } catch (err) {

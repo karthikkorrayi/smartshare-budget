@@ -22,15 +22,15 @@
   <select class="cc-select" [value]="sourceFilter()" (change)="sourceFilter.set($any($event.target).value)" aria-label="Source">
     <option value="all">All sources</option>
     <option value="manual">Manual only</option>
-    <option value="auto">From email only</option>
+    <option value="auto">From Gmail only</option>
   </select>
 </section>
 
 <section class="cc-stats">
   <div class="cc-stat"><span class="label">Transactions</span><span class="value">{{ totals().count }}</span></div>
   <div class="cc-stat"><span class="label">Spent</span><span class="value">₹{{ totals().spent | number: '1.0-0' }}</span></div>
-  <div class="cc-stat"><span class="label">Refunds / payments</span><span class="value cc-amount-credit">₹{{ totals().credits | number: '1.0-0' }}</span></div>
-  <div class="cc-stat"><span class="label">From email</span><span class="value">{{ totals().auto }}</span></div>
+  <div class="cc-stat"><span class="label">Refunds</span><span class="value cc-amount-credit">₹{{ totals().refunds | number: '1.0-0' }}</span></div>
+  <div class="cc-stat"><span class="label">Net card spend</span><span class="value">₹{{ totals().spent - totals().refunds | number: '1.0-0' }}</span></div>
 </section>
 
 @if (actionError()) { <p class="cc-error" role="alert">{{ actionError() }}</p> }
@@ -48,12 +48,13 @@
 } @else {
   <section class="days">
     @for (g of groups(); track g.key) {
+      @if ((g.items | visible).length) {
       <div class="cc-panel day">
         <header class="day-head">
           <span>{{ g.date | date: 'EEE, d MMM' }}</span>
           @if (g.spent) { <span class="day-total">₹{{ g.spent | number: '1.0-2' }}</span> }
         </header>
-        @for (t of g.items; track t.id) {
+        @for (t of g.items | visible; track t.id) {
           <div class="txn">
             <div class="txn-main">
               <span class="desc">{{ t.description }}</span>
@@ -61,34 +62,26 @@
                 {{ cardName(t.cardId) }}
                 @if (t.category) { · {{ t.category }} }
               </span>
-              <span class="tags">
-                @switch (t.source) {
-                  @case ('email') { <span class="cc-badge tone-info">📧 Verified email</span> }
-                  @case ('demo') { <span class="cc-badge tone-demo">🧪 Sample</span> }
-                  @default { <span class="cc-badge">✍️ Manual</span> }
-                }
-                @if (t.editedAfterReview) { <span class="cc-badge tone-soon">Corrected</span> }
-              </span>
+              @if (t.source !== 'manual') {
+                <span class="tags">
+                  @if (t.source === 'email') { <span class="cc-badge tone-info" title="Approved from Gmail">✉ Gmail</span> }
+                @if (t.source === 'demo') { <span class="cc-badge tone-demo">Sample</span> }
+                </span>
+              }
             </div>
             <div class="txn-side">
               <span class="amount" [class]="t.direction === 'credit' ? 'cc-amount-credit' : 'cc-amount-debit'">
                 {{ t.direction === 'credit' ? '+' : '−' }}₹{{ t.amount | number: '1.0-2' }}
               </span>
-              @if (confirmDeleteId() === t.id) {
-                <span class="row-actions">
-                  <button class="cc-btn cc-btn--sm cc-btn--danger" (click)="remove(t.id)">Delete</button>
-                  <button class="cc-btn cc-btn--sm" (click)="confirmDeleteId.set(null)">Keep</button>
-                </span>
-              } @else {
-                <span class="row-actions">
-                  <button class="cc-btn cc-btn--sm" (click)="edit(t)">Edit</button>
-                  <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="confirmDeleteId.set(t.id)" aria-label="Delete">✕</button>
-                </span>
-              }
+              <span class="row-actions">
+                <button class="cc-btn cc-btn--sm" (click)="edit(t)">Edit</button>
+                <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="remove(t)" aria-label="Delete">✕</button>
+              </span>
             </div>
           </div>
         }
       </div>
+      }
     }
   </section>
 }

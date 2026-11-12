@@ -66,7 +66,6 @@
   gap: 20px;
 }
 
-
 .center-column .card {
   background: linear-gradient(165deg, #ffffff 0%, #f8fbff 100%);
   border: 1px solid #dbe7f4;
@@ -90,12 +89,6 @@
 .bar-chart-header h3,
 .table-header h3 {
   letter-spacing: 0.2px;
-}
-
-
-/* Greeting Card */
-.greeting-card h1 {
-  margin: 0;
 }
 
 .progress-section {
@@ -127,32 +120,6 @@
   background: #2ecc71;
 }
 
-/* Stats */
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-/* KPI Cards */
-.kpi-card {
-  height: 110px;
-  border-radius: 18px;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  background: linear-gradient(155deg, #ffffff 0%, #eef6ff 100%);
-  box-shadow:
-    0 12px 24px rgba(15, 23, 42, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  transition: all 0.25s ease;
-  border: 1px solid #dbe7f4;
-  position: relative;
-  overflow: hidden;
-}
-
 /* Label (small, muted) */
 .kpi-label {
   font-size: 12px;
@@ -162,52 +129,6 @@
   text-transform: uppercase;
   font-weight: 500;
 }
-
-/* Value (strong hierarchy) */
-.kpi-value {
-  font-size: 28px;
-  font-weight: 700;
-  margin: 0;
-  color: #0f172a;
-  line-height: 1.1;
-}
-
-/* Color variations for balance */
-.kpi-value.positive { color: #059669; }
-.kpi-value.negative { color: #dc2626; }
-
-.kpi-value.income-value{color:#059669}.kpi-value.expense-value{color:#dc2626}.kpi-value.balance-value{color:#2563eb}
-
-.kpi-card::after {
-  content: '';
-  position: absolute;
-  inset: auto -25% -45% auto;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, rgba(37, 99, 235, 0.14), transparent 70%);
-}
-
-/* Pastel accents */
-.kpi-card.income { border-left: 4px solid #34d399; }
-.kpi-card.income::before,
-.kpi-card.expense::before,
-.kpi-card.balance::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 46px;
-  height: 46px;
-  border-radius: 0 18px 0 100%;
-}
-
-.kpi-card.income::before { background: rgba(52, 211, 153, 0.15); }
-.kpi-card.expense { border-left: 4px solid #f87171; }
-.kpi-card.expense::before { background: rgba(248, 113, 113, 0.15); }
-.kpi-card.balance { border-left: 4px solid #60a5fa; }
-.kpi-card.balance::before { background: rgba(96, 165, 250, 0.15); }
-
 
 /* ─── Table header with "View All" ─────────────────────────────── */
 .table-header {
@@ -263,7 +184,6 @@
     transform: scale(0.97);
   }
 }
-
 
 /* ─── Modal overlay ─────────────────────────────────────────────── */
 .modal-overlay {
@@ -387,7 +307,6 @@
   width: 100%;
 }
 
-
 /* ─── Bar chart ─────────────────────────────────────────────────── */
 .bar-chart-header {
   display: flex;
@@ -416,7 +335,6 @@
     height: 100% !important;
   }
 }
-
 
 /* ─── Modern table ──────────────────────────────────────────────── */
 .table-container {
@@ -651,22 +569,6 @@
   text-decoration: line-through;
 }
 
-
-/* ─── Greeting modern ───────────────────────────────────────────── */
-.greeting-modern {
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #1e40af 100%);
-  color: #fff;
-  border: none;
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.25);
-}
-
-.greeting-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
 .greet-text {
   margin: 0 0 2px;
   font-size: 13px;
@@ -742,7 +644,6 @@ mat-progress-bar {
   border-radius: 4px;
   height: 6px;
 }
-
 
 /* ─── Receivable card ───────────────────────────────────────────── */
 .receivable-card {
@@ -930,7 +831,6 @@ mat-progress-bar {
   }
 }
 
-
 /* ─── Category summary ──────────────────────────────────────────── */
 .category-summary {
   background: #fff;
@@ -1000,7 +900,6 @@ mat-progress-bar {
     text-align: right;
   }
 }
-
 
 /* ─── Spending trend card ───────────────────────────────────────── */
 .spending-trend-card {
@@ -1135,7 +1034,6 @@ mat-progress-bar {
   }
 }
 
-
 /* ─── Upcoming payments ─────────────────────────────────────────── */
 .upcoming {
   background: #fff;
@@ -1266,14 +1164,12 @@ mat-progress-bar {
   }
 }
 
-
 /* ─── Income summary card ───────────────────────────────────────── */
 .income-summary-modern {
   .amount-text.income-amount {
     color: #059669;
   }
 }
-
 
 /* ─── FAB ───────────────────────────────────────────────────────── */
 .fab-container {
@@ -1364,7 +1260,6 @@ mat-progress-bar {
   background: linear-gradient(135deg, #10b981, #059669);
   color: #fff;
 }
-
 
 /* ─── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 1200px) {
@@ -1662,7 +1557,6 @@ mat-progress-bar {
     justify-content: flex-end;
   }
 
-
   /* ─── Receivable row — track pill & row layout ──────────────────── */
 
   .row-left {
@@ -1708,21 +1602,6 @@ mat-progress-bar {
 .dashboard .card { min-width: 0; padding: 22px; border-radius: 20px; background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 3px 14px #0f172a04; }
 .dashboard .card:hover { transform: none; box-shadow: 0 3px 14px #0f172a04; }
 .dashboard h3 { color: #0f172a; font-size: 15px; letter-spacing: -.2px; }
-.dashboard .greeting-card { background: #0f766e; border-color: #0f766e; color: #fff; }
-.greeting-card .greet-text, .greeting-card .username, .greeting-card .date-text, .greeting-card .progress-label, .greeting-card .remaining, .greeting-card label { color: #fff; }
-.greeting-header { flex-wrap: wrap; gap: 20px; }
-.greeting-card .month-select { width: 100%; }
-.greeting-card .month-select select { width: 100%; min-height: 44px; background: #fff; border: 0; color: #134e4a; border-radius: 10px; }
-.stats-row { gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.stats-row .kpi-card { height: auto; min-height: 126px; padding: 22px 16px; border: 1px solid #e2e8f0; border-radius: 18px; background: #fff; box-shadow: none; overflow: hidden; }
-.stats-row .kpi-card::before, .stats-row .kpi-card::after { display: none; }
-.stats-row .kpi-card.balance { background: #0f172a; border-color: #0f172a; }
-.stats-row .kpi-label { color: #64748b; font-size: 12px; letter-spacing: 0; margin: 0 0 16px; }
-.stats-row .kpi-value { font-size: clamp(20px, 2vw, 28px); letter-spacing: -.7px; overflow-wrap: anywhere; margin: 0; }
-.stats-row .income-value { color: #0f766e; }
-.stats-row .expense-value { color: #be123c; }
-.stats-row .balance .kpi-label { color: #cbd5e1; }
-.stats-row .balance-value { color: #fff; }
 .table-header { flex-wrap: wrap; gap: 12px; background: transparent; padding: 0 0 16px; border-bottom: 1px solid #f1f5f9; }
 .table-header-right { flex-wrap: wrap; gap: 8px; }
 .table-container, .modal-body { overflow-x: auto; overscroll-behavior-x: contain; }
@@ -1793,3 +1672,24 @@ app-daily-pulse { display: block; padding: 16px 28px 0; }
 
 /* Overdue upcoming payments stay visible (they used to disappear) */
 .due-badge.overdue { color: #fff; background: #dc2626; }
+
+// ── Budget-first Overview ─────────────────────────────────
+app-budget-hero.hero-host { display: block; padding: 16px 28px 0; }
+@media (max-width: 900px) { app-budget-hero.hero-host { padding: 12px 16px 0; } }
+
+.month-picker select {
+  margin-top: 4px;
+  padding: 2px 28px 2px 0;
+  border: none;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 4px center;
+  appearance: none;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  color: #0f172a;
+  cursor: pointer;
+  &:focus-visible { outline: 2px solid #0f766e; outline-offset: 4px; border-radius: 6px; }
+}
+@media (max-width: 760px) { .month-picker select { font-size: 22px; } }
+
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -63,6 +63,15 @@ export class CardStatementsService {
     });
   }
 
+  /** Undo for markPaid: puts the previous paid amount and status back. */
+  restorePayment(before: CardStatement) {
+    return updateDoc(doc(this.firestore, 'card_statements', before.id), {
+      paidAmount: before.paidAmount,
+      status: before.status,
+      lastUpdated: serverTimestamp(),
+    });
+  }
+
   delete(id: string) {
     return deleteDoc(doc(this.firestore, 'card_statements', id));
   }

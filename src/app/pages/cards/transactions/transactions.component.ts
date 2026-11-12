@@ -10,6 +10,8 @@ import { Card, cardLabel } from '../../../models/card.model';
 import { CardTransaction } from '../../../models/card-transaction.model';
 import { TransactionFormComponent, TransactionFormData } from '../../../dialogs/transaction-form/transaction-form.component';
 import { monthKey, toDateInput } from '../../../utils/date-input.util';
+import { UndoService } from '../../../services/undo.service';
+import { VisiblePipe } from '../../../pipes/visible.pipe';
 
 interface DayGroup {
   key: string;
@@ -21,7 +23,7 @@ interface DayGroup {
 @Component({
   selector: 'app-card-transactions',
   standalone: true,
-  imports: [DatePipe, DecimalPipe],
+  imports: [DatePipe, DecimalPipe, VisiblePipe],
   templateUrl: './transactions.component.html',
   styleUrl: './transactions.component.scss',
 })
@@ -31,6 +33,7 @@ export class TransactionsComponent {
   private dialog = inject(MatDialog);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private undo = inject(UndoService);
 
   month = signal(monthKey());
   cardFilter = signal<string>(this.route.snapshot.queryParamMap.get('card') ?? 'all');
@@ -71,6 +74,7 @@ export class TransactionsComponent {
       count: list.length,
       spent: list.filter(t => t.direction === 'debit').reduce((s, t) => s + t.amount, 0),
       credits: list.filter(t => t.direction === 'credit').reduce((s, t) => s + t.amount, 0),
+      refunds: list.filter(t => t.direction === 'credit' && t.category === 'Refund').reduce((s, t) => s + t.amount, 0),
       auto: list.filter(t => t.source !== 'manual').length,
     };
   });
@@ -107,14 +111,7 @@ export class TransactionsComponent {
     });
   }
 
-  async remove(id: string): Promise<void> {
-    try {
-      await this.txnService.delete(id);
-    } catch (err) {
-      console.error(err);
-      this.actionError.set('Could not delete the transaction.');
-    } finally {
-      this.confirmDeleteId.set(null);
-    }
+  remove(t: CardTransaction): void {
+    this.undo.defer(`Deleted "${t.description}" · ₹${t.amount}`, [t.id], () => this.txnService.delete(t.id));
   }
 }
