@@ -24,6 +24,7 @@ import { NotificationsService } from '../../services/notifications.service';
 import { WalletsService } from '../../services/wallets.service';
 import { WALLET_CATEGORIES, WALLET_TXN_INFO, WALLET_TXN_TYPES, Wallet, WalletTxnType, walletLabel } from '../../models/wallet.model';
 import { UndoService } from '../../services/undo.service';
+import { IconComponent } from '../../ui/icon.component';
 
 type GroupFilter = 'all' | 'salary' | 'bank' | 'cards' | 'bills' | 'payments' | 'wallets';
 
@@ -49,7 +50,7 @@ const BULK_CONFIDENCE = 0.85;
 @Component({
   selector: 'app-review-center',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, FormsModule, RouterLink],
+  imports: [IconComponent, DatePipe, DecimalPipe, FormsModule, RouterLink],
   templateUrl: './review.component.html',
   styleUrl: './review.component.scss',
 })
@@ -71,12 +72,12 @@ export class ReviewComponent {
   readonly walletTypeInfo = WALLET_TXN_INFO;
   readonly groupFilters: { id: GroupFilter; label: string }[] = [
     { id: 'all', label: 'All' },
-    { id: 'salary', label: '💰 Salary' },
-    { id: 'bank', label: '🏦 Bank' },
-    { id: 'cards', label: '💳 Cards' },
-    { id: 'bills', label: '🧾 Bills' },
-    { id: 'payments', label: '✅ Payments' },
-    { id: 'wallets', label: '👛 Wallets' },
+    { id: 'salary', label: 'Salary' },
+    { id: 'bank', label: 'Bank' },
+    { id: 'cards', label: 'Cards' },
+    { id: 'bills', label: 'Bills' },
+    { id: 'payments', label: 'Payments' },
+    { id: 'wallets', label: 'Wallets' },
   ];
 
   private rawPending = toSignal(this.review.pending$);

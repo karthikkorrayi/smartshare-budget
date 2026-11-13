@@ -12,6 +12,7 @@ import { TransactionFormComponent, TransactionFormData } from '../../../dialogs/
 import { monthKey, toDateInput } from '../../../utils/date-input.util';
 import { UndoService } from '../../../services/undo.service';
 import { VisiblePipe } from '../../../pipes/visible.pipe';
+import { IconComponent } from '../../../ui/icon.component';
 
 interface DayGroup {
   key: string;
@@ -23,7 +24,7 @@ interface DayGroup {
 @Component({
   selector: 'app-card-transactions',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, VisiblePipe],
+  imports: [IconComponent, DatePipe, DecimalPipe, VisiblePipe],
   templateUrl: './transactions.component.html',
   styleUrl: './transactions.component.scss',
 })

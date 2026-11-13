@@ -8,11 +8,11 @@
   display: flex;
   justify-content: space-between;
   padding: 10px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border);
   font-size: 13px;
   font-weight: 700;
-  color: #475569;
-  .day-total { color: #0f172a; }
+  color: var(--text-2);
+  .day-total { color: var(--text); }
 }
 
 .txn {
@@ -20,7 +20,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border);
   &:last-child { border-bottom: none; }
 }
 
@@ -29,8 +29,8 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  .desc { font-weight: 650; color: #0f172a; overflow-wrap: anywhere; }
-  .meta { font-size: 13px; color: #64748b; }
+  .desc { font-weight: 650; color: var(--text); overflow-wrap: anywhere; }
+  .meta { font-size: 13px; color: var(--text-3); }
   .tags { display: flex; gap: 6px; flex-wrap: wrap; }
 }
 

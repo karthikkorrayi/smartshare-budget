@@ -7,6 +7,7 @@ import {
   deleteDoc,
   doc,
   query,
+  updateDoc,
   where,
 } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
@@ -38,6 +39,12 @@ export class UpcomingPaymentService {
         ),
       []
     );
+  }
+
+  /** Partial update (never changes ownership or the email-import link). */
+  update(id: string, data: any) {
+    const { id: _id, userId, reviewId, importedFrom, ...changes } = data ?? {};
+    return updateDoc(doc(this.firestore, 'upcoming_payments', id), changes);
   }
 
   delete(id: string) {

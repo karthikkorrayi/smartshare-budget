@@ -110,6 +110,20 @@ service cloud.firestore {
       allow read, write: if isUser(uid);
     }
 
+    // The bank account exists and belongs to the caller.
+    function ownsBank(bankId) {
+      return bankId is string
+        && exists(docPath('bank_accounts', bankId))
+        && get(docPath('bank_accounts', bankId)).data.userId == request.auth.uid;
+    }
+    // Optional account link on expenses / income (added with the redesign). Absent or null = not
+    // linked (all older entries). When present it must point at one of the caller's own accounts.
+    function accountLinkOk(d) {
+      return d.get('accountId', null) == null
+        || (d.get('accountType', null) == 'bank' && ownsBank(d.accountId))
+        || (d.get('accountType', null) == 'wallet' && ownsWallet(d.accountId));
+    }
+
     // ── Core budget collections ─────────────────────────────────────
     // Manual entries carry neither field. Imported entries (from an approved email review)
     // carry importedFrom + reviewId, and can only be created in the approval batch.
@@ -125,14 +139,16 @@ service cloud.firestore {
 
     match /expenses/{id} {
       allow read: if ownerRead();
-      allow create: if ownerCreate() && importedOk(request.resource.data, 'expense', id);
-      allow update: if ownerUpdate() && importUnchanged();
+      allow create: if ownerCreate() && importedOk(request.resource.data, 'expense', id) && accountLinkOk(request.resource.data);
+      allow update: if ownerUpdate() && importUnchanged()
+        && (unchanged('accountId') || accountLinkOk(request.resource.data));
       allow delete: if ownerDelete();
     }
     match /income/{id} {
       allow read: if ownerRead();
-      allow create: if ownerCreate() && importedOk(request.resource.data, 'income', id);
-      allow update: if ownerUpdate() && importUnchanged();
+      allow create: if ownerCreate() && importedOk(request.resource.data, 'income', id) && accountLinkOk(request.resource.data);
+      allow update: if ownerUpdate() && importUnchanged()
+        && (unchanged('accountId') || accountLinkOk(request.resource.data));
       allow delete: if ownerDelete();
     }
     match /receivables/{id} {
@@ -274,6 +290,52 @@ service cloud.firestore {
             || createdManuallyOrApproved(request.resource.data, 'wallet', txnId));
       allow update: if ownerUpdate() && isValidWalletTxn(request.resource.data) && unchanged('createdAt')
         && unchanged('source') && unchanged('reviewId');
+      allow delete: if ownerDelete();
+    }
+
+    // ── bank_accounts/{id} — savings / current / salary accounts ────
+    // Balance is never stored: opening balance + linked income − linked expenses ± transfers.
+    // Only an optional last-4 is kept, never a full account number.
+    function isValidBankAccount(d) {
+      return d.keys().hasOnly(['userId', 'name', 'institution', 'kind', 'lastFour', 'openingBalance', 'currency',
+                               'status', 'createdAt', 'lastUpdated'])
+        && d.keys().hasAll(['userId', 'name', 'kind', 'openingBalance', 'status', 'createdAt', 'lastUpdated'])
+        && str(d.name, 1, 40)
+        && optStr(d, 'institution', 60)
+        && d.kind in ['savings', 'current', 'salary', 'other']
+        && (!('lastFour' in d) || d.lastFour == '' || (d.lastFour is string && d.lastFour.matches('^[0-9]{4}$')))
+        && d.openingBalance is number && d.openingBalance > -1000000000 && d.openingBalance < 1000000000
+        && (!('currency' in d) || d.currency == 'INR')
+        && d.status in ['Active', 'Closed']
+        && d.createdAt is timestamp
+        && d.lastUpdated == request.time;
+    }
+    match /bank_accounts/{accountId} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate() && isValidBankAccount(request.resource.data) && request.resource.data.createdAt == request.time;
+      allow update: if ownerUpdate() && isValidBankAccount(request.resource.data) && unchanged('createdAt');
+      allow delete: if ownerDelete();
+    }
+
+    // ── transfers/{id} — moving your own money between bank accounts and wallets ─
+    function ownsAccount(type, id) {
+      return (type == 'bank' && ownsBank(id)) || (type == 'wallet' && ownsWallet(id));
+    }
+    function isValidTransfer(d) {
+      return d.keys().hasOnly(['userId', 'fromType', 'fromId', 'toType', 'toId', 'amount', 'date', 'note', 'createdAt'])
+        && d.keys().hasAll(['userId', 'fromType', 'fromId', 'toType', 'toId', 'amount', 'date', 'createdAt'])
+        && ownsAccount(d.fromType, d.fromId)
+        && ownsAccount(d.toType, d.toId)
+        && !(d.fromType == d.toType && d.fromId == d.toId)
+        && money(d.amount) && d.amount > 0
+        && d.date is timestamp
+        && optStr(d, 'note', 120)
+        && d.createdAt is timestamp;
+    }
+    match /transfers/{transferId} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate() && isValidTransfer(request.resource.data) && request.resource.data.createdAt == request.time;
+      allow update: if ownerUpdate() && isValidTransfer(request.resource.data) && unchanged('createdAt');
       allow delete: if ownerDelete();
     }
 

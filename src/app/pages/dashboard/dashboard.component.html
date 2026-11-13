@@ -1,563 +1,301 @@
-<section class="overview-heading">
-  <div>
-    <p class="eyebrow">HELLO, {{ username | uppercase }} · {{ today | date: 'd MMM, EEE' }}</p>
-    <div class="month-picker">
-      <label for="overview-month" class="visually-hidden">Month</label>
-      <select id="overview-month" [(ngModel)]="selectedMonth" (change)="onMonthChange()">
-        <option *ngFor="let m of months" [value]="m.value">{{ m.label }}</option>
-      </select>
+<div class="page dash">
+  <!-- ── Welcome + filters ────────────────────────────────────── -->
+  <section class="hello">
+    <div>
+      <h2 class="greet">{{ greeting() }}</h2>
+      <p class="muted">Here's your financial overview · <span class="range-label">{{ range().label }}</span>
+        @if (selectedAccount(); as a) { · <b>{{ a.name }}</b> }</p>
     </div>
-  </div>
-  <div class="overview-actions"><button class="overview-secondary" (click)="openAddIncome()">+ Add income</button><button class="overview-primary" (click)="openAddExpense()">+ Add expense</button></div>
-</section>
-<app-budget-hero class="hero-host" [s]="summary" [monthLabel]="selectedMonthLabel"></app-budget-hero>
-<app-daily-pulse *ngIf="summary?.isCurrentMonth"></app-daily-pulse>
-<div class="dashboard" [class.loading]="isLoading">
-
-  <div class="loading-overlay" *ngIf="isLoading">
-    <div class="loading-spinner"></div>
-    <p>Loading month data...</p>
-  </div>
-
-  <!-- LEFT COLUMN -->
-  <div class="left-column">
-
-    <mat-card class="card receivable-card">
-
-      <!-- Header -->
-      <div class="receivable-header">
-        <h3>Amount to Receive</h3>
-        <h1 class="total">₹{{ totalReceivable }}</h1>
-      </div>
-
-      <div class="divider"></div>
-
-      <!-- Data Entry -->
-      <div class="receivable-form">
-        <div class="form-group">
-          <label for="receivable-title">Title</label>
-          <input
-            id="receivable-title" type="text"
-            placeholder="Friend / Reason"
-            [(ngModel)]="newReceivable.title"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="receivable-amount">Amount</label>
-          <div class="amount-input-wrap">
-            <input
-              id="receivable-amount" type="number"
-              placeholder="0"
-              [(ngModel)]="newReceivable.amount"
-            />
-            <button class="add-btn" (click)="addReceivable()" aria-label="Add receivable">Add</button>
-          </div>
-        </div>
-
-        <!-- Track in spending toggle -->
-        <label class="track-toggle">
-          <div class="toggle-switch">
-            <input
-              type="checkbox"
-              [(ngModel)]="newReceivable.trackInExpenses"
-            />
-            <span class="toggle-slider"></span>
-          </div>
-          <div class="toggle-label">
-            <span class="toggle-title">Add to Spending Summary</span>
-            <span class="toggle-hint">
-              {{ newReceivable.trackInExpenses
-                ? 'Lent expense today; repayment is added as income'
-                : 'Watch only — nothing is booked now or on repayment' }}
-            </span>
-          </div>
-        </label>
-      </div>
-
-      <div class="divider"></div>
-
-      <!-- List -->
-      <div class="receivable-empty" *ngIf="receivables.length === 0">
-        <span class="empty-icon">🤝</span>
-        <p>No pending receivables</p>
-        <small>Add a person/reason and amount to track money you should receive.</small>
-      </div>
-
-      <div *ngFor="let r of receivables | visible" class="receivable-row" [class.paid]="r.status === 'PAID'">
-        <input
-          type="checkbox"
-          [checked]="r.status === 'PAID'"
-          [disabled]="r.status === 'PAID'"
-          (change)="markReceivableReceived(r, $event)"
-        />
-
-        <div class="row-content">
-          <div class="row-left">
-            <span class="title" [class.paid-text]="r.status === 'PAID'">{{ r.title }}</span>
-            <span
-              class="track-pill"
-              [class.in-spending]="r.trackInExpenses"
-              [class.watch-only]="!r.trackInExpenses">
-              {{ r.trackInExpenses ? '💸 In Spending' : '👁 Watch Only' }}
-            </span>
-          </div>
-          <span class="row-amount" [class.paid-text]="r.status === 'PAID'">₹{{ r.amount }}</span>
-        </div>
-
-        <span class="delete" [class.disabled]="r.status === 'PAID'" (click)="deleteReceivable(r.id)">🗑️</span>
-      </div>
-
-    </mat-card>
-
-    <!-- Category Summary -->
-   <mat-card class="card category-summary">
-      <h3>Where the money went</h3>
-
-      <div
-        *ngFor="let cat of categorySummary"
-        class="category-row-advanced"
-      >
-        <!-- Top Row -->
-        <div class="category-top">
-          <div class="category-left">
-            <span class="category-icon">{{ cat.icon }}</span>
-            <span class="category-name">{{ cat.name }}</span>
-          </div>
-
-          <div class="category-right">
-            <span class="category-amount">₹{{ cat.amount | number:'1.0-0' }}</span>
-          </div>
-        </div>
-
-        <!-- Progress -->
-        <div class="category-progress">
-          <mat-progress-bar
-            mode="determinate"
-            [value]="cat.percentage"
-          ></mat-progress-bar>
-
-          <span class="category-percent">
-            {{ cat.percentage }}%
-          </span>
-        </div>
-      </div>
-    </mat-card>
-
-  </div>
-
-  <!-- CENTER COLUMN -->
-  <div class="center-column">
-
-
-
-
-    <mat-card class="card recent-income-modern spending-table-modern income-summary-modern">
-      <div class="table-header">
-        <h3>Income Summary</h3>
-        <div class="table-header-right">
-          <span class="transaction-count" *ngIf="recentIncome.length > 0">
-            {{ recentIncome.length }} entr{{ recentIncome.length > 1 ? 'ies' : 'y' }}
-          </span>
-          <button
-            class="view-all-btn"
-            *ngIf="allIncome.length > 3"
-            (click)="openAllIncomeModal()">
-            View All ({{ allIncome.length }})
+    <div class="filters" role="group" aria-label="Dashboard filters">
+      <div class="seg seg-scroll presets" role="radiogroup" aria-label="Date range">
+        @for (p of presets; track p.id) {
+          <button role="radio" [attr.aria-checked]="preset() === p.id" [class.on]="preset() === p.id" (click)="setPreset(p.id)" [title]="p.label">
+            <span class="long">{{ p.label }}</span><span class="short">{{ p.short }}</span>
           </button>
-        </div>
+        }
       </div>
-
-      <div class="table-container" *ngIf="recentIncome.length > 0">
-        <table class="modern-table income-table">
-          <thead>
-            <tr>
-              <th>Source</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let inc of recentIncome | visible" [class.system-generated-row]="inc.isSystemGenerated">
-              <td>
-                <div class="description-cell">
-                  <span class="category-icon">💸</span>
-                  <span class="description-text">{{ inc.source }}</span>
-                </div>
-              </td>
-              <td>
-                <span class="amount-text income-amount">₹{{ inc.amount | number:'1.0-0' }}</span>
-              </td>
-              <td>
-                <span class="status-badge auto" *ngIf="inc.isSystemGenerated">AUTO</span>
-                <span class="status-badge" *ngIf="!inc.isSystemGenerated">MANUAL</span>
-              </td>
-              <td>
-                <div class="action-buttons">
-                  <button class="action-btn edit-btn"
-                    [class.disabled]="inc.isSystemGenerated"
-                    [disabled]="inc.isSystemGenerated"
-                    (click)="editIncome(inc)"
-                    title="Edit">
-                    <span class="btn-icon">✏️</span>
-                  </button>
-                  <button class="action-btn delete-btn"
-                    [class.disabled]="inc.isSystemGenerated"
-                    [disabled]="inc.isSystemGenerated"
-                    (click)="deleteIncome(inc.id)"
-                    title="Delete">
-                    <span class="btn-icon">🗑️</span> 
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <label class="acct-select">
+        <app-icon name="layers" [size]="16" />
+        <span class="sr-only">Account</span>
+        <select [ngModel]="accountKey()" (ngModelChange)="accountKey.set($event)" aria-label="Account filter">
+          <option value="">All accounts</option>
+          @for (a of activeAccounts(); track a.key) { <option [value]="a.key">{{ a.name }}</option> }
+        </select>
+        <app-icon name="chevron-down" [size]="15" />
+      </label>
+    </div>
+    @if (preset() === 'custom') {
+      <div class="custom-range">
+        <label class="field"><span>From</span><input type="date" [max]="customEnd()" [ngModel]="customStart()" (ngModelChange)="customStart.set($event)" /></label>
+        <label class="field"><span>To</span><input type="date" [min]="customStart()" [ngModel]="customEnd()" (ngModelChange)="customEnd.set($event)" /></label>
+        <span class="muted tiny">Up to 24 months.</span>
       </div>
+    }
+  </section>
 
-      <div class="empty-state" *ngIf="recentIncome.length === 0">
-        <div class="empty-icon">💰</div>
-        <h4>No income entries yet</h4>
-        <p>Add income to see your monthly summary</p>
+  <!-- ── Key metrics ───────────────────────────────────────────── -->
+  <section class="metrics" aria-label="Key figures">
+    @if (loading() || !wealth()) {
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) { <app-skeleton variant="card" /> }
+    } @else {
+      @if (selectedAccount(); as a) {
+        <app-metric class="m-wealth" [feature]="true" icon="wallet"
+          [label]="a.type === 'card' ? 'Card outstanding' : 'Account balance'"
+          [value]="a.balance | money" [hint]="a.type === 'card' ? 'Unpaid on statements' : a.subtitle" />
+      } @else {
+        <app-metric class="m-wealth" [feature]="true" icon="piggy-bank" label="Total wealth" [value]="wealth()!.total | money"
+          [hint]="wealth()!.accounts ? 'Across ' + wealth()!.accounts + ' account' + (wealth()!.accounts === 1 ? '' : 's') + ' (bank + wallets)' : 'Add an account to see your balance'" />
+      }
+      <app-metric icon="arrow-down-left" tone="pos" label="Income" [value]="sum().income | money"
+        [hint]="'Received · ' + range().label.toLowerCase()" />
+      <app-metric icon="arrow-up-right" tone="info" label="Expenses" [value]="sum().spent | money"
+        [hint]="sum().refunds ? 'After ' + (sum().refunds | money) + ' in refunds' : 'Your spending · ' + range().label.toLowerCase()" />
+      <app-metric icon="activity" [tone]="sum().net >= 0 ? 'pos' : 'neg'" label="Net cash flow" [value]="sum().net | money" [negative]="sum().net < 0"
+        [hint]="sum().net >= 0 ? 'You kept more than you spent' : 'Spending is ahead of income'" />
+      <app-metric icon="handshake" tone="warn" label="Money owed to you" [value]="lendSummary().owedToMe | money"
+        [hint]="lendSummary().iOwe ? 'You owe ' + (lendSummary().iOwe | money) : 'Currently lent out'" />
+      <app-metric icon="calendar-clock" tone="neg" label="Upcoming (30 days)" [value]="(commitments()?.total ?? 0) | money"
+        [hint]="commitments()?.overdue ? commitments()!.overdue + ' overdue · ' + commitments()!.count + ' total' : (commitments()?.count ?? 0) + ' bills & card dues'" />
+    }
+  </section>
+  @if (carryForwardInPeriod() > 0 && !accountKey()) {
+    <p class="cf-note muted tiny"><app-icon name="history" [size]="13" /> {{ carryForwardInPeriod() | money }} carried forward from last month is part of this month's budget but isn't counted as new income here.</p>
+  }
+
+  <!-- ── Accounts ─────────────────────────────────────────────── -->
+  <section class="panel accounts-panel">
+    <div class="panel-head">
+      <div><h2>Accounts</h2><p>Where your money sits. Select one for its analytics.</p></div>
+      <div class="panel-actions">
+        <button class="btn btn-sm" (click)="quick.addAccount('bank')"><app-icon name="plus" [size]="15" />Add account</button>
       </div>
-    </mat-card>
-
-    <!-- Monthly Bar Chart -->
-    <mat-card class="card bar-chart">
-      <div class="bar-chart-header">
-        <h3>{{ selectedMonthLabel }}</h3>
-        <span class="subtitle">Daily spending trend</span>
-      </div>
-
-      <div class="bar-chart-wrapper">
-        <canvas id="monthlyBarChart"></canvas>
-      </div>
-    </mat-card>
-
-    <!-- Spending Table -->
-    <mat-card class="card spending-table-modern">
-      <div class="table-header">
-        <h3>Spending Summary</h3>
-        <div class="table-header-right">
-          <span class="transaction-count" *ngIf="recentExpenses.length > 0">
-            {{ recentExpenses.length }} transaction{{ recentExpenses.length > 1 ? 's' : '' }}
-          </span>
-          <button
-            class="view-all-btn"
-            *ngIf="allExpenses.length > 5"
-            (click)="openAllExpensesModal()">
-            View All ({{ allExpenses.length }})
+    </div>
+    @if (accounts() === undefined) {
+      <div class="acct-row">@for (i of [1, 2, 3]; track i) { <span class="skeleton acct-sk"></span> }</div>
+    } @else if (!activeAccounts().length) {
+      <app-empty art="accounts" title="Your financial journey starts here" text="Add your bank account with today's balance, a wallet or cash, or a credit card. Every entry you record is then tied to an account.">
+        <button class="btn btn-primary btn-sm" (click)="quick.addAccount('bank')"><app-icon name="landmark" [size]="16" />Bank account</button>
+        <button class="btn btn-sm" (click)="quick.addAccount('wallet')"><app-icon name="wallet" [size]="16" />Wallet / cash</button>
+        <button class="btn btn-sm" (click)="quick.addAccount('card')"><app-icon name="credit-card" [size]="16" />Credit card</button>
+      </app-empty>
+    } @else {
+      <div class="acct-row" role="list">
+        @for (a of activeAccounts(); track a.key) {
+          <button class="acct-card" role="listitem" [attr.data-art]="a.art" [class.selected]="accountKey() === a.key" (click)="openAccount(a)"
+                  [attr.aria-label]="a.name + ', ' + (a.type === 'card' ? 'outstanding ' : 'balance ') + (a.balance | money)">
+            <span class="shine" aria-hidden="true"></span>
+            <span class="acct-top">
+              <span class="acct-ico"><app-icon [name]="a.icon" [size]="17" /></span>
+              <span class="acct-type">{{ a.type === 'bank' ? 'Bank' : a.type === 'card' ? 'Credit card' : 'Wallet' }}</span>
+              @if (a.low) { <span class="badge warn">Low</span> }
+            </span>
+            <span class="acct-name">{{ a.name }}</span>
+            <span class="acct-sub">{{ a.subtitle }}</span>
+            <span class="acct-bal num">{{ a.balance | money }}</span>
+            <span class="acct-foot">{{ a.type === 'card' ? 'Outstanding' : 'Balance' }}@if (a.lastActivity) { · last activity {{ a.lastActivity | date: 'd MMM' }} }</span>
           </button>
-        </div>
+        }
+        <button class="acct-add" (click)="quick.addAccount('bank')"><app-icon name="plus" [size]="20" /><span>Add account</span></button>
       </div>
+    }
+  </section>
 
-      <div class="table-container" *ngIf="recentExpenses.length > 0">
-        <table class="modern-table">
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Category</th>
-              <th>Date</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let exp of recentExpenses | visible" class="table-row" [class.paid-row]="exp.status === 'PAID'">
-              <td>
-                <div class="description-cell">
-                  <span class="category-icon">{{ getCategoryIcon(exp.category) }}</span>
-                  <span class="description-text">{{ exp.description }}</span>
-                </div>
-              </td>
-              <td>
-                <span class="category-badge" [attr.data-category]="exp.category.toLowerCase()">
-                  {{ exp.category }}
+  <!-- ── Main grid ────────────────────────────────────────────── -->
+  <div class="grid-main">
+    <div class="col-wide">
+      <!-- Cash flow -->
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Cash flow</h2><p>Income vs spending {{ flowIsDaily() ? 'by day' : 'by month' }}. Select a bar for its breakdown.</p></div>
+          <div class="legend"><span><i style="background: var(--pos)"></i>Income</span><span><i style="background: var(--c2)"></i>Spending</span>@if (!flowIsDaily()) { <span><i style="background: var(--c3)"></i>Net</span> }</div>
+        </div>
+        @if (loading()) { <app-skeleton variant="chart" h="260px" /> }
+        @else if (!sum().count) { <app-empty art="range" [compact]="true" title="No activity in this period" text="Try a wider date range, or add a transaction." /> }
+        @else { <app-chart [labels]="flow().labels" [series]="flowSeries()" [height]="260" (pick)="pickFlow($event)" ariaLabel="Income versus spending chart" /> }
+      </section>
+
+      <!-- Past trends -->
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Past trends</h2><p>Monthly income, spending and what you kept.</p></div>
+          <div class="seg" role="radiogroup" aria-label="Trend period">
+            @for (n of [3, 6, 12]; track n) {
+              <button role="radio" [attr.aria-checked]="trendMonths() === n" [class.on]="trendMonths() === n" (click)="trendMonths.set($any(n))">{{ n }}M</button>
+            }
+          </div>
+        </div>
+        @if (loading()) { <app-skeleton variant="chart" h="220px" /> }
+        @else {
+          <div class="trend-stats">
+            <div><span class="muted tiny">Avg. income / month</span><b class="num">{{ trendSummary().avgIncome | money }}</b></div>
+            <div><span class="muted tiny">Avg. spending / month</span><b class="num">{{ trendSummary().avgSpent | money }}</b></div>
+            <div><span class="muted tiny">Kept over {{ trendMonths() }} months</span><b class="num" [class.amt-neg]="trendSummary().saved < 0">{{ trendSummary().saved | money }}</b></div>
+            @if (trendSummary().rate !== null) { <div><span class="muted tiny">Savings rate</span><b class="num">{{ trendSummary().rate }}%</b></div> }
+          </div>
+          <app-chart [labels]="trend().labels" [series]="trendSeries()" [height]="220" (pick)="pickTrend($event)" ariaLabel="Monthly trend chart" />
+        }
+      </section>
+
+      <!-- Recent -->
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Recent transactions</h2><p>{{ selectedAccount()?.name ?? 'All accounts' }} · {{ range().label }}</p></div>
+          <a class="btn btn-sm btn-ghost" routerLink="/review">View all<app-icon name="chevron-right" [size]="15" /></a>
+        </div>
+        @if (loading()) { <app-skeleton variant="row" [count]="5" /> }
+        @else if (!recent().length) {
+          <app-empty art="transactions" [compact]="true" title="No transactions yet" text="Add an expense or income and it will show up here.">
+            <button class="btn btn-primary btn-sm" (click)="quick.addTxn('expense', accountRef())"><app-icon name="plus" [size]="15" />Add transaction</button>
+          </app-empty>
+        } @else {
+          <div class="list">
+            @for (t of recent(); track t.key) {
+              <button class="list-row" (click)="openTxn(t)">
+                <span class="icon-tile" [class.pos]="t.flow === 'in'" [class.info]="t.flow === 'move'"><app-icon [name]="t.kind === 'transfer' ? 'arrow-left-right' : catIcon(t.category)" [size]="17" /></span>
+                <span class="grow">
+                  <span class="title">{{ t.title }}</span>
+                  <span class="sub">{{ t.category }} · {{ accountName(t) }} · {{ t.date | date: 'd MMM' }}</span>
                 </span>
-              </td>
-              <td>
-                <span class="date-text">{{ exp.date.toDate() | date:'dd MMM yyyy' }}</span>
-              </td>
-              <td>
-                <span class="amount-text">₹{{ exp.amount | number:'1.0-0' }}</span>
-              </td>
-              <td>
-                <span class="status-badge" *ngIf="exp.status === 'PAID'">PAID</span>
-                <span class="status-badge pending" *ngIf="!exp.status || exp.status !== 'PAID'">PENDING</span>
-              </td>
-              <td>
-                <div class="action-buttons">
-                  <button class="action-btn edit-btn" (click)="editExpense(exp)" title="Edit">
-                    <span class="btn-icon">✏️</span>
-                  </button>
-                  <button class="action-btn delete-btn" (click)="deleteExpense(exp.id)" title="Delete">
-                    <span class="btn-icon">🗑️</span>
-                  </button>
+                <span class="num amt" [class.amt-in]="t.flow === 'in'" [class.amt-move]="t.flow === 'move'">{{ t.flow === 'in' ? '+' : t.flow === 'out' ? '−' : '' }}{{ t.amount | money }}</span>
+              </button>
+            }
+          </div>
+        }
+      </section>
+    </div>
+
+    <div class="col-side">
+      @if (budget(); as b) { <app-budget-hero [s]="b" [monthLabel]="budgetLabel()" /> }
+      <!-- Categories -->
+      <section class="panel">
+        <div class="panel-head"><div><h2>Where your money goes</h2><p>Spending by category</p></div></div>
+        @if (loading()) { <app-skeleton variant="chart" h="180px" /> }
+        @else if (!categories().length) { <app-empty art="chart" [compact]="true" title="No spending in this period" /> }
+        @else {
+          <div class="donut">
+            <app-chart type="doughnut" [labels]="donutLabels()" [series]="donutSeries()" [height]="170" (pick)="pickDoughnut($event)" ariaLabel="Spending by category" />
+            <div class="donut-center"><span class="muted tiny">Spent</span><b class="num">{{ sum().spent | moneyShort }}</b></div>
+          </div>
+          <div class="cat-list">
+            @for (c of topCategories(); track c.name) {
+              <button class="cat-row" (click)="pickCategory(c.name)">
+                <span class="dot" [style.background]="c.color"></span>
+                <app-icon [name]="c.icon" [size]="15" />
+                <span class="grow truncate">{{ c.name }}</span>
+                <span class="muted tiny">{{ c.pct }}%</span>
+                <b class="num">{{ c.amount | money }}</b>
+              </button>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Daily spending -->
+      <section class="panel">
+        <div class="panel-head"><div><h2>Daily spending</h2><p>{{ range().label }}</p></div><span class="icon-tile sm info"><app-icon name="calendar-days" [size]="16" /></span></div>
+        @if (loading()) { <app-skeleton h="90px" /> } @else {
+          <div class="daily">
+            <div class="daily-main">
+              <span class="muted tiny">Today</span>
+              <b class="num big">{{ daily().today | money }}</b>
+              @if (pulse().limit) {
+                <div class="limit-bar" role="progressbar" [attr.aria-valuenow]="pulse().percent" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Daily limit used ' + pulse().percent + '%'">
+                  <span [style.width.%]="pulse().percent > 100 ? 100 : pulse().percent" [class.over]="pulse().tone === 'over'" [class.warn]="pulse().tone === 'warn'"></span>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="empty-state" *ngIf="recentExpenses.length === 0">
-        <div class="empty-icon">📊</div>
-        <h4>No transactions yet</h4>
-        <p>Your spending history will appear here once you add expenses</p>
-      </div>
-    </mat-card>
-
-  </div>
-
-  <!-- RIGHT COLUMN -->
-  <div class="right-column">
-
-    <!-- Spending Fulfillment -->
-    <mat-card class="card fulfillment modern-line-card spending-trend-card">
-      <div class="line-header">
-        <div>
-          <h3>Monthly Spending Trend</h3>
-          <p class="subtitle">
-            {{ selectedMonth | date:'MMMM yyyy' }} vs previous month
+                <span class="muted tiny">{{ pulse().tone === 'over' ? (pulse().today - pulse().limit | money) + ' over' : (pulse().remaining | money) + ' left' }} of your {{ pulse().limit | money }} daily limit</span>
+              } @else {
+                <a class="tiny" routerLink="/profile" fragment="budget">Set a daily limit</a>
+              }
+            </div>
+            <dl class="daily-stats">
+              <div><dt>Daily average</dt><dd class="num">{{ daily().average | money }}</dd></div>
+              <div><dt>Last 7 days avg.</dt><dd class="num">{{ daily().last7Average | money }}</dd></div>
+              <div><dt>Highest day</dt><dd class="num">@if (daily().highest; as h) { {{ h.amount | money }} <small>{{ h.date | date: 'd MMM' }}</small> } @else { — }</dd></div>
+              <div><dt>Lowest day</dt><dd class="num">@if (daily().lowest; as l) { {{ l.amount | money }} <small>{{ l.date | date: 'd MMM' }}</small> } @else { — }</dd></div>
+              <div><dt>No-spend days</dt><dd class="num">{{ daily().noSpendDays }} of {{ daily().days }}</dd></div>
+            </dl>
+          </div>
+          <p class="insight" [class.pos]="daily().tone === 'pos'" [class.warn]="daily().tone === 'warn'">
+            <app-icon [name]="daily().tone === 'warn' ? 'trending-up' : daily().tone === 'pos' ? 'sparkles' : 'info'" [size]="15" />{{ daily().message }}
           </p>
+        }
+      </section>
+
+      <!-- Upcoming bills -->
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Upcoming bills</h2><p>Next 30 days</p></div>
+          <a class="btn btn-sm btn-ghost" routerLink="/recurring">Manage<app-icon name="chevron-right" [size]="15" /></a>
         </div>
-        <span class="trend-pill" [class.down]="spendingDelta < 0" [class.up]="spendingDelta >= 0">
-          <span class="trend-arrow">{{ spendingDelta >= 0 ? '▲' : '▼' }}</span>
-          {{ spendingDeltaPercent | number:'1.0-0' }}%
-        </span>
-      </div>
+        @if (!bills().length) {
+          <app-empty art="bills" [compact]="true" title="No bills due soon" text="Add your regular commitments to stay ahead.">
+            <button class="btn btn-sm" (click)="quick.recurring()"><app-icon name="plus" [size]="15" />Add a payment</button>
+          </app-empty>
+        } @else {
+          <div class="list">
+            @for (b of bills(); track b.p.id) {
+              <div class="list-row bill" [attr.data-status]="b.s.status">
+                <span class="date-chip"><b>{{ b.p.dueDate | date: 'd' }}</b><span>{{ b.p.dueDate | date: 'MMM' }}</span></span>
+                <span class="grow">
+                  <span class="title">{{ b.p.description }}</span>
+                  <span class="sub"><span class="status">{{ b.s.text }}</span>@if (b.p.account) { · {{ accountMap().get(b.p.account.type + ':' + b.p.account.id)?.name }} }</span>
+                </span>
+                <span class="num amt">{{ b.p.amount | money }}</span>
+                <button class="btn btn-icon btn-sm btn-soft" (click)="payBill(b.p)" [attr.aria-label]="'Mark ' + b.p.description + ' as paid'" title="Mark paid"><app-icon name="check" [size]="16" /></button>
+              </div>
+            }
+          </div>
+        }
+      </section>
 
-      <div class="trend-legend" aria-label="Trend legend">
-        <span class="legend-item current">
-          <span class="legend-line"></span>
-          Current month
-        </span>
-        <span class="legend-item previous">
-          <span class="legend-line"></span>
-          Previous month
-        </span>
-      </div>
-
-      <div class="trend-metrics">
-        <div class="metric this">
-          <span>This Month</span>
-          <strong>₹{{ totalExpenses | number:'1.0-0' }}</strong>
-        </div>
-        <div class="metric last">
-          <span>Last Month</span>
-          <strong>₹{{ lastMonthExpense | number:'1.0-0' }}</strong>
-        </div>
-        <div class="metric diff">
-          <span>Difference</span>
-          <strong [class.positive]="spendingDelta < 0" [class.negative]="spendingDelta > 0">
-            {{ spendingDelta > 0 ? '+' : '' }}₹{{ spendingDelta | number:'1.0-0' }}
-          </strong>
-        </div>
-      </div>
-
-      <div class="line-chart-wrapper">
-        <canvas id="spendingLineChart"></canvas>
-      </div>
-    </mat-card>
-
-    <!-- Upcoming Payments -->
-    <mat-card class="card upcoming">
-      <div class="upcoming-header">
-        <h3>Upcoming Payments</h3>
-        <span class="calendar-icon">📅</span>
-      </div>
-
-      <!-- EMPTY STATE -->
-      <div *ngIf="upcomingPayments.length === 0" class="upcoming-empty">
-        <div class="empty-illustration">📭</div>
-        <p>No upcoming payments</p>
-        <span>You're all clear for now</span>
-      </div>
-
-      <!-- LIST -->
-      <div *ngFor="let pay of upcomingPayments | visible" class="upcoming-item">
-        <div class="left">
-          <input
-            type="checkbox"
-            (change)="markAsPaid(pay, $event)"
-          />
-
-          <div class="details">
-            <strong>{{ pay.description }}</strong>
-
-            <span
-              class="due-badge"
-              [class.urgent]="pay.dueIn <= 3"
-              [class.overdue]="pay.dueIn < 0"
-            >
-              {{ dueLabel(pay.dueIn) }}
-            </span>
+      <!-- Lending ledger -->
+      <section class="panel ledger">
+        <div class="panel-head">
+          <div><h2>Lending &amp; borrowing</h2><p>Your personal money ledger</p></div>
+          <div class="panel-actions">
+            <button class="btn btn-sm btn-icon" (click)="quick.lending('lent')" aria-label="Add lending or borrowing" title="Add"><app-icon name="plus" [size]="16" /></button>
           </div>
         </div>
-
-        <div class="right">
-          <span class="amount">₹{{ pay.amount }}</span>
-          <span
-            class="delete"
-            title="Remove"
-            (click)="deleteUpcoming(pay.id)"
-          >
-            ✕
-          </span>
+        <div class="ledger-sum">
+          <div class="owed"><span class="tiny">Owed to you</span><b class="num">{{ lendSummary().owedToMe | money }}</b><span class="tiny muted">{{ lendSummary().received | money }} of {{ lendSummary().totalLent | money }} received</span></div>
+          <div class="owe"><span class="tiny">You owe</span><b class="num">{{ lendSummary().iOwe | money }}</b><span class="tiny muted">{{ lendSummary().repaid | money }} of {{ lendSummary().totalBorrowed | money }} repaid</span></div>
         </div>
-      </div>
-    </mat-card>
+        @if (!lendSummary().open.length) {
+          <p class="muted tiny ledger-empty">Nothing outstanding. <button class="link" (click)="quick.lending('lent')">Record money you lent</button> or <button class="link" (click)="quick.lending('borrowed')">borrowed</button>.</p>
+        } @else {
+          <div class="list">
+            @for (r of lendSummary().open; track r.id) {
+              <div class="list-row">
+                <span class="icon-tile sm" [class.pos]="r.direction === 'lent'" [class.warn]="r.direction === 'borrowed'"><app-icon [name]="r.direction === 'lent' ? 'arrow-up-right' : 'arrow-down-left'" [size]="15" /></span>
+                <span class="grow">
+                  <span class="title">{{ r.person }}</span>
+                  <span class="sub">{{ r.direction === 'lent' ? 'Owes you' : 'You owe' }} · <span [class.amt-neg]="lendDue(r).tone === 'overdue'">{{ lendDue(r).text }}</span></span>
+                </span>
+                <span class="num amt">{{ r.outstanding | money }}</span>
+                <button class="btn btn-icon btn-sm btn-soft" (click)="settle(r)" [attr.aria-label]="'Mark ' + r.person + ' as settled'" title="Mark settled"><app-icon name="check" [size]="16" /></button>
+              </div>
+            }
+          </div>
+        }
+      </section>
 
-</div>
-
-<!-- FAB -->
-<div class="fab-container">
-  <button class="fab" [class.open]="fabOpen" (click)="toggleFab()" aria-label="Open quick actions">+</button>
-
-  <div class="fab-menu" *ngIf="fabOpen">
-    <button class="cta-btn expense-btn" (click)="openAddExpense()">
-      <span class="btn-icon">💸</span>
-      <span class="btn-text">Add Expense</span>
-    </button>
-    <button class="cta-btn income-btn" (click)="openAddIncome()">
-      <span class="btn-icon">💰</span>
-      <span class="btn-text">Add Income</span>
-    </button>
-  </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- ALL EXPENSES MODAL                                           -->
-<!-- ============================================================ -->
-<div class="modal-overlay" *ngIf="showAllExpensesModal" (click)="closeAllExpensesModal()">
-  <div class="modal-panel" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <div class="modal-title-group">
-        <span class="modal-icon">📊</span>
-        <div>
-          <h3 class="modal-title">All Transactions</h3>
-          <p class="modal-subtitle">{{ allExpenses.length }} expense{{ allExpenses.length !== 1 ? 's' : '' }} · {{ selectedMonthLabel }}</p>
+      <!-- Discipline -->
+      <section class="panel discipline">
+        <div class="panel-head"><div><h2>Financial discipline</h2><p>Built only from what you've logged</p></div><span class="icon-tile sm warn"><app-icon name="flame" [size]="16" /></span></div>
+        <div class="streaks">
+          <div><b class="num">{{ habit().loggingStreak }}</b><span>day logging streak</span></div>
+          @if (pulse().limit) { <div><b class="num">{{ pulse().withinLimitStreak }}</b><span>days within limit</span></div> }
+          @else { <div><b class="num">{{ pulse().noSpendStreak + (pulse().todayNoSpend ? 1 : 0) }}</b><span>no-spend days in a row</span></div> }
+          <div><b class="num">{{ habit().positiveMonths }}</b><span>positive month{{ habit().positiveMonths === 1 ? '' : 's' }}</span></div>
+          <div><b class="num">{{ habit().monthsTracked }}</b><span>month{{ habit().monthsTracked === 1 ? '' : 's' }} tracked</span></div>
         </div>
-      </div>
-      <button class="modal-close-btn" (click)="closeAllExpensesModal()" aria-label="Close">✕</button>
-    </div>
-
-    <div class="modal-body">
-      <table class="modern-table modal-table">
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th>Category</th>
-            <th>Date</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let exp of allExpenses | visible" class="table-row" [class.paid-row]="exp.status === 'PAID'">
-            <td>
-              <div class="description-cell">
-                <span class="category-icon">{{ getCategoryIcon(exp.category) }}</span>
-                <span class="description-text">{{ exp.description }}</span>
-              </div>
-            </td>
-            <td>
-              <span class="category-badge" [attr.data-category]="exp.category.toLowerCase()">
-                {{ exp.category }}
-              </span>
-            </td>
-            <td>
-              <span class="date-text">{{ exp.date.toDate() | date:'dd MMM yyyy' }}</span>
-            </td>
-            <td>
-              <span class="amount-text">₹{{ exp.amount | number:'1.0-0' }}</span>
-            </td>
-            <td>
-              <span class="status-badge" *ngIf="exp.status === 'PAID'">PAID</span>
-              <span class="status-badge pending" *ngIf="!exp.status || exp.status !== 'PAID'">PENDING</span>
-            </td>
-            <td>
-              <div class="action-buttons">
-                <button class="action-btn edit-btn" (click)="editExpenseFromModal(exp)" title="Edit">
-                  <span class="btn-icon">✏️</span>
-                </button>
-                <button class="action-btn delete-btn" (click)="deleteExpense(exp.id)" title="Delete">
-                  <span class="btn-icon">🗑️</span>
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- ALL INCOME MODAL                                             -->
-<!-- ============================================================ -->
-<div class="modal-overlay" *ngIf="showAllIncomeModal" (click)="closeAllIncomeModal()">
-  <div class="modal-panel" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <div class="modal-title-group">
-        <span class="modal-icon">💰</span>
-        <div>
-          <h3 class="modal-title">All Income</h3>
-          <p class="modal-subtitle">{{ allIncome.length }} entr{{ allIncome.length !== 1 ? 'ies' : 'y' }} · {{ selectedMonthLabel }}</p>
+        <div class="cal" role="img" [attr.aria-label]="'Activity over the last 5 weeks. ' + habit().loggingStreak + ' day streak.'">
+          @for (c of habit().calendar; track $index) {
+            <span class="cell" [class.today]="$last" [style.--lvl]="c.count ? 0.25 + (c.count / maxCal()) * 0.75 : 0" [title]="(c.date | date: 'd MMM') + ': ' + c.count + ' entr' + (c.count === 1 ? 'y' : 'ies')"></span>
+          }
         </div>
-      </div>
-      <button class="modal-close-btn" (click)="closeAllIncomeModal()" aria-label="Close">✕</button>
-    </div>
-
-    <div class="modal-body">
-      <table class="modern-table modal-table income-table">
-        <thead>
-          <tr>
-            <th>Source</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let inc of allIncome | visible" [class.system-generated-row]="inc.isSystemGenerated">
-            <td>
-              <div class="description-cell">
-                <span class="category-icon">💸</span>
-                <span class="description-text">{{ inc.source }}</span>
-              </div>
-            </td>
-            <td>
-              <span class="amount-text income-amount">₹{{ inc.amount | number:'1.0-0' }}</span>
-            </td>
-            <td>
-              <span class="status-badge auto" *ngIf="inc.isSystemGenerated">AUTO</span>
-              <span class="status-badge" *ngIf="!inc.isSystemGenerated">MANUAL</span>
-            </td>
-            <td>
-              <div class="action-buttons">
-                <button class="action-btn edit-btn"
-                  [class.disabled]="inc.isSystemGenerated"
-                  [disabled]="inc.isSystemGenerated"
-                  (click)="editIncomeFromModal(inc)"
-                  title="Edit">
-                  <span class="btn-icon">✏️</span>
-                </button>
-                <button class="action-btn delete-btn"
-                  [class.disabled]="inc.isSystemGenerated"
-                  [disabled]="inc.isSystemGenerated"
-                  (click)="deleteIncome(inc.id)"
-                  title="Delete">
-                  <span class="btn-icon">🗑️</span>
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+        <p class="insight pos"><app-icon name="sparkles" [size]="15" />{{ encouragement() }}</p>
+      </section>
     </div>
   </div>
 </div>

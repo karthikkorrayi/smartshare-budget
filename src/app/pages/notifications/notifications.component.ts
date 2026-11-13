@@ -7,13 +7,14 @@ import { ReviewService } from '../../services/review.service';
 import { AppNotification, NOTIFICATION_ICONS, Reminder } from '../../models/app-notification.model';
 import { ReviewItem } from '../../models/review-item.model';
 import { UndoService } from '../../services/undo.service';
+import { IconComponent } from '../../ui/icon.component';
 
 type Filter = 'all' | 'unread';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [DatePipe, RouterLink],
+  imports: [IconComponent, DatePipe, RouterLink],
   templateUrl: './notifications.component.html',
   styleUrl: './notifications.component.scss',
 })
@@ -86,7 +87,7 @@ export class NotificationsComponent {
 
   async open(n: AppNotification): Promise<void> {
     await this.safe(() => this.notifications.markRead(n));
-    if (n.link) this.router.navigateByUrl(n.link);
+    if (n.link) this.router.navigateByUrl(n.link === '/review' ? '/review/inbox' : n.link);
   }
 
   markRead(n: AppNotification): void {

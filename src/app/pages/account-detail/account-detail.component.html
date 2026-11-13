@@ -1,0 +1,81 @@
+<div class="page">
+  <a class="back" routerLink="/"><app-icon name="arrow-left" [size]="16" />Dashboard</a>
+
+  @if (account() === undefined) {
+    <app-skeleton h="170px" />
+  } @else if (account() === null) {
+    <section class="panel">
+      <app-empty art="accounts" title="Account not found" text="It may have been deleted.">
+        <a class="btn btn-primary btn-sm" routerLink="/">Back to dashboard</a>
+      </app-empty>
+    </section>
+  } @else {
+    @let a = account()!;
+    <section class="hero" [attr.data-art]="a.art">
+      <div class="hero-text">
+        <span class="kind"><app-icon [name]="a.icon" [size]="16" />{{ a.type === 'bank' ? 'Bank account' : a.type === 'card' ? 'Credit card' : 'Wallet' }}@if (a.status === 'Closed') { · Closed }</span>
+        <h1>{{ a.name }}</h1>
+        <span class="sub">{{ a.subtitle }}</span>
+      </div>
+      <div class="hero-bal">
+        <span>{{ a.type === 'card' ? 'Outstanding on statements' : 'Current balance' }}</span>
+        <b class="num">{{ a.balance | money: true }}</b>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-sm glass" (click)="quick.addTxn('expense', a.ref)"><app-icon name="arrow-up-right" [size]="15" />Expense</button>
+        @if (a.type !== 'card') {
+          <button class="btn btn-sm glass" (click)="quick.addTxn('income', a.ref)"><app-icon name="arrow-down-left" [size]="15" />Income</button>
+          <button class="btn btn-sm glass" (click)="quick.addTxn('transfer', a.ref)"><app-icon name="arrow-left-right" [size]="15" />Transfer</button>
+        }
+        <button class="btn btn-sm glass btn-icon" (click)="edit()" aria-label="Edit account" title="Edit account"><app-icon name="settings" [size]="15" /></button>
+      </div>
+    </section>
+
+    <div class="bar">
+      <div class="seg seg-scroll" role="radiogroup" aria-label="Period">
+        @for (p of presets; track p.id) { <button role="radio" [attr.aria-checked]="preset() === p.id" [class.on]="preset() === p.id" (click)="preset.set(p.id)">{{ p.label }}</button> }
+      </div>
+      @if (a.type === 'card') { <a class="btn btn-sm btn-ghost" routerLink="/cards/statements">Statements<app-icon name="chevron-right" [size]="15" /></a> }
+      @if (a.type === 'wallet') { <a class="btn btn-sm btn-ghost" routerLink="/cards/wallets">Wallet details<app-icon name="chevron-right" [size]="15" /></a> }
+    </div>
+
+    <div class="metrics">
+      @if (txns() === null) { @for (i of [1, 2, 3, 4]; track i) { <app-skeleton variant="card" /> } }
+      @else {
+        <app-metric icon="arrow-down-left" tone="pos" [label]="a.type === 'card' ? 'Refunds' : 'Total income'" [value]="(a.type === 'card' ? sum().refunds : sum().income) | money"
+          [hint]="sum().transfersIn ? '+ ' + (sum().transfersIn | money) + ' transferred in' : range().label" />
+        <app-metric icon="arrow-up-right" tone="info" label="Total expenses" [value]="sum().spent | money" [hint]="sum().transfersOut ? '+ ' + (sum().transfersOut | money) + ' transferred out' : range().label" />
+        <app-metric icon="activity" [tone]="sum().net >= 0 ? 'pos' : 'neg'" label="Net cash flow" [value]="sum().net | money" [negative]="sum().net < 0" hint="Income − expenses" />
+        <app-metric icon="list-checks" tone="accent" label="Transactions" [value]="'' + sum().count" [hint]="'In ' + range().label.toLowerCase()" />
+      }
+    </div>
+
+    <div class="grid2">
+      <section class="panel">
+        <div class="panel-head"><div><h2>Money in vs spending</h2><p>Select a bar for the full breakdown.</p></div>
+          <div class="legend"><span><i style="background: var(--pos)"></i>In</span><span><i style="background: var(--c2)"></i>Spending</span><span><i style="background: var(--c3)"></i>Net</span></div></div>
+        @if (txns() === null) { <app-skeleton variant="chart" h="260px" /> }
+        @else if (!sum().count) { <app-empty art="range" [compact]="true" title="No activity in this period" /> }
+        @else { <app-chart [labels]="series().labels" [series]="chartSeries()" [height]="260" [highlight]="selectedBar()" (pick)="pick($event)" ariaLabel="Account money in versus spending" /> }
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2>Distribution</h2><p>Spending by category</p></div></div>
+        @if (!cats().length) { <app-empty art="chart" [compact]="true" title="No spending here" /> }
+        @else {
+          <div class="donut">
+            <app-chart type="doughnut" [labels]="catLabels()" [series]="catSeries()" [height]="180" (pick)="pickCat($event)" ariaLabel="Category distribution" />
+            <div class="center"><b class="num">{{ sum().spent | moneyShort }}</b></div>
+          </div>
+          <div class="cats">
+            @for (c of cats(); track c.name) { <div class="c"><span class="dot" [style.background]="c.color"></span><span class="grow">{{ c.name }}</span><b class="num">{{ c.amount | money }}</b></div> }
+          </div>
+        }
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>Transactions</h2><p>{{ a.name }} · {{ range().label }}</p></div></div>
+      <app-txn-table [txns]="txns()" [accounts]="accountMap() ?? $any(null)" [showAccount]="false" emptyTitle="No transactions for this account" emptyText="Add an expense or income for this account to see it here." />
+    </section>
+  }
+</div>

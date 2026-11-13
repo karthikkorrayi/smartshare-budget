@@ -1,0 +1,150 @@
+<div class="dlg" role="dialog" aria-modal="true" [attr.aria-label]="heading()">
+  <div class="dlg-head">
+    <span class="icon-tile lg" [class.neg]="mode() === 'expense'" [class.pos]="mode() === 'income'" [class.info]="mode() === 'transfer'">
+      <app-icon [name]="mode() === 'income' ? 'arrow-down-left' : mode() === 'transfer' ? 'arrow-left-right' : 'arrow-up-right'" [size]="22" />
+    </span>
+    <div>
+      <h2>{{ heading() }}</h2>
+      <p>{{ mode() === 'transfer' ? 'Move money between your own accounts — not counted as spending.' : 'Every entry belongs to an account, so balances stay accurate.' }}</p>
+    </div>
+    <button class="btn btn-ghost btn-icon btn-sm close" (click)="close()" aria-label="Close"><app-icon name="x" /></button>
+  </div>
+
+  <div class="dlg-body">
+    @if (!editing) {
+      <div class="seg mode" role="tablist" aria-label="Entry type">
+        <button role="tab" [attr.aria-selected]="mode() === 'expense'" [class.on]="mode() === 'expense'" (click)="setMode('expense')"><app-icon name="arrow-up-right" [size]="15" />Expense</button>
+        <button role="tab" [attr.aria-selected]="mode() === 'income'" [class.on]="mode() === 'income'" (click)="setMode('income')"><app-icon name="arrow-down-left" [size]="15" />Income</button>
+        <button role="tab" [attr.aria-selected]="mode() === 'transfer'" [class.on]="mode() === 'transfer'" (click)="setMode('transfer')"><app-icon name="arrow-left-right" [size]="15" />Transfer</button>
+      </div>
+    }
+
+    @if (loading()) {
+      <div class="acc-grid">
+        @for (i of [1, 2, 3]; track i) { <span class="skeleton" style="height:64px;border-radius:14px"></span> }
+      </div>
+    } @else if (!options().length) {
+      <app-empty art="accounts" [compact]="true"
+        [title]="mode() === 'expense' ? 'Add an account first' : 'Add a bank account or wallet first'"
+        text="Entries are recorded against an account so your balances and total wealth stay correct.">
+        <button class="btn btn-primary btn-sm" (click)="addAccount('bank')"><app-icon name="landmark" [size]="16" />Bank account</button>
+        <button class="btn btn-sm" (click)="addAccount('wallet')"><app-icon name="wallet" [size]="16" />Wallet / cash</button>
+        @if (mode() === 'expense') { <button class="btn btn-sm" (click)="addAccount('card')"><app-icon name="credit-card" [size]="16" />Credit card</button> }
+      </app-empty>
+    } @else {
+      <!-- Step 1: account -->
+      <fieldset class="step">
+        <legend><span class="step-num">1</span>{{ mode() === 'income' ? 'Received into' : mode() === 'transfer' ? 'From' : 'Paid from' }}</legend>
+        @for (g of groups(); track g.label) {
+          @if (mode() !== 'transfer' || g.items[0].type !== 'card') {
+            <div class="group-label">{{ g.label }}</div>
+            <div class="acc-grid" role="radiogroup" [attr.aria-label]="g.label">
+              @for (a of g.items; track a.key) {
+                <button type="button" class="acc" role="radio" [attr.aria-checked]="accountKey() === a.key" [class.on]="accountKey() === a.key" (click)="pickAccount(a)">
+                  <span class="acc-art" [attr.data-art]="a.art"><app-icon [name]="a.icon" [size]="16" /></span>
+                  <span class="acc-text">
+                    <span class="acc-name">{{ a.name }}</span>
+                    <span class="acc-bal num">{{ a.type === 'card' ? (a.balance ? (a.balance | money) + ' due' : 'Credit card') : (a.balance | money) }}</span>
+                  </span>
+                  @if (accountKey() === a.key) { <app-icon class="tick" name="circle-check" [size]="18" /> }
+                </button>
+              }
+            </div>
+          }
+        }
+        @if (touched() && !selected()) { <p class="field-err">Choose an account to continue.</p> }
+      </fieldset>
+
+      @if (mode() === 'transfer') {
+        <fieldset class="step">
+          <legend><span class="step-num">2</span>To</legend>
+          <div class="acc-grid" role="radiogroup" aria-label="Destination account">
+            @for (a of options(); track a.key) {
+              @if (a.key !== accountKey()) {
+                <button type="button" class="acc" role="radio" [attr.aria-checked]="toKey() === a.key" [class.on]="toKey() === a.key" (click)="toKey.set(a.key)">
+                  <span class="acc-art" [attr.data-art]="a.art"><app-icon [name]="a.icon" [size]="16" /></span>
+                  <span class="acc-text"><span class="acc-name">{{ a.name }}</span><span class="acc-bal num">{{ a.balance | money }}</span></span>
+                  @if (toKey() === a.key) { <app-icon class="tick" name="circle-check" [size]="18" /> }
+                </button>
+              }
+            }
+          </div>
+        </fieldset>
+      }
+
+      <!-- Step 2: details -->
+      <fieldset class="step" [disabled]="!selected()">
+        <legend><span class="step-num">{{ mode() === 'transfer' ? 3 : 2 }}</span>Details</legend>
+
+        <label class="amount-field">
+          <span class="sr-only">Amount in rupees</span>
+          <span class="cur">₹</span>
+          <input type="number" inputmode="decimal" min="0" step="0.01" placeholder="0" [ngModel]="amount()" (ngModelChange)="amount.set($event); allowOverdraw.set(false)" aria-label="Amount" />
+        </label>
+
+        @if (projected(); as p) {
+          <div class="balance-line" [class.neg]="p.after < 0">
+            <app-icon name="wallet" [size]="15" />
+            <span>{{ selected()!.name }}: <b class="num">{{ p.before | money }}</b> → <b class="num">{{ p.after | money }}</b></span>
+          </div>
+        }
+        @if (overdraw()) {
+          <label class="alert warn overdraw">
+            <input type="checkbox" [ngModel]="allowOverdraw()" (ngModelChange)="allowOverdraw.set($event)" />
+            <span>This is more than the balance on record. Record anyway (for example if the opening balance is out of date).</span>
+          </label>
+        }
+
+        <div class="form-grid">
+          <label class="field span-2">
+            <span>{{ titleLabel() }}{{ mode() === 'transfer' ? ' (optional)' : '' }}</span>
+            <input type="text" maxlength="120" [ngModel]="title()" (ngModelChange)="title.set($event)"
+                   [placeholder]="mode() === 'income' ? 'e.g. Salary — November' : mode() === 'transfer' ? 'e.g. Paytm top-up' : 'e.g. Groceries at More'" />
+          </label>
+
+          @if (mode() !== 'transfer') {
+            <div class="field span-2">
+              <span id="cat-label">Category</span>
+              <div class="cats" role="radiogroup" aria-labelledby="cat-label">
+                @for (c of categories(); track c) {
+                  <button type="button" role="radio" class="cat" [attr.aria-checked]="category() === c" [class.on]="category() === c" (click)="category.set(c)">
+                    <app-icon [name]="catIcon(c)" [size]="14" />{{ c }}
+                  </button>
+                }
+              </div>
+              @if (category() === 'Card Bill' || category() === 'Wallet Top-up') {
+                <small>Not counted as spending — what you buy with that card or wallet already is. Tip: use Transfer for wallet top-ups so the wallet balance rises too.</small>
+              }
+            </div>
+          }
+
+          <label class="field">
+            <span>Date</span>
+            <input type="date" [max]="mode() === 'income' ? null : todayInput" [ngModel]="dateInput()" (ngModelChange)="dateInput.set($event)" />
+          </label>
+
+          @if (notesAllowed()) {
+            <label class="field span-2">
+              <span>Notes (optional)</span>
+              <textarea maxlength="300" rows="2" [ngModel]="notes()" (ngModelChange)="notes.set($event)" placeholder="Anything you'd like to remember"></textarea>
+            </label>
+          }
+        </div>
+      </fieldset>
+    }
+
+    @if (errors().length) {
+      <div class="alert neg" role="alert">
+        <app-icon name="circle-alert" [size]="16" />
+        <ul>@for (e of errors(); track e) { <li>{{ e }}</li> }</ul>
+      </div>
+    }
+  </div>
+
+  <div class="dlg-foot">
+    <button class="btn" (click)="close()" [disabled]="saving()">Cancel</button>
+    <button class="btn btn-primary" (click)="save()" [disabled]="saving() || !options().length">
+      @if (saving()) { <span class="spinner"></span> Saving… } @else { <app-icon name="check" [size]="16" />{{ editing ? 'Save changes' : 'Save' }} }
+    </button>
+  </div>
+</div>

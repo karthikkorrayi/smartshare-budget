@@ -74,6 +74,9 @@ export class AuthService {
 
   readonly account = signal<AccountSnapshot | null>(null);
 
+  /** Set when a data query fails (offline / missing index / server error); cleared by the shell banner. */
+  readonly queryError = signal<'offline' | 'failed' | null>(null);
+
   /** Error from a redirect sign-in that finished after a page reload — shown on the login page. */
   readonly redirectError = signal<unknown>(null);
 
@@ -124,6 +127,8 @@ export class AuthService {
               catchError(err => {
                 // A 'failed-precondition' message contains the link to create a missing index.
                 console.warn('[AuthService] query failed', err?.code ?? err, err?.message ?? '');
+                // Surfaced by the app shell so a failed load is never shown as "no data".
+                if (err?.code !== 'permission-denied') this.queryError.set(err?.code === 'unavailable' ? 'offline' : 'failed');
                 return of(fallback);
               })
             )

@@ -30,16 +30,16 @@ export const EMAIL_CATEGORIES = [
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
 
 export const CATEGORY_INFO: Record<EmailCategory, { label: string; icon: string; group: 'salary' | 'bank' | 'cards' | 'bills' | 'payments' | 'wallets' }> = {
-  salary_credit: { label: 'Salary credit', icon: '💰', group: 'salary' },
-  bank_credit: { label: 'Bank credit', icon: '⬇️', group: 'bank' },
-  bank_debit: { label: 'Bank debit', icon: '⬆️', group: 'bank' },
-  card_transaction: { label: 'Card transaction', icon: '💳', group: 'cards' },
-  card_statement: { label: 'Card statement', icon: '📄', group: 'cards' },
-  card_update: { label: 'Card details change', icon: '✏️', group: 'cards' },
-  bill_generated: { label: 'Bill generated', icon: '🧾', group: 'bills' },
-  payment_due: { label: 'Payment due', icon: '⏰', group: 'bills' },
-  payment_confirmation: { label: 'Payment confirmation', icon: '✅', group: 'payments' },
-  wallet_transaction: { label: 'Wallet transaction', icon: '👛', group: 'wallets' },
+  salary_credit: { label: 'Salary credit', icon: 'briefcase', group: 'salary' },
+  bank_credit: { label: 'Bank credit', icon: 'arrow-down-left', group: 'bank' },
+  bank_debit: { label: 'Bank debit', icon: 'arrow-up-right', group: 'bank' },
+  card_transaction: { label: 'Card transaction', icon: 'credit-card', group: 'cards' },
+  card_statement: { label: 'Card statement', icon: 'file-text', group: 'cards' },
+  card_update: { label: 'Card details change', icon: 'square-pen', group: 'cards' },
+  bill_generated: { label: 'Bill generated', icon: 'receipt', group: 'bills' },
+  payment_due: { label: 'Payment due', icon: 'alarm-clock', group: 'bills' },
+  payment_confirmation: { label: 'Payment confirmation', icon: 'circle-check', group: 'payments' },
+  wallet_transaction: { label: 'Wallet transaction', icon: 'wallet', group: 'wallets' },
 };
 
 export const KIND_INFO: Record<ReviewKind, { label: string; module: string; needsCard: boolean }> = {

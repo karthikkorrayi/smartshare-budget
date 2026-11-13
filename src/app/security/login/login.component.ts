@@ -2,13 +2,14 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, authMessage, isGmail } from '../../services/auth.service';
+import { LogoComponent } from '../../layout/logo.component';
 
 type Mode = 'signin' | 'signup' | 'reset';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule],
+  imports: [LogoComponent, FormsModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })

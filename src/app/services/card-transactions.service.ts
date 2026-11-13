@@ -49,6 +49,24 @@ export class CardTransactionsService {
     );
   }
 
+  /** Transactions in [start, end), newest first (same index as byMonth$). */
+  byRange$(start: Date, end: Date): Observable<CardTransaction[]> {
+    return this.auth.forUser(
+      uid =>
+        collectionData(
+          query(
+            this.col,
+            where('userId', '==', uid),
+            where('txnDate', '>=', Timestamp.fromDate(start)),
+            where('txnDate', '<', Timestamp.fromDate(end)),
+            orderBy('txnDate', 'desc')
+          ),
+          { idField: 'id' }
+        ).pipe(map(docs => docs.map(d => CardTransactionsService.fromFirestore(d)))),
+      [] as CardTransaction[]
+    );
+  }
+
   async add(input: TransactionInput) {
     const ref = await addDoc(this.col, {
       ...CardTransactionsService.clean(input),

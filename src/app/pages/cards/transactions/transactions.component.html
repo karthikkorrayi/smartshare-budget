@@ -36,12 +36,12 @@
 @if (actionError()) { <p class="cc-error" role="alert">{{ actionError() }}</p> }
 
 @if (!cards().length) {
-  <div class="cc-empty"><div class="icon">💳</div><h2>Add a card first</h2><p>Transactions belong to a card.</p></div>
+  <div class="cc-empty"><div class="icon"><app-icon name="credit-card" [size]="30" /></div><h2>Add a card first</h2><p>Transactions belong to a card.</p></div>
 } @else if (loading()) {
   <div class="cc-empty"><div class="cc-spinner"></div><p>Loading transactions…</p></div>
 } @else if (!groups().length) {
   <div class="cc-empty">
-    <div class="icon">🧾</div>
+    <div class="icon"><app-icon name="receipt" [size]="30" /></div>
     <h2>No transactions in this month</h2>
     <p>Add one manually, or approve card transactions found in Gmail from the Review Center.</p>
   </div>
@@ -64,7 +64,7 @@
               </span>
               @if (t.source !== 'manual') {
                 <span class="tags">
-                  @if (t.source === 'email') { <span class="cc-badge tone-info" title="Approved from Gmail">✉ Gmail</span> }
+                  @if (t.source === 'email') { <span class="cc-badge tone-info" title="Approved from Gmail"><app-icon name="mail" [size]="12" /> Gmail</span> }
                 @if (t.source === 'demo') { <span class="cc-badge tone-demo">Sample</span> }
                 </span>
               }
@@ -75,7 +75,7 @@
               </span>
               <span class="row-actions">
                 <button class="cc-btn cc-btn--sm" (click)="edit(t)">Edit</button>
-                <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="remove(t)" aria-label="Delete">✕</button>
+                <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="remove(t)" aria-label="Delete"><app-icon name="trash2" [size]="15" /></button>
               </span>
             </div>
           </div>

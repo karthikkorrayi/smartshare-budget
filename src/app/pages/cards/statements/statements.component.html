@@ -30,12 +30,12 @@
 @if (actionError()) { <p class="cc-error" role="alert">{{ actionError() }}</p> }
 
 @if (!cards().length) {
-  <div class="cc-empty"><div class="icon">💳</div><h2>Add a card first</h2><p>Statements belong to a card.</p></div>
+  <div class="cc-empty"><div class="icon"><app-icon name="credit-card" [size]="30" /></div><h2>Add a card first</h2><p>Statements belong to a card.</p></div>
 } @else if (loading()) {
   <div class="cc-empty"><div class="cc-spinner"></div><p>Loading statements…</p></div>
 } @else if (!rows().length) {
   <div class="cc-empty">
-    <div class="icon">📄</div>
+    <div class="icon"><app-icon name="file-text" [size]="30" /></div>
     <h2>{{ statusFilter() === 'open' ? 'Nothing unpaid' : 'No statements here' }}</h2>
     <p>Add a statement after your card's billing date, or approve one from the Review Center.</p>
   </div>
@@ -60,13 +60,13 @@
 
         <footer class="stmt-foot">
           <span class="tags">
-            @if (s.source === 'email') { <span class="cc-badge tone-info" title="Approved from Gmail">✉ Gmail</span> }
+            @if (s.source === 'email') { <span class="cc-badge tone-info" title="Approved from Gmail"><app-icon name="mail" [size]="12" /> Gmail</span> }
             @if (s.source === 'demo') { <span class="cc-badge tone-demo">Sample</span> }
           </span>
           <span class="actions">
-            @if (s.status !== 'Paid') { <button class="cc-btn cc-btn--sm cc-btn--primary" (click)="markPaid(s)">✓ Paid</button> }
+            @if (s.status !== 'Paid') { <button class="cc-btn cc-btn--sm cc-btn--primary" (click)="markPaid(s)"><app-icon name="check" [size]="14" /> Paid</button> }
             <button class="cc-btn cc-btn--sm" (click)="edit(s)">Edit</button>
-            <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="remove(s)" aria-label="Delete">✕</button>
+            <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="remove(s)" aria-label="Delete"><app-icon name="trash2" [size]="15" /></button>
           </span>
         </footer>
       </article>

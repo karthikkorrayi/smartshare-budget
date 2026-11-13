@@ -1,744 +1,344 @@
-import { Component, OnDestroy, ChangeDetectorRef, Injector, inject, runInInjectionContext } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { IncomeService } from '../../services/income.service';
-import { ExpenseService } from '../../services/expense.service';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { Chart, registerables } from 'chart.js';
+import { Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
-import { AddExpenseComponent } from '../../dialogs/add-expense/add-expense.component';
-import { AddIncomeComponent } from '../../dialogs/add-income/add-income.component';
-import { UpcomingPaymentService } from '../../services/upcoming-payment.service';
-import { combineLatest, Subject } from 'rxjs';
-import { filter, switchMap, takeUntil } from 'rxjs/operators';
-import { ReceivableService } from '../../services/receivable.service';
-import { CarryForwardService } from '../../services/carry-forward.service';
-import { StateManagementService } from '../../services/state-management.service';
+import { switchMap } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
-import { DailyPulseComponent } from '../../components/daily-pulse/daily-pulse.component';
-import { toDate } from '../../utils/firestore.util';
-import { CardTransactionsService } from '../../services/card-transactions.service';
+import { FinanceService } from '../../services/finance.service';
+import { LedgerService } from '../../services/ledger.service';
+import { CarryForwardService } from '../../services/carry-forward.service';
+import { SpendingService } from '../../services/spending.service';
+import { SettingsService } from '../../services/settings.service';
 import { UndoService } from '../../services/undo.service';
-import { VisiblePipe } from '../../pipes/visible.pipe';
+import { QuickActionsService } from '../../core/quick-actions.service';
+import { AccountSummary, parseRef } from '../../models/account.model';
+import { RecurringPayment, statusOf } from '../../models/recurring.model';
+import { LendingRecord, lendingDue } from '../../models/lending.model';
+import { DEFAULT_SETTINGS } from '../../models/settings.model';
+import {
+  DateRange,
+  FinanceTxn,
+  RANGE_PRESETS,
+  RangePreset,
+  Series,
+  byCategory,
+  categoryIcon,
+  dailyInsight,
+  dailySeries,
+  habits,
+  inRange,
+  inr,
+  monthlySeries,
+  monthsIn,
+  rangeFor,
+  totals,
+  touches,
+} from '../../utils/analytics.util';
+import { summarize } from '../../utils/spending.util';
+import { MoneyItem, summarizeMonth, walletMoneyItem } from '../../utils/budget.util';
 import { BudgetHeroComponent } from '../../components/budget-hero/budget-hero.component';
-import { BudgetSummary, MoneyItem, dailySpend, spendValue, summarizeMonth, walletMoneyItem } from '../../utils/budget.util';
-import { WalletsService } from '../../services/wallets.service';
-import { daysBetween, monthKey as monthKeyOf } from '../../utils/date-input.util';
+import { fromDateInput, monthKey, toDateInput } from '../../utils/date-input.util';
+import { IconComponent } from '../../ui/icon.component';
+import { MetricCardComponent } from '../../ui/metric-card.component';
+import { ChartComponent, ChartPick } from '../../ui/chart.component';
+import { SkeletonComponent } from '../../ui/skeleton.component';
+import { EmptyStateComponent } from '../../ui/empty-state.component';
+import { MoneyPipe, MoneyShortPipe } from '../../ui/money.pipe';
+import { BreakdownComponent } from '../../components/breakdown/breakdown.component';
 
-/** Firestore Timestamp/Date → epoch ms; 0 for missing dates (one bad record can't break Overview). */
-const ms = (v: unknown): number => toDate(v)?.getTime() ?? 0;
-Chart.register(...registerables);
+const FILTER_KEY = 'ssb_dash_filter';
 
-
-const hoverGuideLinePlugin = {
-  id: 'hoverGuideLine',
-  afterDraw(chart: any) {
-    const active = chart.tooltip?.getActiveElements?.();
-    if (!active || !active.length) return;
-    const { ctx, chartArea: { top, bottom } } = chart;
-    const x = active[0].element.x;
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(x, top);
-    ctx.lineTo(x, bottom);
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = '#94a3b8';
-    ctx.stroke();
-    ctx.restore();
-  }
-};
-
-
+/**
+ * Dashboard — the financial overview. Everything below the filters reacts to the selected date
+ * range and account. Data comes from FinanceService (Firestore, live); nothing is mocked.
+ */
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DailyPulseComponent, BudgetHeroComponent, VisiblePipe, CommonModule, FormsModule, MatCardModule, MatProgressBarModule],
+  imports: [
+    DatePipe, FormsModule, RouterLink, IconComponent, MetricCardComponent, ChartComponent, SkeletonComponent,
+    EmptyStateComponent, MoneyPipe, MoneyShortPipe, BudgetHeroComponent,
+  ],
   templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.scss']
+  styleUrl: './dashboard.component.scss',
 })
-export class DashboardComponent implements OnDestroy {
-  private destroy$ = new Subject<void>();
-  private cdr = inject(ChangeDetectorRef);
-  private injector = inject(Injector);
-
+export class DashboardComponent implements OnInit {
   private auth = inject(AuthService);
-
-  /** First name from the signed-in account (was hardcoded). */
-  get username(): string {
-    const u = this.auth.user();
-    return u?.displayName?.trim().split(/\s+/)[0] || u?.email?.split('@')[0] || 'there';
-  }
-  today = new Date();
-
-  /** Budget-first summary shown at the top of Overview (expenses + card spends vs income). */
-  summary: BudgetSummary | null = null;
+  private finance = inject(FinanceService);
+  private ledger = inject(LedgerService);
+  private carryForward = inject(CarryForwardService);
+  private spending = inject(SpendingService);
+  private settingsService = inject(SettingsService);
   private undo = inject(UndoService);
-  private cardTxns = inject(CardTransactionsService);
-  private walletsService = inject(WalletsService);
-
-  totalIncome = 0;
-  totalExpenses = 0;
-  availableBalance = 0;
-
-  barChart!: Chart;
-  dailyTotals: number[] = [];
-
-  recentIncome: any[] = [];
-  allIncome: any[] = [];
-
-  // Global — not filtered by month
-  upcomingPayments: any[] = [];
-  receivables: any[] = [];
-  totalReceivable = 0;
-
-  cumulativeTotals: number[] = [];
-
-  fabOpen = false;
-
-
-  recentExpenses: any[] = [];
-  allExpenses: any[] = [];
-
-  lineChart!: Chart;
-
-  thisMonthCumulative: number[] = [];
-  lastMonthCumulative: number[] = [];
-
-  categorySummary: {
-    name: string;
-    amount: number;
-    percentage: number;
-    icon: string;
-  }[] = [];
-
-  expenses: any[] = [];
-  isLoading = false;
-
-  showAllExpensesModal = false;
-  showAllIncomeModal = false;
-
-  newReceivable = {
-    title: '',
-    amount: 0,
-    trackInExpenses: true
-  };
-
-  months: { label: string; value: string }[] = [];
-  selectedMonth!: string;
-
-  constructor(
-    private incomeService: IncomeService,
-    private expenseService: ExpenseService,
-    private upcomingService: UpcomingPaymentService,
-    private receivableService: ReceivableService,
-    private stateManagement: StateManagementService,
-    private carryForwardService: CarryForwardService,
-    private dialog: MatDialog
-  ) {}
-
-  async ngOnInit() {
-    this.generateMonths();
-    this.selectedMonth = this.getCurrentMonth();
-    const monthKey = this.getSelectedMonthKey();
-
-    this.stateManagement.initializeState(monthKey);
-    this.setupGlobalSubscriptions();
-    this.setupMonthlySubscriptions();
-
-    await this.loadMonthData(monthKey);
-  }
-
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  private async loadMonthData(monthKey: string): Promise<void> {
-    this.stateManagement.setCurrentMonth(monthKey);
-    this.cdr.markForCheck();
-    // Runs after the month is shown; only acts on the current month.
-    this.carryForwardService.checkAndProcessCarryForward(monthKey).catch(err => console.warn('[Overview] carry-forward', err));
-  }
-
-  // ── Global subscriptions — set up ONCE, never re-trigger on month change ──
-
-  private setupGlobalSubscriptions() {
-
-    // Receivables: show all regardless of month
-    this.receivableService.getAll().pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(data => {
-      const sorted = [...data].sort((a: any, b: any) => {
-        return ms(b['createdAt']) - ms(a['createdAt']);
-      });
-      this.receivables = sorted;
-      this.totalReceivable = sorted.reduce(
-        (sum: number, r: any) => r.status === 'PENDING' ? sum + r.amount : sum,
-        0
-      );
-      this.cdr.markForCheck();
-    });
-
-    // Upcoming payments: show all regardless of month
-    this.upcomingService.getAll().pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(data => {
-      // Overdue payments used to be filtered out (dueIn < 0) and silently vanished. Now they stay, on top.
-      this.upcomingPayments = data
-        .map((p: any) => ({
-          ...p,
-          dueIn: this.calculateDueInDays(p['dueDate'])
-        }))
-        .sort((a: any, b: any) => a.dueIn - b.dueIn);
-      this.cdr.markForCheck();
-    });
-  }
-
-  // ── Monthly subscriptions — re-trigger when month changes ──────
-
-  private setupMonthlySubscriptions() {
-    this.stateManagement.loading$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(loading => {
-      this.isLoading = loading;
-      this.cdr.markForCheck();
-    });
-
-    const month$ = this.stateManagement.currentMonth$.pipe(filter(m => !!m));
-    const cards$ = month$.pipe(switchMap(m => this.cardTxns.byMonth$(m)));
-    // Last month (for "vs last month" and the trend line). One listener at a time via switchMap —
-    // the old code opened a new listener on every data change and never closed them.
-    const lastExpenses$ = month$.pipe(switchMap(m => runInInjectionContext(this.injector, () => this.expenseService.getExpensesByMonth(this.prevMonth(m)))));
-    const lastCards$ = month$.pipe(switchMap(m => this.cardTxns.byMonth$(this.prevMonth(m))));
-    const wallet$ = month$.pipe(switchMap(m => this.walletsService.byMonth$(m)));
-    const lastWallet$ = month$.pipe(switchMap(m => this.walletsService.byMonth$(this.prevMonth(m))));
-
-    combineLatest([
-      this.stateManagement.incomes$,
-      this.stateManagement.expenses$,
-      this.stateManagement.currentMonth$,
-      cards$,
-      lastExpenses$,
-      lastCards$,
-      wallet$,
-      lastWallet$,
-    ]).pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(([incomes, expenses, currentMonth, cards, lastExpenses, lastCards, wallet, lastWallet]) => {
-      this.expenses = expenses;
-      const items = [...expenses.map(e => this.expenseItem(e)), ...cards.map(c => this.cardItem(c)), ...wallet.map(t => walletMoneyItem(t))];
-      const lastItems = [
-        ...lastExpenses.map((e: any) => this.expenseItem(e)),
-        ...lastCards.map(c => this.cardItem(c)),
-        ...lastWallet.map(t => walletMoneyItem(t)),
-      ];
-
-      this.totalIncome = incomes.reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0);
-      this.summary = summarizeMonth(currentMonth, this.totalIncome, items, lastItems);
-      this.totalExpenses = this.summary.spent;
-      this.availableBalance = this.summary.balance;
-
-      this.prepareRecentIncome(incomes);
-      this.prepareDailyExpenses(items);
-      this.prepareCategorySummary(items);
-      this.prepareRecentExpenses(expenses);
-
-      const [y, m] = currentMonth.split('-').map(Number);
-      this.thisMonthCumulative = this.cumulative(dailySpend(items, y, m - 1));
-      const [ly, lm] = this.prevMonth(currentMonth).split('-').map(Number);
-      this.lastMonthCumulative = this.cumulative(dailySpend(lastItems, ly, lm - 1));
-      this.renderLineChart();
-      this.cdr.markForCheck();
-    });
-  }
-
-  private expenseItem(e: any): MoneyItem {
-    return { source: 'expense', amount: Number(e.amount) || 0, date: toDate(e.date), category: e.category, status: e.status };
-  }
-
-  private cardItem(c: any): MoneyItem {
-    return { source: 'card', amount: Number(c.amount) || 0, date: toDate(c.txnDate), category: c.category, direction: c.direction };
-  }
-
-  private prevMonth(month: string): string {
-    const [y, m] = month.split('-').map(Number);
-    return monthKeyOf(new Date(y, m - 2, 1));
-  }
-
-  private cumulative(daily: number[]): number[] {
-    const out = [...daily];
-    for (let i = 1; i < out.length; i++) out[i] = Math.round((out[i] + out[i - 1]) * 100) / 100;
-    return out;
-  }
-
-  async addReceivable() {
-    if (!this.newReceivable.title || this.newReceivable.amount <= 0) return;
-
-    const created = await this.stateManagement.addReceivable({
-      title: this.newReceivable.title,
-      amount: this.newReceivable.amount,
-      trackInExpenses: this.newReceivable.trackInExpenses
-    });
-    this.undo.offer(`Added "${this.newReceivable.title}" to receivables`, () => this.stateManagement.removeReceivableCompletely(created));
-
-    this.newReceivable = { title: '', amount: 0, trackInExpenses: true };
-    this.cdr.markForCheck();
-  }
-
-  /** Marked as received after 5 s (Undo cancels it). Tracked loans add today's income. */
-  markReceivableReceived(item: any, event?: Event) {
-    if (item.status === 'PAID') return;
-    const box = event?.target as HTMLInputElement | undefined;
-    this.undo.defer(
-      `Marked "${item.title}" as received${item.trackInExpenses ? ` · ₹${item.amount} added to income` : ''}`,
-      [],
-      () => this.stateManagement.markReceivableAsPaid(item),
-      () => { if (box) box.checked = false; }
-    );
-  }
-
-  deleteReceivable(id: string) {
-    const receivable = this.receivables.find(r => r.id === id);
-    if (!receivable || receivable.status === 'PAID') return;
-    this.undo.defer(
-      `Deleted receivable "${receivable.title}"`,
-      [id, ...(receivable.lentExpenseId ? [receivable.lentExpenseId] : [])],
-      () => this.stateManagement.deleteReceivable(id, this.receivables, this.expenses)
-    );
-  }
-
-  /** Pays an upcoming item: after 5 s it's booked as today's expense and removed (Undo cancels). */
-  markAsPaid(payment: any, event?: Event) {
-    const box = event?.target as HTMLInputElement | undefined;
-    this.undo.defer(
-      `Paid "${payment.description}" · ₹${payment.amount} added to today's expenses`,
-      [payment.id],
-      async () => {
-        const today = new Date();
-        await this.expenseService.addExpense({
-          description: payment.description,
-          amount: payment.amount,
-          category: payment.category || 'Bills',
-          date: today,
-          month: monthKeyOf(today)
-        });
-        await this.upcomingService.delete(payment.id);
-      },
-      () => { if (box) box.checked = false; }
-    );
-  }
-
-  deleteUpcoming(id: string) {
-    const p = this.upcomingPayments.find(x => x.id === id);
-    this.undo.defer(`Deleted "${p?.description ?? 'payment'}"`, [id], () => this.upcomingService.delete(id));
-  }
-
-  /** Whole calendar days until the due date (0 = today, negative = overdue). */
-  calculateDueInDays(dueDate: any): number {
-    const due = toDate(dueDate);
-    return due ? daysBetween(new Date(), due) : 0;
-  }
-
-  dueLabel(days: number): string {
-    if (days < 0) return `Overdue by ${-days} day${days === -1 ? '' : 's'}`;
-    if (days === 0) return 'Due today';
-    if (days === 1) return 'Due tomorrow';
-    return `Due in ${days} days`;
-  }
-
-  generateMonths() {
-    const currentYear = this.today.getFullYear();
-    for (let y = currentYear - 1; y <= currentYear + 1; y++) {
-      for (let m = 0; m < 12; m++) {
-        const date = new Date(y, m);
-        this.months.push({
-          label: date.toLocaleString('default', { month: 'long', year: 'numeric' }),
-          value: `${y}-${String(m + 1).padStart(2, '0')}`
-        });
-      }
-    }
-  }
-
-  getCurrentMonth(): string {
-    const y = this.today.getFullYear();
-    const m = String(this.today.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}`;
-  }
-
-  async onMonthChange() {
-    const monthKey = this.getSelectedMonthKey();
-    await this.loadMonthData(monthKey);
-  }
-
-  getSelectedMonthKey(): string {
-    const monthIndex = this.months.findIndex(m => m.value === this.selectedMonth);
-    return monthIndex !== -1 ? this.months[monthIndex].value : this.selectedMonth;
-  }
-
-  /** Daily bars + running total — expenses and card spends together. */
-  prepareDailyExpenses(items: MoneyItem[]) {
-    const [year, month] = this.selectedMonth.split('-').map(Number);
-    this.dailyTotals = dailySpend(items, year, month - 1);
-    this.cumulativeTotals = this.cumulative(this.dailyTotals);
-    this.renderBarChart(this.dailyTotals.length);
-  }
-
-  renderBarChart(daysInMonth: number) {
-    const labels = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
-    const todayDate = this.today.getDate();
-
-    const canvas = document.getElementById('monthlyBarChart') as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d')!;
-
-    const barGradient = ctx.createLinearGradient(0, 0, 0, 260);
-    barGradient.addColorStop(0, 'rgba(37, 99, 235, 0.95)');
-    barGradient.addColorStop(0.55, 'rgba(59, 130, 246, 0.72)');
-    barGradient.addColorStop(1, 'rgba(125, 211, 252, 0.34)');
-
-    const lineGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-    lineGradient.addColorStop(0, '#06b6d4');
-    lineGradient.addColorStop(1, '#0ea5e9');
-
-    const barColors = this.dailyTotals.map((_, index) =>
-      index + 1 === todayDate ? '#1d4ed8' : barGradient
-    );
-
-    if (this.barChart) this.barChart.destroy();
-
-    this.barChart = new Chart(ctx, {
-      data: {
-        labels,
-        datasets: [
-          {
-            type: 'bar',
-            label: 'Daily Spending',
-            data: this.dailyTotals,
-            backgroundColor: barColors,
-            borderColor: 'rgba(255,255,255,0.55)',
-            borderWidth: 1,
-            borderRadius: 10,
-            maxBarThickness: 18
-          },
-          {
-            type: 'line',
-            label: 'Cumulative',
-            data: this.cumulativeTotals,
-            borderColor: lineGradient,
-            borderWidth: 2.5,
-            tension: 0.34,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            pointBackgroundColor: '#0284c7',
-            fill: false
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#0f172a',
-            titleColor: '#e2e8f0',
-            bodyColor: '#f8fafc',
-            cornerRadius: 10,
-            padding: 10,
-            callbacks: {
-              label: item => item.dataset.type === 'line'
-                ? `Total: ₹${item.raw}`
-                : `Spent: ₹${item.raw}`
-            }
-          }
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { color: '#64748b', font: { size: 11 } }
-          },
-          y: {
-            beginAtZero: true,
-            grid: { color: 'rgba(148, 163, 184, 0.26)', drawOnChartArea: true, drawTicks: false },
-            ticks: {
-              color: '#64748b',
-              font: { size: 11 },
-              callback: (value: string | number) => `₹${value}`
-            }
-          }
-        }
-      }
-    });
-  }
-
-  get selectedMonthLabel(): string {
-    const found = this.months.find(m => m.value === this.selectedMonth);
-    return found ? found.label : '';
-  }
-
-  /** Spending by category (expenses + card purchases); % = share of this month's spending. */
-  prepareCategorySummary(items: MoneyItem[]) {
-    const byCat: Record<string, number> = {};
-    for (const it of items) {
-      const v = spendValue(it);
-      if (v <= 0) continue; // refunds reduce the total, not a category
-      const cat = it.category || 'Others';
-      byCat[cat] = (byCat[cat] || 0) + v;
-    }
-    const total = Object.values(byCat).reduce((a, b) => a + b, 0);
-    this.categorySummary = Object.keys(byCat)
-      .map(cat => ({
-        name: cat,
-        amount: Math.round(byCat[cat]),
-        percentage: total > 0 ? Math.round((byCat[cat] / total) * 100) : 0,
-        icon: this.getCategoryIcon(cat),
-      }))
-      .sort((a, b) => b.amount - a.amount);
-  }
-
-  getCategoryIcon(category: string): string {
-    switch (category?.toLowerCase()) {
-      case 'food': return '🍔';
-      case 'shopping': return '🛍️';
-      case 'transport': return '🚕';
-      case 'bills': return '💡';
-      case 'lent': return '🤝';
-      case 'petrol': return '⛽';
-      case 'tickets': return '🎟️';
-      case 'groceries': return '🛒';
-      case 'travel': return '✈️';
-      case 'fuel': return '⛽';
-      case 'entertainment': return '🎬';
-      case 'health': return '💊';
-      case 'education': return '📚';
-      case 'emi': return '🏦';
-      default: return '📦';
-    }
-  }
-
-  prepareRecentExpenses(expenses: any[]) {
-    const sorted = [...expenses].sort((a, b) => ms(b.date) - ms(a.date));
-    this.allExpenses = sorted;
-    this.recentExpenses = sorted.slice(0, 5);
-  }
-
-  renderLineChart() {
-    if (!this.thisMonthCumulative.length) return;
-
-    const days = this.thisMonthCumulative.length;
-    const labels = Array.from({ length: days }, (_, i) => `Day ${i + 1}`);
-
-    const normalizeSeries = (series: number[], targetLength: number): number[] => {
-      if (!series.length) return new Array(targetLength).fill(0);
-      if (series.length >= targetLength) return series.slice(0, targetLength);
-      const lastValue = series[series.length - 1];
-      return [...series, ...new Array(targetLength - series.length).fill(lastValue)];
+  private dialog = inject(MatDialog);
+  private router = inject(Router);
+  quick = inject(QuickActionsService);
+
+  readonly presets = RANGE_PRESETS;
+  readonly catIcon = categoryIcon;
+  readonly today = new Date();
+
+  // ── Filters ────────────────────────────────────────────────────
+  private saved = readFilter();
+  preset = signal<RangePreset>(this.saved.preset ?? 'month');
+  customStart = signal<string>(this.saved.start ?? toDateInput(new Date(this.today.getFullYear(), this.today.getMonth(), 1)));
+  customEnd = signal<string>(this.saved.end ?? toDateInput(this.today));
+  accountKey = signal<string>(this.saved.account ?? '');
+  trendMonths = signal<3 | 6 | 12>(6);
+
+  range = computed<DateRange>(() =>
+    rangeFor(this.preset(), this.today, {
+      start: fromDateInput(this.customStart()) ?? this.today,
+      end: fromDateInput(this.customEnd()) ?? this.today,
+    })
+  );
+  accountRef = computed(() => parseRef(this.accountKey()));
+
+  /** One Firestore window covering the selected range AND the last 12 months (trends, habits). */
+  private window = computed(() => {
+    const r = this.range();
+    const twelve = new Date(this.today.getFullYear(), this.today.getMonth() - 11, 1);
+    const nextMonth = new Date(this.today.getFullYear(), this.today.getMonth() + 1, 1);
+    const start = r.start < twelve ? r.start : twelve;
+    const end = r.end > nextMonth ? r.end : nextMonth;
+    return { start, end, key: `${start.getTime()}-${end.getTime()}` };
+  });
+  private windowKey = computed(() => this.window().key);
+  private all = toSignal(
+    toObservable(this.windowKey).pipe(switchMap(() => this.finance.window$(this.window().start, this.window().end)))
+  );
+  loading = computed(() => this.all() === undefined);
+
+  // ── Reference data ─────────────────────────────────────────────
+  accounts = toSignal(this.finance.accounts$);
+  accountMap = toSignal(this.finance.accountMap$, { initialValue: new Map<string, AccountSummary>() });
+  activeAccounts = computed(() => (this.accounts() ?? []).filter(a => a.status === 'Active'));
+  wealth = toSignal(this.finance.wealth$);
+  commitments = toSignal(this.finance.commitments$(30));
+  recurring = toSignal(this.finance.recurring$, { initialValue: [] as RecurringPayment[] });
+  lending = toSignal(this.finance.lending$, { initialValue: [] as LendingRecord[] });
+  settings = toSignal(this.settingsService.settings$, { initialValue: DEFAULT_SETTINGS });
+  recentSpend = toSignal(this.spending.recent$, { initialValue: [] });
+
+  selectedAccount = computed(() => (this.accountKey() ? this.accountMap().get(this.accountKey()) ?? null : null));
+
+  // ── Derived analytics ─────────────────────────────────────────
+  scoped = computed(() => (this.all() ?? []).filter(t => touches(t, this.accountRef())));
+  inPeriod = computed(() => this.scoped().filter(t => inRange(t, this.range())));
+  sum = computed(() => totals(this.inPeriod()));
+  categories = computed(() => byCategory(this.inPeriod(), 'spend'));
+  topCategories = computed(() => this.categories().slice(0, 6));
+  donutLabels = computed(() => this.topCategories().map(c => c.name));
+  donutSeries = computed(() => [{ label: 'Spending', data: this.topCategories().map(c => c.amount), color: '--c1' }]);
+  carryForwardInPeriod = computed(() => this.inPeriod().filter(t => t.carryForward).reduce((s, t) => s + t.amount, 0));
+
+  /** Cash-flow chart: by day for ranges up to ~2 months, by month beyond that. */
+  flow = computed<Series>(() => {
+    const r = this.range();
+    const days = (r.end.getTime() - r.start.getTime()) / 86_400_000;
+    return days <= 62 ? dailySeries(this.inPeriod(), r) : monthlySeries(this.inPeriod(), monthsIn(r.start, r.end));
+  });
+  flowIsDaily = computed(() => (this.range().end.getTime() - this.range().start.getTime()) / 86_400_000 <= 62);
+  flowSeries = computed(() => [
+    { label: 'Income', data: this.flow().income, color: '--pos' },
+    { label: 'Spending', data: this.flow().spent, color: '--c2' },
+    ...(this.flowIsDaily() ? [] : [{ label: 'Net', data: this.flow().net, color: '--c3', kind: 'line' as const }]),
+  ]);
+
+  trend = computed<Series>(() => {
+    const n = this.trendMonths();
+    const months = monthsIn(new Date(this.today.getFullYear(), this.today.getMonth() - n + 1, 1), new Date(this.today.getFullYear(), this.today.getMonth() + 1, 1));
+    return monthlySeries(this.scoped(), months);
+  });
+  trendSeries = computed(() => [
+    { label: 'Income', data: this.trend().income, color: '--pos' },
+    { label: 'Spending', data: this.trend().spent, color: '--c2' },
+    { label: 'Net', data: this.trend().net, color: '--c3', kind: 'line' as const },
+  ]);
+  trendSummary = computed(() => {
+    const t = this.trend();
+    const months = t.keys.length;
+    const inc = t.income.reduce((a, b) => a + b, 0);
+    const sp = t.spent.reduce((a, b) => a + b, 0);
+    return { avgIncome: inc / months, avgSpent: sp / months, saved: inc - sp, rate: inc > 0 ? Math.round(((inc - sp) / inc) * 100) : null };
+  });
+
+  daily = computed(() => dailyInsight(this.scoped(), this.range(), this.today));
+  habit = computed(() => habits(this.all() ?? [], monthlySeries(this.all() ?? [], monthsIn(new Date(this.today.getFullYear(), this.today.getMonth() - 11, 1), new Date(this.today.getFullYear(), this.today.getMonth() + 1, 1))), this.today));
+  pulse = computed(() => {
+    const since = this.auth.account()?.createdAt ?? new Date(this.today.getFullYear(), this.today.getMonth() - 2, 1);
+    return summarize(this.recentSpend(), this.settings().dailyLimit, this.today, since);
+  });
+  maxCal = computed(() => Math.max(1, ...this.habit().calendar.map(c => c.count)));
+
+  recent = computed(() => this.inPeriod().slice(0, 8));
+
+  /** Monthly budget pace (the original Overview hero) for the selected month — all accounts only. */
+  budgetMonth = computed(() => (this.preset() === 'month' || this.preset() === 'prev-month') && !this.accountKey() ? monthKey(this.range().start) : null);
+  budget = computed(() => {
+    const m = this.budgetMonth();
+    const all = this.all();
+    if (!m || !all) return null;
+    const [y, mm] = m.split('-').map(Number);
+    const prev = monthKey(new Date(y, mm - 2, 1));
+    const items = (key: string) => all.filter(t => monthKey(t.date) === key && t.kind !== 'income' && t.kind !== 'transfer').map(toMoneyItem);
+    const income = all.filter(t => t.kind === 'income' && monthKey(t.date) === m).reduce((s, t) => s + t.amount, 0);
+    return summarizeMonth(m, income, items(m), items(prev), this.today);
+  });
+  budgetLabel = computed(() => this.range().label);
+
+  bills = computed(() =>
+    this.recurring()
+      .filter(p => !p.paused)
+      .map(p => ({ p, s: statusOf(p, this.today) }))
+      .filter(x => x.s.days <= 30)
+      .slice(0, 5)
+  );
+
+  lendSummary = computed(() => {
+    const list = this.lending();
+    const open = list.filter(r => r.status === 'PENDING');
+    const lent = list.filter(r => r.direction === 'lent');
+    const borrowed = list.filter(r => r.direction === 'borrowed');
+    return {
+      owedToMe: round(open.filter(r => r.direction === 'lent').reduce((s, r) => s + r.outstanding, 0)),
+      iOwe: round(open.filter(r => r.direction === 'borrowed').reduce((s, r) => s + r.outstanding, 0)),
+      totalLent: round(lent.reduce((s, r) => s + r.amount, 0)),
+      received: round(lent.reduce((s, r) => s + r.settled, 0)),
+      totalBorrowed: round(borrowed.reduce((s, r) => s + r.amount, 0)),
+      repaid: round(borrowed.reduce((s, r) => s + r.settled, 0)),
+      open: open.slice(0, 5),
+      count: open.length,
     };
+  });
+  lendDue = lendingDue;
 
-    const thisMonthSeries = normalizeSeries(this.thisMonthCumulative, days);
-    const lastMonthSeries = normalizeSeries(this.lastMonthCumulative, days);
+  greeting = computed(() => {
+    const h = new Date().getHours();
+    const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    const name = this.auth.account()?.displayName?.trim().split(/\s+/)[0] || this.auth.account()?.email?.split('@')[0] || '';
+    return name ? `${part}, ${name}` : part;
+  });
 
-    const canvas = document.getElementById('spendingLineChart') as HTMLCanvasElement | null;
-    const context = canvas?.getContext('2d');
-    if (!canvas || !context) return;
+  encouragement = computed(() => {
+    const h = this.habit();
+    const p = this.pulse();
+    if (h.loggingStreak >= 7) return `Great work — ${h.loggingStreak} days in a row with your money logged.`;
+    if (p.limit && p.withinLimitStreak >= 3) return `${p.withinLimitStreak} days in a row within your daily limit. You're building better habits.`;
+    if (h.positiveMonths >= 2) return `${h.positiveMonths} months in a row where you earned more than you spent.`;
+    if (h.loggedToday) return 'You’ve logged today’s activity — consistency is what makes the numbers useful.';
+    if (h.loggingStreak >= 2) return `${h.loggingStreak}-day logging streak. Add today’s entries to keep it going.`;
+    return 'Log what you spend each day and your streaks will start showing here.';
+  });
 
-    const gradient = context.createLinearGradient(0, 0, 0, 220);
-    gradient.addColorStop(0, 'rgba(37, 99, 235, 0.18)');
-    gradient.addColorStop(1, 'rgba(37, 99, 235, 0.02)');
-
-    if (this.lineChart) this.lineChart.destroy();
-
-    this.lineChart = new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Current Month',
-            data: thisMonthSeries,
-            borderColor: '#2563eb',
-            backgroundColor: gradient,
-            borderWidth: 3,
-            tension: 0.32,
-            fill: true,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            pointBackgroundColor: '#2563eb',
-            pointBorderWidth: 0
-          },
-          {
-            label: 'Previous Month',
-            data: lastMonthSeries,
-            borderColor: '#94a3b8',
-            borderWidth: 2,
-            tension: 0.32,
-            borderDash: [5, 5],
-            fill: false,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            pointBackgroundColor: '#94a3b8',
-            pointBorderWidth: 0
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#ffffff',
-            titleColor: '#0f172a',
-            bodyColor: '#334155',
-            borderColor: '#cbd5e1',
-            borderWidth: 1,
-            padding: 10,
-            callbacks: {
-              title: items => items.length ? items[0].label : '',
-              label: context => `${context.dataset.label}: ₹${context.raw}`
-            }
-          }
-        },
-        scales: {
-          x: {
-            grid: { color: 'rgba(203, 213, 225, 0.24)' },
-            ticks: {
-              color: '#64748b',
-              maxTicksLimit: 6,
-              callback: (_value, index) => `${index + 1}`,
-              font: { size: 11 }
-            }
-          },
-          y: {
-            beginAtZero: true,
-            grid: { color: 'rgba(148, 163, 184, 0.22)', drawOnChartArea: true, drawTicks: false },
-            ticks: {
-              color: '#64748b',
-              maxTicksLimit: 6,
-              callback: (value: string | number) => `₹${value}`,
-              font: { size: 11 }
-            }
-          }
-        }
-      },
-      plugins: [hoverGuideLinePlugin]
+  constructor() {
+    effect(() => {
+      try {
+        sessionStorage.setItem(FILTER_KEY, JSON.stringify({ preset: this.preset(), start: this.customStart(), end: this.customEnd(), account: this.accountKey() }));
+      } catch { /* ignore */ }
+    });
+    // A selected account that disappears (deleted) falls back to "All accounts".
+    effect(() => {
+      const list = this.accounts();
+      if (list && this.accountKey() && !list.some(a => a.key === this.accountKey())) this.accountKey.set('');
     });
   }
 
-  get lastMonthExpense(): number {
-    return this.lastMonthCumulative.at(-1) || 0;
+  ngOnInit(): void {
+    // Existing behaviour kept: sync last month's closing balance into this month (current month only).
+    this.auth.ready().then(() =>
+      this.carryForward.checkAndProcessCarryForward(monthKey(this.today)).catch(err => console.warn('[Dashboard] carry-forward', err))
+    );
   }
 
-  get spendingDelta(): number {
-    return this.totalExpenses - this.lastMonthExpense;
+  // ── Actions ───────────────────────────────────────────────────
+  setPreset(p: RangePreset): void {
+    this.preset.set(p);
   }
 
-  get spendingDeltaPercent(): number {
-    if (this.lastMonthExpense === 0) {
-      return this.totalExpenses > 0 ? 100 : 0;
+  openAccount(a: AccountSummary): void {
+    this.router.navigate(['/account', a.type, a.ref.id]);
+  }
+
+  openTxn(t: FinanceTxn): void {
+    this.quick.showTxn(t);
+  }
+
+  /** Clicking a bar opens the breakdown of that day / month. */
+  pickFlow(p: ChartPick): void {
+    const s = this.flow();
+    const key = s.keys[p.index];
+    if (!key) return;
+    const list = this.inPeriod().filter(t => (this.flowIsDaily() ? dayKeyOf(t.date) === key : monthKey(t.date) === key));
+    this.openBreakdown(s.labels[p.index], list);
+  }
+
+  pickTrend(p: ChartPick): void {
+    const key = this.trend().keys[p.index];
+    if (!key) return;
+    this.openBreakdown(this.trend().labels[p.index], this.scoped().filter(t => monthKey(t.date) === key));
+  }
+
+  pickCategory(name: string): void {
+    this.openBreakdown(`${name} · ${this.range().label}`, this.inPeriod().filter(t => t.category === name && t.spend !== 0));
+  }
+
+  pickDoughnut(p: ChartPick): void {
+    const c = this.topCategories()[p.index];
+    if (c) this.pickCategory(c.name);
+  }
+
+  private openBreakdown(title: string, txns: FinanceTxn[]): void {
+    this.dialog.open(BreakdownComponent, { data: { title, txns }, width: 'min(100vw, 520px)', panelClass: 'ss-drawer-pane', autoFocus: 'dialog' });
+  }
+
+  payBill(p: RecurringPayment): void {
+    this.undo.defer(
+      `Paid "${p.description}" · ${inr(p.amount)}${p.frequency === 'once' ? '' : ' · next due moved on'}`,
+      p.frequency === 'once' ? [p.id] : [],
+      () => this.ledger.payRecurring(p)
+    );
+  }
+
+  settle(r: LendingRecord): void {
+    this.undo.defer(
+      `${r.direction === 'lent' ? `${r.person} repaid` : `You repaid ${r.person}`} ${inr(r.outstanding)}${r.direction === 'lent' && r.trackInExpenses ? ' · added to income' : ''}`,
+      [r.id],
+      () => this.ledger.settleLending(r, r.outstanding, r.account)
+    );
+  }
+
+  accountName(t: FinanceTxn): string {
+    if (t.kind === 'transfer') {
+      const a = this.accountMap().get(`${t.account?.type}:${t.account?.id}`);
+      const b = this.accountMap().get(`${t.account2?.type}:${t.account2?.id}`);
+      return `${a?.name ?? '—'} → ${b?.name ?? '—'}`;
     }
-    return Math.abs((this.spendingDelta / this.lastMonthExpense) * 100);
+    if (!t.account) return 'No account';
+    return this.accountMap().get(`${t.account.type}:${t.account.id}`)?.name ?? 'Deleted account';
   }
 
-  openAddExpense() {
-    this.fabOpen = false;
-    this.cdr.markForCheck();
-    this.dialog.open(AddExpenseComponent, {
-      width: 'min(92vw, 520px)',
-      maxWidth: '95vw',
-      data: { month: this.getSelectedMonthKey() }
-    });
-  }
+  trackKey = (_: number, t: FinanceTxn) => t.key;
+}
 
-  editExpense(expense: any) {
-    this.dialog.open(AddExpenseComponent, {
-      width: 'min(92vw, 520px)',
-      maxWidth: '95vw',
-      data: { expense, month: this.getSelectedMonthKey() }
-    });
-  }
+function toMoneyItem(t: FinanceTxn): MoneyItem {
+  if (t.kind === 'wallet') return walletMoneyItem(t.raw);
+  if (t.kind === 'card') return { source: 'card', amount: t.amount, date: t.date, category: t.category, direction: t.raw?.direction };
+  return { source: 'expense', amount: t.amount, date: t.date, category: t.raw?.category, status: t.raw?.status };
+}
 
-  editExpenseFromModal(expense: any) {
-    this.closeAllExpensesModal();
-    setTimeout(() => this.editExpense(expense), 150);
-  }
-
-  deleteExpense(id: string) {
-    const e = this.allExpenses.find(x => x.id === id);
-    this.undo.defer(`Deleted "${e?.description ?? 'expense'}"`, [id], () => this.expenseService.deleteExpense(id));
-  }
-
-  toggleFab() {
-    this.fabOpen = !this.fabOpen;
-    this.cdr.markForCheck();
-  }
-
-  openAddIncome() {
-    this.fabOpen = false;
-    this.cdr.markForCheck();
-    this.dialog.open(AddIncomeComponent, {
-      width: 'min(92vw, 520px)',
-      maxWidth: '95vw',
-      data: { month: this.getSelectedMonthKey() }
-    });
-  }
-
-  prepareRecentIncome(income: any[]) {
-    const sorted = [...income].sort((a, b) => ms(b.date) - ms(a.date));
-    this.allIncome = sorted;
-    this.recentIncome = sorted.slice(0, 3);
-  }
-
-  editIncome(income: any) {
-    if (income.isSystemGenerated) {
-      alert('System-generated transactions cannot be edited.');
-      return;
-    }
-    this.dialog.open(AddIncomeComponent, {
-      width: 'min(92vw, 520px)',
-      maxWidth: '95vw',
-      data: { income, month: this.getSelectedMonthKey() }
-    });
-  }
-
-  editIncomeFromModal(income: any) {
-    this.closeAllIncomeModal();
-    setTimeout(() => this.editIncome(income), 150);
-  }
-
-  deleteIncome(id: string) {
-    const income = this.allIncome.find(i => i.id === id);
-    if (income?.isSystemGenerated) {
-      alert('System-generated transactions cannot be deleted.');
-      return;
-    }
-    this.undo.defer(`Deleted income "${income?.source ?? ''}"`, [id], () => this.incomeService.deleteIncome(id));
-  }
-
-  openAllExpensesModal() {
-    this.showAllExpensesModal = true;
-    document.body.style.overflow = 'hidden';
-    this.cdr.markForCheck();
-  }
-
-  closeAllExpensesModal() {
-    this.showAllExpensesModal = false;
-    document.body.style.overflow = '';
-    this.cdr.markForCheck();
-  }
-
-  openAllIncomeModal() {
-    this.showAllIncomeModal = true;
-    document.body.style.overflow = 'hidden';
-    this.cdr.markForCheck();
-  }
-
-  closeAllIncomeModal() {
-    this.showAllIncomeModal = false;
-    document.body.style.overflow = '';
-    this.cdr.markForCheck();
+function round(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+function dayKeyOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function readFilter(): { preset?: RangePreset; start?: string; end?: string; account?: string } {
+  try {
+    return JSON.parse(sessionStorage.getItem(FILTER_KEY) ?? '{}');
+  } catch {
+    return {};
   }
 }

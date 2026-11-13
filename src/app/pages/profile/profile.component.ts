@@ -3,18 +3,26 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
 import { AuthService, authMessage } from '../../services/auth.service';
 import { GmailService } from '../../services/gmail.service';
 import { SettingsService } from '../../services/settings.service';
 import { PushService } from '../../services/push.service';
 import { DEFAULT_SETTINGS, UserSettings } from '../../models/settings.model';
+import { FinanceService } from '../../services/finance.service';
+import { FinanceTxn, habits } from '../../utils/analytics.util';
+import { addDays } from '../../utils/spending.util';
+import { MoneyPipe } from '../../ui/money.pipe';
+import { ThemeService } from '../../core/theme.service';
+import { InstallService } from '../../core/install.service';
+import { IconComponent } from '../../ui/icon.component';
 
 type Busy = '' | 'name' | 'password' | 'google' | 'unlink-google' | 'unlink-password' | 'reset' | 'verify' | 'settings' | 'push';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [FormsModule, DatePipe, RouterLink],
+  imports: [IconComponent, MoneyPipe, FormsModule, DatePipe, RouterLink],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
 })
@@ -23,6 +31,24 @@ export class ProfileComponent implements OnInit {
   private gmail = inject(GmailService);
   private settingsService = inject(SettingsService);
   push = inject(PushService);
+  theme = inject(ThemeService);
+  install = inject(InstallService);
+  private finance = inject(FinanceService);
+  wealth = toSignal(this.finance.wealth$);
+  private recent = toSignal(this.finance.window$(addDays(new Date(), -89), addDays(new Date(), 1)), { initialValue: [] as FinanceTxn[] });
+  recurringCount = toSignal(this.finance.recurring$.pipe(map(l => l.length)), { initialValue: 0 });
+  activityCount = computed(() => this.recent().filter(t => !t.system).length);
+  habit = computed(() => habits(this.recent(), null));
+  /** Only achievements the data actually supports. */
+  achievements = computed(() => {
+    const out: { icon: string; title: string; text: string }[] = [];
+    const h = this.habit();
+    if (h.loggingStreak >= 7) out.push({ icon: 'flame', title: `${h.loggingStreak}-day streak`, text: 'Logged money activity every day' });
+    if ((this.wealth()?.accounts ?? 0) >= 1) out.push({ icon: 'landmark', title: 'Accounts connected', text: 'Balances are tracked per account' });
+    if (this.recurringCount() >= 3) out.push({ icon: 'calendar-check', title: 'Bills organised', text: `${this.recurringCount()} recurring payments tracked` });
+    if (h.monthsTracked >= 3) out.push({ icon: 'trophy', title: `${h.monthsTracked} months tracked`, text: 'Consistent financial records' });
+    return out;
+  });
 
   settings = toSignal(this.settingsService.settings$, { initialValue: DEFAULT_SETTINGS });
   /** Editable copy of the settings form. */

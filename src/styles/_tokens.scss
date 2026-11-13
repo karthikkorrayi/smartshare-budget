@@ -1,0 +1,142 @@
+// SmartShare Budget — design tokens.
+// Every colour in the app comes from these variables so Light / Dark / System themes switch in one place.
+// The theme is applied as <html data-theme="light|dark"> by ThemeService (System follows the OS).
+
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f6f7f9;
+  --bg-grad: radial-gradient(1200px 600px at 100% -10%, rgba(16, 185, 129, 0.06), transparent 60%);
+  --surface: #ffffff;
+  --surface-2: #f3f5f8;
+  --surface-3: #e9edf2;
+  --surface-raised: #ffffff;
+  --overlay: rgba(15, 23, 42, 0.38);
+
+  --border: #e4e8ee;
+  --border-strong: #cfd6df;
+
+  --text: #0f1729;
+  --text-2: #334155;
+  --text-3: #64748b;
+  --text-4: #94a3b8;
+
+  --accent: #0d9488;
+  --accent-strong: #0f766e;
+  --accent-soft: #e6f6f4;
+  --accent-ring: rgba(13, 148, 136, 0.28);
+  --on-accent: #ffffff;
+
+  --pos: #059669;
+  --pos-soft: #e7f7ef;
+  --neg: #dc2626;
+  --neg-soft: #fdecec;
+  --warn: #b45309;
+  --warn-soft: #fdf3e2;
+  --info: #2563eb;
+  --info-soft: #eaf1fe;
+
+  // Chart / category palette (validated for contrast on both themes).
+  --c1: #0d9488;
+  --c2: #6366f1;
+  --c3: #f59e0b;
+  --c4: #ec4899;
+  --c5: #0ea5e9;
+  --c6: #84cc16;
+  --c7: #a855f7;
+  --c8: #64748b;
+  --chart-grid: rgba(100, 116, 139, 0.16);
+  --chart-text: #64748b;
+
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.16);
+
+  --skeleton: linear-gradient(90deg, #eef1f5 0%, #f7f9fb 50%, #eef1f5 100%);
+
+  // Account card art (3D-style gradients)
+  --art-bank: linear-gradient(135deg, #0f766e 0%, #14b8a6 55%, #5eead4 100%);
+  --art-card: linear-gradient(135deg, #1e1b4b 0%, #4338ca 60%, #818cf8 100%);
+  --art-wallet: linear-gradient(135deg, #7c2d12 0%, #ea580c 55%, #fdba74 100%);
+  --art-cash: linear-gradient(135deg, #14532d 0%, #16a34a 60%, #86efac 100%);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0b0d12;
+  --bg-grad: radial-gradient(1200px 600px at 100% -10%, rgba(45, 212, 191, 0.07), transparent 60%);
+  --surface: #12151c;
+  --surface-2: #181c25;
+  --surface-3: #212633;
+  --surface-raised: #1a1e28;
+  --overlay: rgba(0, 0, 0, 0.6);
+
+  --border: #252b38;
+  --border-strong: #343c4d;
+
+  --text: #eef1f6;
+  --text-2: #c7cfdb;
+  --text-3: #8d97a8;
+  --text-4: #657084;
+
+  --accent: #2dd4bf;
+  --accent-strong: #5eead4;
+  --accent-soft: rgba(45, 212, 191, 0.12);
+  --accent-ring: rgba(45, 212, 191, 0.35);
+  --on-accent: #04201d;
+
+  --pos: #34d399;
+  --pos-soft: rgba(52, 211, 153, 0.12);
+  --neg: #f87171;
+  --neg-soft: rgba(248, 113, 113, 0.12);
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.12);
+  --info: #60a5fa;
+  --info-soft: rgba(96, 165, 250, 0.12);
+
+  --c1: #2dd4bf;
+  --c2: #818cf8;
+  --c3: #fbbf24;
+  --c4: #f472b6;
+  --c5: #38bdf8;
+  --c6: #a3e635;
+  --c7: #c084fc;
+  --c8: #94a3b8;
+  --chart-grid: rgba(148, 163, 184, 0.12);
+  --chart-text: #8d97a8;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.55);
+
+  --skeleton: linear-gradient(90deg, #181c25 0%, #212633 50%, #181c25 100%);
+
+  --art-bank: linear-gradient(135deg, #042f2e 0%, #0f766e 60%, #2dd4bf 100%);
+  --art-card: linear-gradient(135deg, #0b0a24 0%, #312e81 60%, #6366f1 100%);
+  --art-wallet: linear-gradient(135deg, #2a0f05 0%, #9a3412 60%, #fb923c 100%);
+  --art-cash: linear-gradient(135deg, #052e16 0%, #15803d 60%, #4ade80 100%);
+}
+
+:root {
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 76px;
+  --topbar-h: 68px;
+  --content-max: 1360px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  // Back-compat with the old variables some components still read.
+  --ss-accent: var(--accent);
+  --ss-ink: var(--text);
+  --ss-muted: var(--text-3);
+  --ss-border: var(--border);
+}

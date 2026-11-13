@@ -6,6 +6,7 @@ import { CardStatement, StatementStatus, statusFromPaid } from '../../models/car
 import { CardStatementsService } from '../../services/card-statements.service';
 import { dayInMonth, fromDateInput, toDateInput } from '../../utils/date-input.util';
 import { UndoService } from '../../services/undo.service';
+import { IconComponent } from '../../ui/icon.component';
 
 export interface StatementFormData {
   cards: Card[];
@@ -16,7 +17,7 @@ export interface StatementFormData {
 @Component({
   selector: 'app-statement-form',
   standalone: true,
-  imports: [FormsModule],
+  imports: [IconComponent, FormsModule],
   templateUrl: './statement-form.component.html',
 })
 export class StatementFormComponent {

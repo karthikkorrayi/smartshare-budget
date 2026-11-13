@@ -6,6 +6,7 @@ import { IncomeService } from '../../services/income.service';
 import { fromDateInput, monthKey, toDateInput } from '../../utils/date-input.util';
 import { toDate } from '../../utils/firestore.util';
 import { UndoService } from '../../services/undo.service';
+import { IconComponent } from '../../ui/icon.component';
 
 /**
  * Add / edit income.
@@ -14,13 +15,13 @@ import { UndoService } from '../../services/undo.service';
  */
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [IconComponent, CommonModule, FormsModule],
   styleUrls: ['./add-income.component.scss'],
   template: `
     <div class="form-container">
       <div class="form-header">
         <div class="header-content">
-          <span class="header-icon">💰</span>
+          <span class="header-icon"><app-icon name="arrow-down-left" [size]="22" /></span>
           <div>
             <h2 class="form-title">{{ data?.income ? 'Edit Income' : 'Add Income' }}</h2>
             <p class="form-subtitle">Record your earnings</p>
@@ -60,7 +61,7 @@ import { UndoService } from '../../services/undo.service';
     </div>
   `,
   styles: [`
-    .form-errors { margin: 4px 0 0; padding: 10px 14px 10px 30px; border-radius: 12px; background: #fef2f2; color: #b91c1c; font-size: 14px; line-height: 1.5; }
+    .form-errors { margin: 4px 0 0; padding: 10px 14px 10px 30px; border-radius: 12px; background: var(--neg-soft); color: var(--neg); font-size: 14px; line-height: 1.5; }
   `],
 })
 export class AddIncomeComponent {

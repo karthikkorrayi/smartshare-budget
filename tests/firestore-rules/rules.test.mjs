@@ -761,3 +761,78 @@ describe('isolation matrix (Bob vs Alice\'s data)', () => {
     await assertFails(getDoc(doc(db, `users/${ALICE}`)));
   });
 });
+
+// ── Redesign: bank accounts, transfers, account-linked entries ─────────────
+const bank = (o = {}) => ({
+  userId: ALICE, name: 'HDFC Savings', institution: 'HDFC Bank', kind: 'savings', lastFour: '4821',
+  openingBalance: 25000, currency: 'INR', status: 'Active', createdAt: serverTimestamp(), lastUpdated: serverTimestamp(), ...o,
+});
+
+describe('bank_accounts', () => {
+  test('owner can create, update and delete a valid account', async () => {
+    const db = as(ALICE);
+    const ref = await assertSucceeds(addDoc(collection(db, 'bank_accounts'), bank()));
+    await assertSucceeds(updateDoc(ref, { name: 'Main', lastUpdated: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(ref));
+  });
+
+  test('negative opening balance (overdraft) is allowed; full account numbers and unknown fields are not', async () => {
+    const db = as(ALICE);
+    await assertSucceeds(addDoc(collection(db, 'bank_accounts'), bank({ openingBalance: -1200 })));
+    await assertFails(addDoc(collection(db, 'bank_accounts'), bank({ lastFour: '123456789012' })));
+    await assertFails(addDoc(collection(db, 'bank_accounts'), bank({ accountNumber: '50100123456789' })));
+    await assertFails(addDoc(collection(db, 'bank_accounts'), bank({ kind: 'crypto' })));
+  });
+
+  test('other users are denied', async () => {
+    await seed('bank_accounts/b1', { ...bank(), createdAt: Timestamp.now(), lastUpdated: Timestamp.now() });
+    await assertFails(getDoc(doc(as(BOB), 'bank_accounts/b1')));
+    await assertFails(deleteDoc(doc(as(BOB), 'bank_accounts/b1')));
+    await assertFails(addDoc(collection(as(BOB), 'bank_accounts'), bank()));
+  });
+});
+
+describe('account-linked expenses / income', () => {
+  beforeEach(async () => {
+    await seed('bank_accounts/a1', { ...bank(), createdAt: Timestamp.now(), lastUpdated: Timestamp.now() });
+    await seed('bank_accounts/b1', { ...bank({ userId: BOB }), createdAt: Timestamp.now(), lastUpdated: Timestamp.now() });
+  });
+
+  test('can link to own account; cannot link to someone else\'s or a missing one', async () => {
+    const db = as(ALICE);
+    await assertSucceeds(addDoc(collection(db, 'expenses'), { userId: ALICE, amount: 10, accountType: 'bank', accountId: 'a1' }));
+    await assertSucceeds(addDoc(collection(db, 'income'), { userId: ALICE, amount: 10, accountType: 'bank', accountId: 'a1' }));
+    await assertFails(addDoc(collection(db, 'expenses'), { userId: ALICE, amount: 10, accountType: 'bank', accountId: 'b1' }));
+    await assertFails(addDoc(collection(db, 'income'), { userId: ALICE, amount: 10, accountType: 'bank', accountId: 'nope' }));
+  });
+
+  test('unlinking (null) and unlinked legacy entries still work', async () => {
+    const db = as(ALICE);
+    const ref = await assertSucceeds(addDoc(collection(db, 'expenses'), { userId: ALICE, amount: 10, accountType: 'bank', accountId: 'a1' }));
+    await assertSucceeds(updateDoc(ref, { accountType: null, accountId: null }));
+    await assertSucceeds(addDoc(collection(db, 'expenses'), { userId: ALICE, amount: 3 }));
+    await assertFails(updateDoc(ref, { accountType: 'bank', accountId: 'b1' }));
+  });
+});
+
+describe('transfers', () => {
+  beforeEach(async () => {
+    await seed('bank_accounts/a1', { ...bank(), createdAt: Timestamp.now(), lastUpdated: Timestamp.now() });
+    await seed('wallets/w1', { userId: ALICE, name: 'Paytm', kind: 'upi', openingBalance: 0, status: 'Active', createdAt: Timestamp.now(), lastUpdated: Timestamp.now() });
+    await seed('wallets/wb', { userId: BOB, name: 'Bob cash', kind: 'cash', openingBalance: 0, status: 'Active', createdAt: Timestamp.now(), lastUpdated: Timestamp.now() });
+  });
+  const t = (o = {}) => ({ userId: ALICE, fromType: 'bank', fromId: 'a1', toType: 'wallet', toId: 'w1', amount: 500, date: Timestamp.now(), note: 'Top-up', createdAt: serverTimestamp(), ...o });
+
+  test('bank → own wallet succeeds; delete succeeds', async () => {
+    const ref = await assertSucceeds(addDoc(collection(as(ALICE), 'transfers'), t()));
+    await assertSucceeds(deleteDoc(ref));
+  });
+
+  test('rejects someone else\'s account, same account both sides, zero amounts', async () => {
+    const db = as(ALICE);
+    await assertFails(addDoc(collection(db, 'transfers'), t({ toId: 'wb' })));
+    await assertFails(addDoc(collection(db, 'transfers'), t({ toType: 'bank', toId: 'a1' })));
+    await assertFails(addDoc(collection(db, 'transfers'), t({ amount: 0 })));
+    await assertFails(addDoc(collection(db, 'transfers'), t({ fromType: 'card', fromId: 'c1' })));
+  });
+});

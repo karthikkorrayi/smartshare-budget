@@ -7,7 +7,7 @@
     </div>
     <div class="cc-heading-actions">
       @if (pendingCount().length) {
-        <a class="cc-btn" routerLink="/review">🔍 Review {{ pendingCount().length }}</a>
+        <a class="cc-btn" routerLink="/review"><app-icon name="inbox" [size]="16" /> Review {{ pendingCount().length }}</a>
       }
       <button class="cc-btn cc-btn--primary" (click)="showConnect.set(!showConnect())" [disabled]="!configured">+ Connect Gmail</button>
     </div>
@@ -36,7 +36,7 @@
         @for (g of groups; track g) {
           <label class="group" [class.on]="chosenGroups().includes(g)">
             <input type="checkbox" [checked]="chosenGroups().includes(g)" (change)="toggleChosen(g)" />
-            <span class="g-icon">{{ groupInfo[g].icon }}</span>
+            <span class="g-icon"><app-icon [name]="groupInfo[g].icon" [size]="18" /></span>
             <span class="g-text"><strong>{{ groupInfo[g].label }}</strong><small>{{ groupInfo[g].hint }}</small></span>
           </label>
         }
@@ -72,7 +72,7 @@
   } @else if (!connections().length) {
     @if (!showConnect()) {
       <div class="cc-empty">
-        <div class="icon">📬</div>
+        <div class="icon"><app-icon name="mail" [size]="30" /></div>
         <h2>No Gmail connected</h2>
         <p>Connect your Gmail to detect salary credits, bank and card transactions, statements, bills and due dates automatically.</p>
         <button class="cc-btn cc-btn--primary" (click)="showConnect.set(true)" [disabled]="!configured">Connect Gmail</button>
@@ -108,7 +108,7 @@
           <div class="cc-chips wrap">
             @for (g of groups; track g) {
               <button class="cc-chip" [class.active]="c.groups.includes(g)" (click)="toggleGroup(c, g)" [disabled]="busyId() === c.id"
-                      [title]="groupInfo[g].hint">{{ groupInfo[g].icon }} {{ groupInfo[g].label }}</button>
+                      [title]="groupInfo[g].hint"><app-icon [name]="groupInfo[g].icon" [size]="14" /> {{ groupInfo[g].label }}</button>
             }
           </div>
 
