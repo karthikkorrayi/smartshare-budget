@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, authMessage, isGmail } from '../../services/auth.service';
@@ -23,6 +23,14 @@ export class LoginComponent {
   info = signal('');
   /** Set after a rejected email+password sign-in, to offer the two ways back in. */
   credentialHelp = signal(false);
+
+  constructor() {
+    // A Google redirect sign-in that failed after the page reloaded.
+    effect(() => {
+      const err = this.authService.redirectError();
+      if (err) this.showError(err);
+    });
+  }
 
   displayName = '';
   email = '';
@@ -91,16 +99,28 @@ export class LoginComponent {
         }
       }
     } catch (err: any) {
-      if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password' || err?.code === 'auth/user-not-found') {
-        // Firebase deliberately doesn't say which part is wrong (email-enumeration protection),
-        // so offer both recovery paths instead of a dead end.
-        this.error.set("We couldn't sign you in with that Gmail and password.");
-        this.credentialHelp.set(this.mode() === 'signin');
-      } else {
-        this.error.set(authMessage(err));
-      }
+      this.showError(err);
     } finally {
       this.busy.set('');
     }
+  }
+
+  private showError(err: any): void {
+    if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password' || err?.code === 'auth/user-not-found') {
+      // Firebase deliberately doesn't say which part is wrong (email-enumeration protection),
+      // so offer both recovery paths instead of a dead end.
+      this.error.set("We couldn't sign you in with that Gmail and password.");
+      this.credentialHelp.set(this.mode() === 'signin');
+      return;
+    }
+    if (err?.code === 'link-google') {
+      // Google needs one password sign-in to link: prefill the Gmail and switch to the form.
+      this.mode.set('signin');
+      this.email = this.authService.pendingGoogleEmail() ?? this.email;
+      this.info.set(authMessage(err));
+      return;
+    }
+    console.warn('[Login] sign-in failed', err?.code ?? err);
+    this.error.set(authMessage(err));
   }
 }

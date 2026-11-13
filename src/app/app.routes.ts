@@ -31,6 +31,7 @@ export const routes: Routes = [
       { path: '', loadComponent: () => import('./pages/cards/cards-list/cards-list.component').then(m => m.CardsListComponent) },
       { path: 'transactions', loadComponent: () => import('./pages/cards/transactions/transactions.component').then(m => m.TransactionsComponent) },
       { path: 'statements', loadComponent: () => import('./pages/cards/statements/statements.component').then(m => m.StatementsComponent) },
+      { path: 'wallets', loadComponent: () => import('./pages/cards/wallets/wallets.component').then(m => m.WalletsComponent) },
       { path: 'review', redirectTo: '/review' }, // old Phase A link
     ],
   },

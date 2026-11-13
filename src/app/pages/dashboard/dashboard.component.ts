@@ -22,7 +22,8 @@ import { CardTransactionsService } from '../../services/card-transactions.servic
 import { UndoService } from '../../services/undo.service';
 import { VisiblePipe } from '../../pipes/visible.pipe';
 import { BudgetHeroComponent } from '../../components/budget-hero/budget-hero.component';
-import { BudgetSummary, MoneyItem, dailySpend, spendValue, summarizeMonth } from '../../utils/budget.util';
+import { BudgetSummary, MoneyItem, dailySpend, spendValue, summarizeMonth, walletMoneyItem } from '../../utils/budget.util';
+import { WalletsService } from '../../services/wallets.service';
 import { daysBetween, monthKey as monthKeyOf } from '../../utils/date-input.util';
 
 /** Firestore Timestamp/Date → epoch ms; 0 for missing dates (one bad record can't break Overview). */
@@ -75,6 +76,7 @@ export class DashboardComponent implements OnDestroy {
   summary: BudgetSummary | null = null;
   private undo = inject(UndoService);
   private cardTxns = inject(CardTransactionsService);
+  private walletsService = inject(WalletsService);
 
   totalIncome = 0;
   totalExpenses = 0;
@@ -210,6 +212,8 @@ export class DashboardComponent implements OnDestroy {
     // the old code opened a new listener on every data change and never closed them.
     const lastExpenses$ = month$.pipe(switchMap(m => runInInjectionContext(this.injector, () => this.expenseService.getExpensesByMonth(this.prevMonth(m)))));
     const lastCards$ = month$.pipe(switchMap(m => this.cardTxns.byMonth$(this.prevMonth(m))));
+    const wallet$ = month$.pipe(switchMap(m => this.walletsService.byMonth$(m)));
+    const lastWallet$ = month$.pipe(switchMap(m => this.walletsService.byMonth$(this.prevMonth(m))));
 
     combineLatest([
       this.stateManagement.incomes$,
@@ -218,12 +222,18 @@ export class DashboardComponent implements OnDestroy {
       cards$,
       lastExpenses$,
       lastCards$,
+      wallet$,
+      lastWallet$,
     ]).pipe(
       takeUntil(this.destroy$)
-    ).subscribe(([incomes, expenses, currentMonth, cards, lastExpenses, lastCards]) => {
+    ).subscribe(([incomes, expenses, currentMonth, cards, lastExpenses, lastCards, wallet, lastWallet]) => {
       this.expenses = expenses;
-      const items = [...expenses.map(e => this.expenseItem(e)), ...cards.map(c => this.cardItem(c))];
-      const lastItems = [...lastExpenses.map((e: any) => this.expenseItem(e)), ...lastCards.map(c => this.cardItem(c))];
+      const items = [...expenses.map(e => this.expenseItem(e)), ...cards.map(c => this.cardItem(c)), ...wallet.map(t => walletMoneyItem(t))];
+      const lastItems = [
+        ...lastExpenses.map((e: any) => this.expenseItem(e)),
+        ...lastCards.map(c => this.cardItem(c)),
+        ...lastWallet.map(t => walletMoneyItem(t)),
+      ];
 
       this.totalIncome = incomes.reduce((sum: number, i: any) => sum + (Number(i.amount) || 0), 0);
       this.summary = summarizeMonth(currentMonth, this.totalIncome, items, lastItems);

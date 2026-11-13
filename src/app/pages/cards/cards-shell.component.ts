@@ -7,10 +7,11 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="cc-page">
-      <nav class="cc-chips tabs" aria-label="Cards sections">
+      <nav class="cc-chips tabs" aria-label="Cards and wallets sections">
         <a class="cc-chip" routerLink="/cards" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">💳 Cards</a>
         <a class="cc-chip" routerLink="/cards/transactions" routerLinkActive="active">🧾 Transactions</a>
         <a class="cc-chip" routerLink="/cards/statements" routerLinkActive="active">📄 Statements</a>
+        <a class="cc-chip" routerLink="/cards/wallets" routerLinkActive="active">👛 Wallets</a>
       </nav>
       <router-outlet></router-outlet>
     </div>

@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -22,6 +22,7 @@ export class NotificationsComponent {
   private review = inject(ReviewService);
   private router = inject(Router);
   private undo = inject(UndoService);
+  private destroyRef = inject(DestroyRef);
 
   readonly icons = NOTIFICATION_ICONS;
 
@@ -36,8 +37,52 @@ export class NotificationsComponent {
   /** Notifications held for Undo are hidden immediately. */
   stored = computed(() => (this.rawStored() ?? []).filter(n => !this.undo.hidden().has(n.id)));
   unreadCount = computed(() => this.stored().filter(n => !n.read).length);
-  shown = computed(() => (this.filter() === 'unread' ? this.stored().filter(n => !n.read) : this.stored()));
+  /** "Unread" keeps showing what was new when you arrived, for the rest of this visit. */
+  shown = computed(() => (this.filter() === 'unread' ? this.stored().filter(n => !n.read || this.newThisVisit().has(n.id)) : this.stored()));
+  newCount = computed(() => this.stored().filter(n => !n.read || this.newThisVisit().has(n.id)).length);
   hasRead = computed(() => this.stored().some(n => n.read));
+
+  /** undefined until the seen list has loaded — avoids flashing every reminder as new. */
+  private seen = toSignal(this.notifications.seenReminderKeys$);
+  /**
+   * What was new when you opened this page. It stays highlighted for this visit only, while
+   * everything is recorded as seen/read — so leaving and coming back doesn't show it as new again.
+   */
+  newThisVisit = signal<Set<string>>(new Set());
+  private viewTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    effect(() => {
+      const seen = this.seen();
+      if (this.loading() || !seen) return;
+      const stored = this.stored();
+      const reminders = this.reminders();
+      untracked(() => {
+        const fresh = new Set([...stored.filter(n => !n.read).map(n => n.id), ...reminders.filter(r => !seen.has(r.key)).map(r => r.key)]);
+        if (!fresh.size) return;
+        this.newThisVisit.update(prev => new Set([...prev, ...fresh]));
+        // Give the page a moment on screen, then record it as viewed (also covers items that arrive while it's open).
+        if (this.viewTimer) clearTimeout(this.viewTimer);
+        this.viewTimer = setTimeout(() => this.recordViewed(), 1500);
+      });
+    });
+    // Leaving quickly still counts as having seen the page.
+    this.destroyRef.onDestroy(() => {
+      if (this.viewTimer) {
+        clearTimeout(this.viewTimer);
+        this.recordViewed();
+      }
+    });
+  }
+
+  isNew(id: string): boolean {
+    return this.newThisVisit().has(id);
+  }
+
+  private recordViewed(): void {
+    this.viewTimer = null;
+    this.notifications.markViewed(this.reminders(), this.stored()).catch(err => console.warn('[Notifications] mark viewed failed', err));
+  }
 
   async open(n: AppNotification): Promise<void> {
     await this.safe(() => this.notifications.markRead(n));

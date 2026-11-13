@@ -63,8 +63,11 @@ import { BudgetSummary } from '../../utils/budget.util';
         <div class="split">
           <span>🧾 Expenses <strong>₹{{ s.expenseSpend | number: '1.0-0' }}</strong></span>
           <a routerLink="/cards/transactions">💳 Card spends <strong>₹{{ s.cardSpend | number: '1.0-0' }}</strong></a>
+          @if (s.walletSpend !== 0) {
+            <a routerLink="/cards/wallets">👛 Wallet spends <strong>₹{{ s.walletSpend | number: '1.0-0' }}</strong></a>
+          }
           @if (s.cardBillsPaid > 0) {
-            <span class="muted" title="Card bill payments aren't counted — the card purchases already are">Card bills paid ₹{{ s.cardBillsPaid | number: '1.0-0' }} (not counted twice)</span>
+            <span class="muted" title="Card bill payments and wallet top-ups aren't counted — what you bought with them already is">Card bills &amp; top-ups paid ₹{{ s.cardBillsPaid | number: '1.0-0' }} (not counted twice)</span>
           }
         </div>
       </section>

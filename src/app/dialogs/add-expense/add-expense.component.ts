@@ -8,9 +8,11 @@ import { fromDateInput, monthKey, toDateInput } from '../../utils/date-input.uti
 import { toDate } from '../../utils/firestore.util';
 import { UndoService } from '../../services/undo.service';
 
-// 'Card Bill' = paying a credit-card bill. Not counted as spending (the card's purchases already are).
-const CATEGORIES = ['Food', 'Shopping', 'Transport', 'Bills', 'Petrol', 'Tickets', 'Lent', 'Card Bill', 'Others'];
+// 'Card Bill' = paying a credit-card bill; 'Wallet Top-up' = adding money to Paytm, Amazon Pay, etc.
+// Neither is spending: what you buy with that card or wallet already is.
+const CATEGORIES = ['Food', 'Shopping', 'Transport', 'Bills', 'Petrol', 'Tickets', 'Lent', 'Card Bill', 'Wallet Top-up', 'Others'];
 const CARD_BILL_HINT = /credit\s*card|card\s*(bill|payment|dues)|cc\s*(bill|payment)/i;
+const WALLET_TOPUP_HINT = /(add(ed)?\s*money|top[\s-]?up|recharge)\s.*(wallet|paytm|amazon\s*pay|phonepe|mobikwik)|(wallet|paytm|amazon\s*pay|phonepe|mobikwik)\s.*(top[\s-]?up|add\s*money)/i;
 
 /**
  * Add / edit an expense, or schedule it as an upcoming payment.
@@ -56,6 +58,9 @@ const CARD_BILL_HINT = /credit\s*card|card\s*(bill|payment|dues)|cc\s*(bill|paym
 
         <p class="field-hint" *ngIf="expense.category === 'Card Bill'">
           Card bill payments aren't counted as spending — the purchases on that card already are.
+        </p>
+        <p class="field-hint" *ngIf="expense.category === 'Wallet Top-up'">
+          Top-ups aren't counted as spending. Tip: record it under Cards → Wallets so the wallet's balance goes up too.
         </p>
 
         <div class="input-group" *ngIf="!isUpcoming">
@@ -126,9 +131,10 @@ export class AddExpenseComponent {
 
   /** "HDFC credit card bill" → suggest the Card Bill category (only for new entries, never overrides a choice). */
   suggestCardBill(): void {
-    if (!this.expense.id && this.expense.category === 'Food' && CARD_BILL_HINT.test(this.expense.description ?? '')) {
-      this.expense.category = 'Card Bill';
-    }
+    if (this.expense.id || this.expense.category !== 'Food') return;
+    const text = this.expense.description ?? '';
+    if (WALLET_TOPUP_HINT.test(text)) this.expense.category = 'Wallet Top-up';
+    else if (CARD_BILL_HINT.test(text)) this.expense.category = 'Card Bill';
   }
 
   /** Today when adding to the current month; otherwise the 1st of the month being viewed. */

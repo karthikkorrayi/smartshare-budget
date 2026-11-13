@@ -1,0 +1,118 @@
+<section class="cc-heading">
+  <div>
+    <p class="eyebrow">WALLETS</p>
+    <h1>Cash &amp; wallets</h1>
+    <p>Cash, UPI wallets and prepaid cards. Spends count in your budget; top-ups don't — they only move money.</p>
+  </div>
+  <div class="cc-heading-actions">
+    @if (wallets().length) {
+      <button class="cc-btn" (click)="record('topup')">+ Top-up</button>
+      <button class="cc-btn cc-btn--primary" (click)="record('spend')">+ Spend</button>
+    }
+    <button class="cc-btn" [class.cc-btn--primary]="!wallets().length" (click)="addWallet()">+ Add wallet</button>
+  </div>
+</section>
+
+@if (loading()) {
+  <div class="cc-empty"><div class="cc-spinner"></div><p>Loading wallets…</p></div>
+} @else if (!wallets().length) {
+  <div class="cc-empty">
+    <div class="icon">👛</div>
+    <h2>No wallets yet</h2>
+    <p>Add the cash you carry, or a Paytm / Amazon Pay / PhonePe wallet, to see its balance and count what you spend from it.</p>
+    <button class="cc-btn cc-btn--primary" (click)="addWallet()">+ Add your first wallet</button>
+  </div>
+} @else {
+  <section class="cc-stats">
+    <div class="cc-stat"><span class="label">Total balance</span><span class="value" [class.cc-amount-debit]="totals().balance < 0">₹{{ totals().balance | number: '1.0-0' }}</span></div>
+    <div class="cc-stat"><span class="label">Spent {{ selected() === 'all' ? 'from wallets' : 'from ' + walletName(selected()) }}</span><span class="value">₹{{ totals().spent | number: '1.0-0' }}</span></div>
+    <div class="cc-stat"><span class="label">Topped up</span><span class="value">₹{{ totals().toppedUp | number: '1.0-0' }}</span></div>
+    @if (totals().cashback > 0) {
+      <div class="cc-stat"><span class="label">Cashback</span><span class="value cc-amount-credit">₹{{ totals().cashback | number: '1.0-0' }}</span></div>
+    }
+  </section>
+
+  <section class="wallet-grid">
+    @for (w of visible(); track w.id) {
+      <article class="cc-panel wallet" [class.selected]="selected() === w.id" [class.closed]="w.status === 'Closed'">
+        <button type="button" class="wallet-main" (click)="select(w.id)" [attr.aria-pressed]="selected() === w.id"
+                [attr.aria-label]="'Show only ' + w.name">
+          <span class="w-icon" aria-hidden="true">{{ kindInfo[w.kind].icon }}</span>
+          <span class="w-text">
+            <span class="w-name">{{ w.name }}</span>
+            <span class="w-sub">{{ w.provider || kindInfo[w.kind].label }}</span>
+          </span>
+          <span class="w-balance" [class.neg]="w.balance < 0">₹{{ w.balance | number: '1.0-2' }}</span>
+        </button>
+        <div class="w-meta">
+          @if (w.low) { <span class="cc-badge tone-soon">Low balance</span> }
+          @if (w.status === 'Closed') { <span class="cc-badge tone-closed">Closed</span> }
+          @if (spentThisMonth(w.id); as sp) { <span class="w-spent">₹{{ sp | number: '1.0-0' }} spent {{ isCurrentMonth() ? 'this month' : 'in ' + (month() + '-01' | date: 'MMM') }}</span> }
+        </div>
+        @if (confirmDeleteId() === w.id) {
+          <div class="confirm" role="alert">
+            <span>Delete {{ w.name }} and all its entries?</span>
+            <button class="cc-btn cc-btn--sm" (click)="confirmDeleteId.set(null)">Keep</button>
+            <button class="cc-btn cc-btn--sm cc-btn--danger" (click)="confirmDelete(w)">Delete</button>
+          </div>
+        } @else {
+          <div class="w-actions">
+            @if (w.status === 'Active') {
+              <button class="cc-btn cc-btn--sm cc-btn--primary" (click)="record('spend', w.id)">Spend</button>
+              <button class="cc-btn cc-btn--sm" (click)="record('topup', w.id)">Top-up</button>
+            }
+            <button class="cc-btn cc-btn--sm" (click)="editWallet(w)">Edit</button>
+            <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="confirmDeleteId.set(w.id)" aria-label="Delete wallet">✕</button>
+          </div>
+        }
+      </article>
+    }
+  </section>
+  @if (closedCount()) {
+    <button class="cc-btn cc-btn--sm show-closed" (click)="showClosed.set(!showClosed())">
+      {{ showClosed() ? 'Hide' : 'Show' }} {{ closedCount() }} closed
+    </button>
+  }
+
+  <section class="cc-filters activity-head">
+    <h2>Activity @if (selected() !== 'all') { <button type="button" class="cc-chip active" (click)="selected.set('all')" [attr.aria-label]="'Show all wallets'">{{ walletName(selected()) }} ✕</button> }</h2>
+    <div class="month-nav">
+      <button class="cc-btn cc-btn--sm" (click)="shiftMonth(-1)" aria-label="Previous month">‹</button>
+      <input type="month" [value]="month()" (change)="month.set($any($event.target).value || month())" aria-label="Month" />
+      <button class="cc-btn cc-btn--sm" (click)="shiftMonth(1)" aria-label="Next month">›</button>
+    </div>
+  </section>
+
+  @if (!groups().length) {
+    <p class="quiet">Nothing recorded {{ selected() === 'all' ? '' : 'for ' + walletName(selected()) + ' ' }}in this month.</p>
+  } @else {
+    <section class="days">
+      @for (g of groups(); track g.key) {
+        <div class="cc-panel day">
+          <header class="day-head">{{ g.date | date: 'EEE, d MMM' }}</header>
+          @for (t of g.items; track t.id) {
+            <div class="txn">
+              <div class="txn-main">
+                <span class="desc">{{ t.description }}</span>
+                <span class="meta">
+                  {{ walletName(t.walletId) }}
+                  @if (t.category) { · {{ t.category }} }
+                  @if (t.type !== 'spend') { · <span class="type" [class]="'type-' + t.type">{{ txnInfo[t.type].label }}</span> }
+                </span>
+              </div>
+              <div class="txn-side">
+                <span class="amount" [class]="effect(t) > 0 ? 'cc-amount-credit' : 'cc-amount-debit'">
+                  {{ effect(t) > 0 ? '+' : '−' }}₹{{ t.amount | number: '1.0-2' }}
+                </span>
+                <span class="row-actions">
+                  <button class="cc-btn cc-btn--sm" (click)="editTxn(t)">Edit</button>
+                  <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="removeTxn(t)" aria-label="Delete">✕</button>
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+}

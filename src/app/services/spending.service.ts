@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import {
   Firestore,
   Timestamp,
-  addDoc,
   collection,
   collectionData,
   doc,
@@ -10,6 +9,7 @@ import {
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
   where,
 } from '@angular/fire/firestore';
 import { Observable, combineLatest, map, shareReplay } from 'rxjs';
@@ -42,7 +42,12 @@ export class SpendingService {
       const cards$ = collectionData(
         query(collection(this.firestore, 'card_transactions'), where('userId', '==', uid), where('txnDate', '>=', since))
       ).pipe(map(docs => docs.filter(d => d['direction'] !== 'credit').map(d => this.cardEntry(d)).filter((e): e is SpendEntry => !!e)));
-      return combineLatest([expenses$, cards$]).pipe(map(([a, b]) => [...a, ...b]));
+      // Wallet spends (userId filter only — no extra index; filtered by date here).
+      const sinceDate = since.toDate();
+      const wallets$ = collectionData(query(collection(this.firestore, 'wallet_transactions'), where('userId', '==', uid))).pipe(
+        map(docs => docs.map(d => this.walletEntry(d)).filter((e): e is SpendEntry => !!e && e.date >= sinceDate))
+      );
+      return combineLatest([expenses$, cards$, wallets$]).pipe(map(([a, b, c]) => [...a, ...b, ...c]));
     }, [] as SpendEntry[])
     .pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
@@ -72,7 +77,8 @@ export class SpendingService {
         await this.warn(
           `Daily limit crossed`,
           `You've spent ₹${fmt(overall)} today — ₹${fmt(overall - s.dailyLimit)} over your ₹${fmt(s.dailyLimit)} limit.`,
-          null
+          null,
+          day
         );
       }
       if (spend.cardId && cardLimit > 0) {
@@ -81,7 +87,8 @@ export class SpendingService {
           await this.warn(
             `Card limit crossed · ${cardName}`,
             `₹${fmt(onCard)} on this card today — over its ₹${fmt(cardLimit)} daily limit.`,
-            spend.cardId
+            spend.cardId,
+            day
           );
         }
       }
@@ -94,20 +101,28 @@ export class SpendingService {
     const uid = this.auth.requireUid();
     const start = Timestamp.fromDate(new Date(day.getFullYear(), day.getMonth(), day.getDate()));
     const end = Timestamp.fromDate(new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1));
-    const [e, c] = await Promise.all([
+    const [e, c, w] = await Promise.all([
       getDocs(query(collection(this.firestore, 'expenses'), where('userId', '==', uid), where('date', '>=', start), where('date', '<', end))),
       getDocs(query(collection(this.firestore, 'card_transactions'), where('userId', '==', uid), where('txnDate', '>=', start), where('txnDate', '<', end))),
+      getDocs(query(collection(this.firestore, 'wallet_transactions'), where('userId', '==', uid))),
     ]);
+    const [from, to] = [start.toDate(), end.toDate()];
     return [
       ...e.docs.map(d => this.expenseEntry(d.data())).filter((x): x is SpendEntry => !!x),
       ...c.docs.filter(d => d.get('direction') !== 'credit').map(d => this.cardEntry(d.data())).filter((x): x is SpendEntry => !!x),
+      ...w.docs.map(d => this.walletEntry(d.data())).filter((x): x is SpendEntry => !!x && x.date >= from && x.date < to),
     ];
   }
 
-  private async warn(title: string, body: string, cardId: string | null): Promise<void> {
+  private async warn(title: string, body: string, cardId: string | null, day: Date): Promise<void> {
+    // One warning per limit per day: deleting/undoing and re-adding a spend doesn't repeat it.
+    const uid = this.auth.requireUid();
+    const ymd = `${day.getFullYear()}${String(day.getMonth() + 1).padStart(2, '0')}${String(day.getDate()).padStart(2, '0')}`;
+    const ref = doc(this.firestore, 'notifications', `limit-${uid}-${ymd}-${cardId ?? 'all'}`);
+    if ((await getDoc(ref).catch(() => null))?.exists()) return;
     this.alerts.show({ tone: 'warn', title, body, link: '/notifications' }, 10000);
-    await addDoc(collection(this.firestore, 'notifications'), {
-      userId: this.auth.requireUid(),
+    await setDoc(ref, {
+      userId: uid,
       type: 'limit_exceeded',
       title,
       body,
@@ -121,10 +136,18 @@ export class SpendingService {
 
   private expenseEntry(d: any): SpendEntry | null {
     // Same rule as Overview: card bill payments and repaid loans aren't spending.
-    if (d?.category === 'Card Bill' || d?.status === 'PAID') return null;
+    if (d?.category === 'Card Bill' || d?.category === 'Wallet Top-up' || d?.status === 'PAID') return null;
     const date = toDate(d?.date);
     const amount = Number(d?.amount) || 0;
     return date && amount > 0 ? { date, amount, source: 'expense' } : null;
+  }
+
+  /** Wallet spends only (top-ups, refunds and cashback aren't spending). */
+  private walletEntry(d: any): SpendEntry | null {
+    if (d?.type !== 'spend') return null;
+    const date = toDate(d?.date);
+    const amount = Number(d?.amount) || 0;
+    return date && amount > 0 ? { date, amount, source: 'wallet' } : null;
   }
 
   private cardEntry(d: any): SpendEntry | null {

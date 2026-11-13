@@ -15,7 +15,8 @@ import { ExpenseService } from './expense.service';
 import { AuthService } from './auth.service';
 import { monthKey } from '../utils/date-input.util';
 import { CardTransactionsService } from './card-transactions.service';
-import { MoneyItem, spendValue } from '../utils/budget.util';
+import { MoneyItem, spendValue, walletMoneyItem } from '../utils/budget.util';
+import { WalletsService } from './wallets.service';
 import { toDate } from '../utils/firestore.util';
 
 /**
@@ -27,8 +28,8 @@ import { toDate } from '../utils/firestore.util';
  * - It is recalculated every time Overview opens this month, so an expense you add to last month
  *   later still corrects this month's opening balance.
  * - If last month closed at ₹0 or below, any existing carry-forward entry is removed.
- * - Uses exactly Overview's definition of spending: expenses (minus card bill payments and repaid
- *   loans) + card purchases − card refunds.
+ * - Uses exactly Overview's definition of spending: expenses (minus card bill payments, wallet
+ *   top-ups and repaid loans) + card purchases − card refunds + wallet spends − wallet refunds.
  */
 @Injectable({ providedIn: 'root' })
 export class CarryForwardService {
@@ -37,6 +38,7 @@ export class CarryForwardService {
   private incomeService = inject(IncomeService);
   private expenseService = inject(ExpenseService);
   private cardTxns = inject(CardTransactionsService);
+  private wallets = inject(WalletsService);
 
   /** Name kept for the dashboard; now syncs instead of "process once". */
   async checkAndProcessCarryForward(month: string): Promise<void> {
@@ -44,10 +46,11 @@ export class CarryForwardService {
     const uid = this.auth.requireUid();
     const previousMonth = this.getPreviousMonth(month);
 
-    const [prevIncome, prevExpenses, prevCards, existing] = await Promise.all([
+    const [prevIncome, prevExpenses, prevCards, prevWallet, existing] = await Promise.all([
       firstValueFrom(this.incomeService.getIncomeByMonth(previousMonth)),
       firstValueFrom(this.expenseService.getExpensesByMonth(previousMonth)),
       firstValueFrom(this.cardTxns.byMonth$(previousMonth)),
+      firstValueFrom(this.wallets.byMonth$(previousMonth)),
       getDocs(
         query(
           collection(this.firestore, 'income'),
@@ -62,6 +65,7 @@ export class CarryForwardService {
     const items: MoneyItem[] = [
       ...prevExpenses.map((e: any) => ({ source: 'expense' as const, amount: Number(e.amount) || 0, date: toDate(e.date), category: e.category, status: e.status })),
       ...prevCards.map(c => ({ source: 'card' as const, amount: c.amount, date: c.txnDate, category: c.category, direction: c.direction })),
+      ...prevWallet.map(t => walletMoneyItem(t)),
     ];
     const totalExpenses = items.reduce((sum, i) => sum + spendValue(i), 0);
     const closingBalance = Math.round((totalIncome - totalExpenses) * 100) / 100;

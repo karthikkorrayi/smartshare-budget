@@ -28,6 +28,7 @@
 .app-shell { width: min(1480px, 100%); margin: auto; }
 
 @media (max-width: 760px) {
+  .wide-only { display: none; }
   .top-nav { min-height: 68px; padding: 12px 14px; gap: 10px; }
   .app-subtitle, .profile-name { display: none; }
   .profile-chip { padding: 4px; }

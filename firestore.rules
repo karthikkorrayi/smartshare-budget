@@ -221,6 +221,55 @@ service cloud.firestore {
       allow delete: if ownerDelete();
     }
 
+    // ── wallets/{walletId} — cash, UPI wallets, prepaid/meal/gift cards ─
+    // Balance is never stored: it's opening balance + the wallet's transactions, worked out in the app.
+    function isValidWallet(d) {
+      return d.keys().hasOnly(['userId', 'name', 'kind', 'provider', 'openingBalance', 'lowBalanceAlert',
+                               'status', 'createdAt', 'lastUpdated'])
+        && d.keys().hasAll(['userId', 'name', 'kind', 'openingBalance', 'status', 'createdAt', 'lastUpdated'])
+        && str(d.name, 1, 40)
+        && d.kind in ['cash', 'upi', 'prepaid', 'other']
+        && optStr(d, 'provider', 40)
+        && money(d.openingBalance)
+        && (!('lowBalanceAlert' in d) || money(d.lowBalanceAlert))
+        && d.status in ['Active', 'Closed']
+        && d.createdAt is timestamp
+        && d.lastUpdated == request.time;
+    }
+    match /wallets/{walletId} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate() && isValidWallet(request.resource.data) && request.resource.data.createdAt == request.time;
+      allow update: if ownerUpdate() && isValidWallet(request.resource.data) && unchanged('createdAt');
+      allow delete: if ownerDelete();
+    }
+
+    // ── wallet_transactions/{txnId} ─────────────────────────────────
+    // spend / refund count in the budget like card debits / refunds; topup and cashback only move the balance.
+    function ownsWallet(walletId) {
+      return walletId is string
+        && exists(docPath('wallets', walletId))
+        && get(docPath('wallets', walletId)).data.userId == request.auth.uid;
+    }
+    function isValidWalletTxn(d) {
+      return d.keys().hasOnly(['userId', 'walletId', 'type', 'amount', 'date', 'description', 'category',
+                               'createdAt', 'lastUpdated'])
+        && d.keys().hasAll(['userId', 'walletId', 'type', 'amount', 'date', 'description', 'createdAt', 'lastUpdated'])
+        && ownsWallet(d.walletId)
+        && d.type in ['spend', 'topup', 'refund', 'cashback']
+        && money(d.amount) && d.amount > 0
+        && d.date is timestamp
+        && str(d.description, 1, 120)
+        && optStr(d, 'category', 30)
+        && d.createdAt is timestamp
+        && d.lastUpdated == request.time;
+    }
+    match /wallet_transactions/{txnId} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate() && isValidWalletTxn(request.resource.data) && request.resource.data.createdAt == request.time;
+      allow update: if ownerUpdate() && isValidWalletTxn(request.resource.data) && unchanged('createdAt');
+      allow delete: if ownerDelete();
+    }
+
     // ── card_statements/{statementId} ───────────────────────────────
     function isValidStatement(d) {
       return d.keys().hasOnly(['userId', 'cardId', 'statementDate', 'dueDate', 'totalDue', 'minDue',

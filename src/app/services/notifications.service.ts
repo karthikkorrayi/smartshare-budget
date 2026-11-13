@@ -5,19 +5,21 @@ import {
   collectionData,
   deleteDoc,
   doc,
+  docData,
   limit,
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   writeBatch,
 } from '@angular/fire/firestore';
-import { Observable, combineLatest, map, shareReplay } from 'rxjs';
+import { Observable, combineLatest, firstValueFrom, map, shareReplay } from 'rxjs';
 import { AuthService } from './auth.service';
 import { CardsService } from './cards.service';
 import { CardStatementsService } from './card-statements.service';
-import { ReviewService } from './review.service';
+import { WalletsService, WalletView } from './wallets.service';
 import { AppNotification, Reminder } from '../models/app-notification.model';
 import { Card, cardLabel, expiryInfo, nextDueDate, nextStatementDate } from '../models/card.model';
 import { CardStatement, dueInfo } from '../models/card-statement.model';
@@ -34,7 +36,7 @@ export class NotificationsService {
   private auth = inject(AuthService);
   private cards = inject(CardsService);
   private statements = inject(CardStatementsService);
-  private review = inject(ReviewService);
+  private wallets = inject(WalletsService);
   private col = collection(this.firestore, 'notifications');
 
   /** Stored event notifications, newest first. Needs index notifications(userId ASC, createdAt DESC). */
@@ -49,15 +51,55 @@ export class NotificationsService {
     .pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
   /** Live reminders computed from cards + statements (never stored, never stale). */
-  readonly reminders$: Observable<Reminder[]> = combineLatest([this.cards.cards$, this.statements.statements$]).pipe(
-    map(([cards, statements]) => NotificationsService.computeReminders(cards, statements)),
+  readonly reminders$: Observable<Reminder[]> = combineLatest([this.cards.cards$, this.statements.statements$, this.wallets.views$]).pipe(
+    map(([cards, statements, wallets]) => [...NotificationsService.computeReminders(cards, statements), ...NotificationsService.walletReminders(wallets)]),
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
-  /** Badge count: unread notifications + reminders + pending reviews. */
-  readonly badgeCount$: Observable<number> = combineLatest([this.stored$, this.reminders$, this.review.pending$]).pipe(
-    map(([stored, reminders, pending]) => stored.filter(n => !n.read).length + reminders.length + pending.length)
+  /**
+   * Reminder keys already shown on the Notifications page (users/{uid}.notifSeen.reminders).
+   * A reminder's key changes when it escalates (due soon → overdue), so it alerts once more then.
+   */
+  readonly seenReminderKeys$: Observable<Set<string>> = this.auth
+    .forUser(
+      uid => docData(doc(this.firestore, 'users', uid)).pipe(map(d => new Set<string>(((d as any)?.notifSeen?.reminders ?? []) as string[]))),
+      new Set<string>()
+    )
+    .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+
+  /**
+   * Bell badge = things you haven't seen yet: unread activity + reminders not yet viewed.
+   * Pending reviews are NOT added here — the Review tab shows that count, and the "N new items to
+   * review" notification already announces them (counting both made one email show up twice).
+   */
+  readonly badgeCount$: Observable<number> = combineLatest([this.stored$, this.reminders$, this.seenReminderKeys$]).pipe(
+    map(([stored, reminders, seen]) => stored.filter(n => !n.read).length + reminders.filter(r => !seen.has(r.key)).length)
   );
+
+  /** Called when the Notifications page has been looked at: everything on it counts as seen. */
+  async markViewed(reminders: Reminder[], stored: AppNotification[]): Promise<void> {
+    const uid = this.auth.requireUid();
+    await setDoc(
+      doc(this.firestore, 'users', uid),
+      // Replaces the list: reminders that no longer exist drop out, so it never grows.
+      { uid, notifSeen: { reminders: reminders.map(r => r.key).slice(0, 200), at: serverTimestamp() } },
+      { merge: true }
+    );
+    await this.markAllRead(stored);
+  }
+
+  /**
+   * Opening the page a notification points to counts as reading it: visiting Review clears
+   * "N new items to review", visiting Gmail clears "Reconnect …". Never throws.
+   */
+  async markReadOnVisit(link: string): Promise<void> {
+    try {
+      const stored = await firstValueFrom(this.stored$);
+      await this.markAllRead(stored.filter(n => n.link === link));
+    } catch (err) {
+      console.warn('[Notifications] mark read on visit failed', err);
+    }
+  }
 
   markRead(n: AppNotification) {
     if (n.read) return Promise.resolve();
@@ -112,7 +154,7 @@ export class NotificationsService {
           const d = dueInfo(s, today);
           if (d.tone === 'ok') continue;
           out.push({
-            key: `due-${s.id}`,
+            key: `due-${s.id}-${d.days < 0 ? 'overdue' : d.tone}`,
             type: d.days < 0 ? 'payment_overdue' : 'payment_due',
             tone: d.tone === 'overdue' ? 'overdue' : 'soon',
             title: d.days < 0 ? `Payment overdue · ${label}` : `Payment due ${relativeDays(d.days)} · ${label}`,
@@ -144,7 +186,7 @@ export class NotificationsService {
       const exp = expiryInfo(card, today);
       if (exp.days <= EXPIRY_HEADS_UP_DAYS) {
         out.push({
-          key: `exp-${card.id}`,
+          key: `exp-${card.id}-${exp.days < 0 ? 'expired' : 'soon'}`,
           type: 'card_expiring',
           tone: exp.days < 0 ? 'overdue' : 'soon',
           title: exp.days < 0 ? `Card expired · ${label}` : `Card expires soon · ${label}`,
@@ -156,6 +198,22 @@ export class NotificationsService {
       }
     }
     return out.sort((a, b) => (a.tone === b.tone ? 0 : a.tone === 'overdue' ? -1 : 1) || a.date.getTime() - b.date.getTime());
+  }
+
+  /** Wallets below their warning amount. The key holds the threshold, so changing it can alert again. */
+  static walletReminders(wallets: WalletView[]): Reminder[] {
+    return wallets
+      .filter(w => w.low)
+      .map(w => ({
+        key: `wallet-low-${w.id}-${w.lowBalanceAlert}`,
+        type: 'wallet_low' as const,
+        tone: w.balance <= 0 ? ('overdue' as const) : ('soon' as const),
+        title: `Low balance · ${w.name}`,
+        body: `₹${w.balance.toLocaleString('en-IN')} left — below your ₹${w.lowBalanceAlert.toLocaleString('en-IN')} warning. Top up before your next payment.`,
+        date: new Date(),
+        cardId: w.id,
+        link: '/cards/wallets',
+      }));
   }
 
   static fromFirestore(d: any): AppNotification {

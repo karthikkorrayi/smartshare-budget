@@ -28,7 +28,7 @@
   } @else {
     <section class="cc-panel list">
       @for (r of reminders(); track r.key) {
-        <a class="row" [routerLink]="r.link">
+        <a class="row" [class.unread]="isNew(r.key)" [routerLink]="r.link">
           <span class="row-icon" [class]="'tone-' + r.tone">{{ icons[r.type] }}</span>
           <span class="row-text">
             <strong>{{ r.title }}</strong>
@@ -42,7 +42,7 @@
 
   <!-- Stored event notifications -->
   <div class="inbox-head">
-    <h2 class="section">Activity <span class="cc-count" [class.cc-count--alert]="unreadCount()">{{ unreadCount() }} new</span></h2>
+    <h2 class="section">Activity @if (newCount()) { <span class="cc-count cc-count--alert">{{ newCount() }} new</span> }</h2>
     <div class="inbox-actions">
       <div class="cc-chips">
         <button class="cc-chip" [class.active]="filter() === 'all'" (click)="filter.set('all')">All</button>
@@ -60,7 +60,7 @@
   } @else {
     <section class="cc-panel list">
       @for (n of shown(); track n.id) {
-        <div class="row" [class.unread]="!n.read">
+        <div class="row" [class.unread]="!n.read || isNew(n.id)">
           <span class="row-icon">{{ icons[n.type] || '🔔' }}</span>
           <button class="row-text as-link" (click)="open(n)">
             <strong>

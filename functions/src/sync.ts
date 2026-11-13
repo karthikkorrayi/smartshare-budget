@@ -175,16 +175,25 @@ export async function syncConnection(
     });
 
     if (stats.created > 0) {
-      await db().collection('notifications').add({
-        userId: conn.userId,
-        type: 'review_pending',
-        title: `${stats.created} new item${stats.created === 1 ? '' : 's'} to review`,
-        body: `Found in ${conn.email}. Approve, edit or reject them in the Review Center.`,
-        cardId: null,
-        link: '/review',
-        read: false,
-        origin: 'system',
-        createdAt: FieldValue.serverTimestamp(),
+      // One live notification per Gmail account, updated in place: syncs every 30 min no longer
+      // stack up "N new items" entries. Unread → the count grows; already read → starts again.
+      const noteRef = db().doc(`notifications/review-${connId}`);
+      await db().runTransaction(async tx => {
+        const prev = await tx.get(noteRef);
+        const carried = prev.exists && prev.get('read') === false ? Number(prev.get('count')) || 0 : 0;
+        const count = carried + stats.created;
+        tx.set(noteRef, {
+          userId: conn.userId,
+          type: 'review_pending',
+          title: `${count} new item${count === 1 ? '' : 's'} to review`,
+          body: `Found in ${conn.email}. Approve, edit or reject them in the Review Center.`,
+          cardId: null,
+          link: '/review',
+          read: false,
+          count,
+          origin: 'system',
+          createdAt: FieldValue.serverTimestamp(),
+        });
       });
       await pushToUser(
         conn.userId,
@@ -208,7 +217,7 @@ export async function syncConnection(
       syncLockUntil: FieldValue.delete(),
     });
     if (reauth && conn.status !== 'reauth_required') {
-      await db().collection('notifications').add({
+      await db().doc(`notifications/reauth-${connId}`).set({
         userId: conn.userId,
         type: 'review_pending',
         title: `Reconnect ${conn.email}`,

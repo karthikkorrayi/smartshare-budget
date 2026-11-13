@@ -6,6 +6,7 @@ import { GmailService, gmailMessage } from '../../services/gmail.service';
 import { ReviewService } from '../../services/review.service';
 import { GmailConnection, MONITOR_GROUPS, MONITOR_GROUP_INFO, MonitorGroup } from '../../models/gmail.model';
 import { AuthService } from '../../services/auth.service';
+import { NotificationsService } from '../../services/notifications.service';
 import { UndoService } from '../../services/undo.service';
 
 @Component({
@@ -18,6 +19,7 @@ import { UndoService } from '../../services/undo.service';
 export class GmailComponent {
   private gmail = inject(GmailService);
   private undo = inject(UndoService);
+  private readonly _visit = inject(NotificationsService).markReadOnVisit('/gmail');
   private review = inject(ReviewService);
   private auth = inject(AuthService);
 

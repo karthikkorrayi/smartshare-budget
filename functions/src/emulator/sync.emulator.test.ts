@@ -147,6 +147,25 @@ describe('sync engine (emulator)', () => {
     assert.equal(await count('review_items', ALICE), 2);
   });
 
+  test('repeated syncs keep ONE "to review" notification per account and add up its count', async () => {
+    await syncConnection(CONN_A, secrets, 60_000, fakeGmail([SALARY]));
+    await db.doc(`gmail_connections/${CONN_A}`).update({ lastSyncAt: null });
+    await syncConnection(CONN_A, secrets, 60_000, fakeGmail([SALARY, CARD]));
+    let notes = await db.collection('notifications').where('userId', '==', ALICE).get();
+    assert.equal(notes.size, 1);
+    assert.equal(notes.docs[0].get('count'), 2);
+    assert.equal(notes.docs[0].get('title'), '2 new items to review');
+
+    // Once read, the next find starts a fresh count (same document, unread again).
+    await notes.docs[0].ref.update({ read: true });
+    await db.doc(`gmail_connections/${CONN_A}`).update({ lastSyncAt: null });
+    await syncConnection(CONN_A, secrets, 60_000, fakeGmail([SALARY, CARD, msg('m-card-2', 'Card alert', 'Rs.310.00 was spent on your HDFC Bank Credit Card ending 4242 at CAFE on 11-11-2026.')]));
+    notes = await db.collection('notifications').where('userId', '==', ALICE).get();
+    assert.equal(notes.size, 1);
+    assert.equal(notes.docs[0].get('count'), 1);
+    assert.equal(notes.docs[0].get('read'), false);
+  });
+
   test('the same email delivered to two connected Gmail accounts creates ONE item', async () => {
     await seedConnection(CONN_A2, ALICE, 'alice.work@gmail.com');
     await syncConnection(CONN_A, secrets, 60_000, fakeGmail([SALARY]));

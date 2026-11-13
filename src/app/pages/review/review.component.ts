@@ -20,6 +20,7 @@ import {
 import { CARD_FIELD_LABELS, CARD_UPDATABLE_FIELDS, Card, CardUpdateField, cardLabel } from '../../models/card.model';
 import { TXN_CATEGORIES } from '../../models/card-transaction.model';
 import { fromDateInput, toDateInput } from '../../utils/date-input.util';
+import { NotificationsService } from '../../services/notifications.service';
 import { UndoService } from '../../services/undo.service';
 
 type GroupFilter = 'all' | 'salary' | 'bank' | 'cards' | 'bills' | 'payments';
@@ -53,6 +54,7 @@ export class ReviewComponent {
   private review = inject(ReviewService);
   private cardsService = inject(CardsService);
   private undo = inject(UndoService);
+  private readonly _visit = inject(NotificationsService).markReadOnVisit('/review');
 
   readonly categoryInfo = CATEGORY_INFO;
   readonly kindInfo = KIND_INFO;

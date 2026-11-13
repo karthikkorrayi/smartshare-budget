@@ -27,7 +27,7 @@ import { UndoBarComponent } from './components/undo-bar/undo-bar.component';
       @if (a.ready) {
         <nav class="main-nav" aria-label="Main">
           <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Overview</a>
-          <a routerLink="/cards" routerLinkActive="active">Cards</a>
+          <a routerLink="/cards" routerLinkActive="active">Cards<span class="wide-only">&nbsp;&amp; Wallets</span></a>
           <a routerLink="/review" routerLinkActive="active">
             Review @if (pending()) { <span class="nav-count">{{ pending() }}</span> }
           </a>

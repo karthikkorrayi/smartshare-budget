@@ -532,6 +532,85 @@ describe('client limit warnings', () => {
   });
 });
 
+describe('limit warnings and seen state (notification flow)', () => {
+  const warn = { userId: ALICE, type: 'limit_exceeded', title: 'Daily limit crossed', body: 'x', cardId: null, link: '/', read: false, origin: 'client', createdAt: serverTimestamp() };
+  test('one warning per limit per day: a fixed id can be created once, not overwritten', async () => {
+    const ref = doc(as(ALICE), `notifications/limit-${ALICE}-20261113-all`);
+    await assertSucceeds(setDoc(ref, warn));
+    await assertFails(setDoc(ref, { ...warn, title: 'again' })); // an overwrite is an update → content can't change
+    await assertSucceeds(updateDoc(ref, { read: true, readAt: serverTimestamp() }));
+  });
+  test('reading a missing warning id is refused (the app treats that as "not sent yet")', async () => {
+    await assertFails(getDoc(doc(as(ALICE), `notifications/limit-${ALICE}-20261114-all`)));
+  });
+  test('seen reminders are stored on the own profile only', async () => {
+    const seen = { uid: ALICE, notifSeen: { reminders: ['due-s1-overdue'], at: serverTimestamp() } };
+    await assertSucceeds(setDoc(doc(as(ALICE), `users/${ALICE}`), seen, { merge: true }));
+    await assertFails(setDoc(doc(as(BOB), `users/${ALICE}`), seen, { merge: true }));
+  });
+});
+
+// ════════════════════════════════════════════════════════════════
+// Wallets: cash, UPI wallets, prepaid cards
+// ════════════════════════════════════════════════════════════════
+function newWallet(uid, o = {}) {
+  return { userId: uid, name: 'Paytm', kind: 'upi', provider: 'Paytm', openingBalance: 500, lowBalanceAlert: 100, status: 'Active',
+    createdAt: serverTimestamp(), lastUpdated: serverTimestamp(), ...o };
+}
+function newWalletTxn(uid, walletId, o = {}) {
+  return { userId: uid, walletId, type: 'spend', amount: 120, date: T('2026-11-12'), description: 'Tea', category: 'Food',
+    createdAt: serverTimestamp(), lastUpdated: serverTimestamp(), ...o };
+}
+
+describe('wallets', () => {
+  test('owner can create, update and delete a valid wallet', async () => {
+    const db = as(ALICE);
+    const ref = await assertSucceeds(addDoc(collection(db, 'wallets'), newWallet(ALICE)));
+    await assertSucceeds(updateDoc(ref, { name: 'Paytm wallet', lastUpdated: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(ref));
+  });
+  test('invalid wallets are rejected', async () => {
+    const c = collection(as(ALICE), 'wallets');
+    await assertFails(addDoc(c, newWallet(ALICE, { kind: 'crypto' })));
+    await assertFails(addDoc(c, newWallet(ALICE, { name: '' })));
+    await assertFails(addDoc(c, newWallet(ALICE, { openingBalance: -1 })));
+    await assertFails(addDoc(c, newWallet(ALICE, { balance: 999 }))); // balance is computed, never stored
+    await assertFails(addDoc(c, newWallet(BOB)));
+  });
+  test('createdAt cannot be rewritten', async () => {
+    await seed('wallets/w1', { ...newWallet(ALICE), createdAt: T('2026-11-01'), lastUpdated: T('2026-11-01') });
+    await assertFails(updateDoc(doc(as(ALICE), 'wallets/w1'), { createdAt: T('2020-01-01'), lastUpdated: serverTimestamp() }));
+  });
+});
+
+describe('wallet_transactions', () => {
+  beforeEach(async () => {
+    await seed('wallets/walletA', { ...newWallet(ALICE), createdAt: T('2026-11-01'), lastUpdated: T('2026-11-01') });
+    await seed('wallets/walletB', { ...newWallet(BOB), createdAt: T('2026-11-01'), lastUpdated: T('2026-11-01') });
+  });
+  test('owner records every entry type against their own wallet', async () => {
+    const c = collection(as(ALICE), 'wallet_transactions');
+    for (const type of ['spend', 'topup', 'refund', 'cashback']) {
+      await assertSucceeds(addDoc(c, newWalletTxn(ALICE, 'walletA', { type })));
+    }
+  });
+  test("cannot write to someone else's wallet or with bad values", async () => {
+    const c = collection(as(ALICE), 'wallet_transactions');
+    await assertFails(addDoc(c, newWalletTxn(ALICE, 'walletB')));
+    await assertFails(addDoc(c, newWalletTxn(ALICE, 'missing')));
+    await assertFails(addDoc(c, newWalletTxn(ALICE, 'walletA', { type: 'transfer' })));
+    await assertFails(addDoc(c, newWalletTxn(ALICE, 'walletA', { amount: 0 })));
+    await assertFails(addDoc(c, newWalletTxn(ALICE, 'walletA', { description: '' })));
+    await assertFails(addDoc(c, newWalletTxn(ALICE, 'walletA', { extra: true })));
+  });
+  test('edit and delete own entries', async () => {
+    const ref = await assertSucceeds(addDoc(collection(as(ALICE), 'wallet_transactions'), newWalletTxn(ALICE, 'walletA')));
+    await assertSucceeds(updateDoc(ref, { amount: 150, lastUpdated: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { walletId: 'walletB', lastUpdated: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(ref));
+  });
+});
+
 // ════════════════════════════════════════════════════════════════
 // Phase 7.1: cross-user isolation matrix — every collection, every operation
 // Alice owns one document in each collection; Bob (a valid, verified Gmail user)
@@ -551,11 +630,14 @@ describe('isolation matrix (Bob vs Alice\'s data)', () => {
     notifications: { userId: ALICE, type: 'review_pending', title: 't', body: 'b', read: false, origin: 'system', createdAt: T('2026-11-10') },
     gmail_connections: { userId: ALICE, email: 'alice@gmail.com', status: 'active', paused: false, groups: ['bank'] },
     fcm_tokens: { userId: ALICE, token: 'x'.repeat(100), appUrl: 'https://a/', createdAt: T('2026-11-10'), lastSeenAt: T('2026-11-10') },
+    wallets: { ...newWallet(ALICE), createdAt: T('2026-11-10'), lastUpdated: T('2026-11-10') },
+    wallet_transactions: { ...newWalletTxn(ALICE, 'walletA'), createdAt: T('2026-11-10'), lastUpdated: T('2026-11-10') },
   };
   const serverOnly = ['gmail_tokens', 'email_sync_logs'];
 
   beforeEach(async () => {
     await seed('cards/cardA', seededCard(ALICE));
+    await seed('wallets/walletA', { ...newWallet(ALICE), createdAt: T('2026-11-10'), lastUpdated: T('2026-11-10') });
     for (const [col, data] of Object.entries(owned)) await seed(`${col}/victim`, data);
     await seed(`users/${ALICE}`, { uid: ALICE, email: 'alice@gmail.com', settings: { dailyLimit: 1000 } });
     await seed(`metadata/${ALICE}`, { processedMonths: {} });

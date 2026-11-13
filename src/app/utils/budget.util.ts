@@ -1,13 +1,17 @@
 /**
  * Month budget summary for Overview — pure, unit-checked.
  *
- * Spending = expenses (except "Card Bill" payments and old repaid "Lent" entries with status PAID)
- *          + card purchases − card refunds.
- * Card bill payments are excluded because the purchases on that card are already counted;
- * counting the bill too would count the same money twice.
+ * Spending = expenses (except "Card Bill" / "Wallet Top-up" payments and old repaid "Lent" entries
+ *            with status PAID)
+ *          + card purchases − card refunds
+ *          + wallet spends − wallet refunds.
+ * Card bills and wallet top-ups are excluded because what you buy with that card or wallet is already
+ * counted; counting the bill or the top-up too would count the same money twice.
  */
 
 export const CARD_BILL_CATEGORY = 'Card Bill';
+export const WALLET_TOPUP_CATEGORY = 'Wallet Top-up';
+const MOVES_MONEY = [CARD_BILL_CATEGORY, WALLET_TOPUP_CATEGORY];
 
 export interface MoneyItem {
   amount: number;
@@ -15,15 +19,16 @@ export interface MoneyItem {
   category?: string;
   status?: string;
   direction?: 'debit' | 'credit';
-  source: 'expense' | 'card';
+  source: 'expense' | 'card' | 'wallet';
 }
 
 export interface BudgetSummary {
   income: number;
-  spent: number; // expenses + card net
+  spent: number; // expenses + card net + wallet net
   expenseSpend: number;
   cardSpend: number; // card purchases − refunds
-  cardBillsPaid: number; // excluded, shown for transparency
+  walletSpend: number; // wallet spends − refunds
+  cardBillsPaid: number; // card bills + wallet top-ups logged as expenses: excluded, shown for transparency
   balance: number; // income − spent
   usedPercent: number; // spent / income (0 if no income)
   monthPercent: number; // share of the month elapsed (100 for past months)
@@ -43,15 +48,16 @@ export function spendValue(i: MoneyItem): number {
   const amt = Number(i.amount) || 0;
   if (amt <= 0) return 0;
   if (i.source === 'expense') {
-    if (i.status === 'PAID' || i.category === CARD_BILL_CATEGORY) return 0;
+    if (i.status === 'PAID' || MOVES_MONEY.includes(i.category ?? '')) return 0;
     return amt;
   }
-  if (i.direction === 'credit') return i.category === 'Refund' ? -amt : 0; // bill payments to the card don't count
+  // Cards and wallets: purchases count, refunds reduce; bill payments, top-ups and cashback don't count.
+  if (i.direction === 'credit') return i.category === 'Refund' ? -amt : 0;
   return amt;
 }
 
 export function isCardBill(i: MoneyItem): boolean {
-  return i.source === 'expense' && i.category === CARD_BILL_CATEGORY && i.status !== 'PAID';
+  return i.source === 'expense' && MOVES_MONEY.includes(i.category ?? '') && i.status !== 'PAID';
 }
 
 /** Daily net spend for a month (index 0 = day 1). */
@@ -81,8 +87,9 @@ export function summarizeMonth(
 
   const expenseSpend = round(items.filter(i => i.source === 'expense').reduce((s, i) => s + spendValue(i), 0));
   const cardSpend = round(items.filter(i => i.source === 'card').reduce((s, i) => s + spendValue(i), 0));
+  const walletSpend = round(items.filter(i => i.source === 'wallet').reduce((s, i) => s + spendValue(i), 0));
   const cardBillsPaid = round(items.filter(isCardBill).reduce((s, i) => s + (Number(i.amount) || 0), 0));
-  const spent = round(expenseSpend + cardSpend);
+  const spent = round(expenseSpend + cardSpend + walletSpend);
   const balance = round(income - spent);
 
   const usedPercent = income > 0 ? Math.round((spent / income) * 100) : 0;
@@ -106,6 +113,7 @@ export function summarizeMonth(
     spent,
     expenseSpend,
     cardSpend,
+    walletSpend,
     cardBillsPaid,
     balance,
     usedPercent,
@@ -124,4 +132,15 @@ export function summarizeMonth(
 
 function round(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+/** A wallet transaction as a budget item: spend = purchase, refund = refund, top-up / cashback = not spending. */
+export function walletMoneyItem(t: { type: string; amount: number; date: Date | null; category?: string }): MoneyItem {
+  return {
+    source: 'wallet',
+    amount: Number(t.amount) || 0,
+    date: t.date,
+    direction: t.type === 'spend' ? 'debit' : 'credit',
+    category: t.type === 'refund' ? 'Refund' : t.type === 'spend' ? t.category || 'Others' : t.type,
+  };
 }

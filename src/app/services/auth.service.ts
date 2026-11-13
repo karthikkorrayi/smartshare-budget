@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   Auth,
+  AuthCredential,
   EmailAuthProvider,
   GoogleAuthProvider,
   User,
@@ -73,12 +74,24 @@ export class AuthService {
 
   readonly account = signal<AccountSnapshot | null>(null);
 
+  /** Error from a redirect sign-in that finished after a page reload — shown on the login page. */
+  readonly redirectError = signal<unknown>(null);
+
+  /**
+   * Google sign-in that Firebase refused because this Gmail already has a password account it
+   * couldn't link automatically. Kept (in memory only) until the user signs in with the password once.
+   */
+  private pendingGoogle: { email: string; credential: AuthCredential } | null = null;
+
   constructor() {
     this.user$.subscribe(u => this.account.set(u ? this.snapshot(u) : null));
     // Completes a signInWithRedirect() fallback after the page reloads.
     getRedirectResult(this.auth)
       .then(cred => (cred ? this.afterSignIn(cred.user, !!getAdditionalUserInfo(cred)?.isNewUser) : undefined))
-      .catch(err => console.warn('[AuthService] redirect sign-in failed', err?.code ?? err));
+      .catch(err => {
+        console.warn('[AuthService] redirect sign-in failed', err?.code ?? err);
+        this.redirectError.set(this.rememberPendingGoogle(err) ?? err);
+      });
   }
 
   /** Back-compat for templates/services that only need "is someone signed in". */
@@ -124,6 +137,7 @@ export class AuthService {
   async signInWithGoogle(): Promise<void> {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    this.redirectError.set(null);
     try {
       const cred = await signInWithPopup(this.auth, provider);
       await this.afterSignIn(cred.user, !!getAdditionalUserInfo(cred)?.isNewUser);
@@ -132,13 +146,41 @@ export class AuthService {
         await signInWithRedirect(this.auth, provider);
         return;
       }
-      throw err;
+      throw this.rememberPendingGoogle(err) ?? err;
     }
+  }
+
+  /** The Gmail waiting for a one-time password sign-in to finish linking Google (or null). */
+  pendingGoogleEmail(): string | null {
+    return this.pendingGoogle?.email ?? null;
+  }
+
+  /**
+   * "An account already exists with the same email": keep Google's credential so the next password
+   * sign-in for that Gmail links it — after that both buttons open the same account.
+   */
+  private rememberPendingGoogle(err: any): AuthFlowError | null {
+    if (err?.code !== 'auth/account-exists-with-different-credential') return null;
+    const credential = GoogleAuthProvider.credentialFromError(err);
+    const email = (err?.customData?.email ?? '').toLowerCase();
+    if (!credential || !email) return null;
+    this.pendingGoogle = { email, credential };
+    return new AuthFlowError(
+      'link-google',
+      `${email} already has a password. Sign in with it once below — Google will be linked, and next time either option works.`
+    );
   }
 
   async signInWithEmail(email: string, password: string): Promise<void> {
     this.assertGmail(email);
     const cred = await signInWithEmailAndPassword(this.auth, email.trim().toLowerCase(), password);
+    if (this.pendingGoogle && this.pendingGoogle.email === (cred.user.email ?? '').toLowerCase()) {
+      const pending = this.pendingGoogle;
+      this.pendingGoogle = null;
+      // Best effort: signing in already worked; linking can also be done later from Profile.
+      await linkWithCredential(cred.user, pending.credential).catch(e => console.warn('[AuthService] Google link failed', e?.code ?? e));
+      await cred.user.getIdToken(true).catch(() => undefined);
+    }
     await this.afterSignIn(cred.user, false);
   }
 
@@ -328,7 +370,15 @@ export function authMessage(err: any): string {
       return 'Too many attempts. Wait a minute and try again.';
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
-      return 'The Google window was closed.';
+      return 'The Google window closed before sign-in finished. Try again; if it keeps happening, use your password and tell us.';
+    case 'auth/account-exists-with-different-credential':
+      return 'This Gmail already has a password account. Sign in with the password once, then link Google in Profile.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled.';
+    case 'auth/web-storage-unsupported':
+      return 'This browser is blocking storage that sign-in needs. Turn off private/incognito mode or try Chrome.';
+    case 'auth/internal-error':
+      return 'Google sign-in failed inside the browser. Reload the page and try again.';
     case 'auth/requires-recent-login':
       return 'For security, sign in again and then retry.';
     case 'auth/credential-already-in-use':
@@ -342,6 +392,7 @@ export function authMessage(err: any): string {
     case 'auth/network-request-failed':
       return 'Network error. Check your connection.';
     default:
-      return 'Something went wrong. Please try again.';
+      // Keep the code visible: it's what tells us what actually went wrong.
+      return `Something went wrong. Please try again.${err?.code ? ` (${err.code})` : ''}`;
   }
 }

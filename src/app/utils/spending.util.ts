@@ -6,7 +6,7 @@
 export interface SpendEntry {
   date: Date;
   amount: number;
-  source: 'expense' | 'card';
+  source: 'expense' | 'card' | 'wallet';
   cardId?: string;
 }
 
