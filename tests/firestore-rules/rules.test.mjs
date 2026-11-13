@@ -611,6 +611,83 @@ describe('wallet_transactions', () => {
   });
 });
 
+describe('email → wallet (Review Center "Wallet" destination)', () => {
+  const walletReview = (o = {}) => seededReview(ALICE, {
+    kind: 'wallet', cardId: null, walletId: 'walletA', walletHint: { provider: 'Paytm' },
+    extracted: { amount: 120, walletType: 'spend' }, ...o,
+  });
+  const walletApproval = (targetId, walletId = 'walletA') => ({
+    status: 'approved', kind: 'wallet', cardId: null, walletId, targetId, edited: false, resolvedValues: {}, resolvedAt: serverTimestamp(),
+  });
+  beforeEach(async () => {
+    await seed('cards/cardA', seededCard(ALICE));
+    await seed('wallets/walletA', { ...newWallet(ALICE), createdAt: T('2026-11-01'), lastUpdated: T('2026-11-01') });
+    await seed('wallets/walletB', { ...newWallet(BOB), createdAt: T('2026-11-01'), lastUpdated: T('2026-11-01') });
+  });
+
+  test('approval batch: email wallet entry + review approval succeeds', async () => {
+    await seed('review_items/r1', walletReview());
+    const db = as(ALICE);
+    const ref = doc(collection(db, 'wallet_transactions'));
+    const b = writeBatch(db);
+    b.set(ref, newWalletTxn(ALICE, 'walletA', { source: 'email', reviewId: 'r1' }));
+    b.update(doc(db, 'review_items/r1'), walletApproval(ref.id));
+    await assertSucceeds(b.commit());
+  });
+  test('a card or bank review can be re-routed to a wallet', async () => {
+    await seed('review_items/r2', seededReview(ALICE, { kind: 'expense', cardId: null }));
+    const db = as(ALICE);
+    const ref = doc(collection(db, 'wallet_transactions'));
+    const b = writeBatch(db);
+    b.set(ref, newWalletTxn(ALICE, 'walletA', { source: 'email', reviewId: 'r2' }));
+    b.update(doc(db, 'review_items/r2'), walletApproval(ref.id));
+    await assertSucceeds(b.commit());
+  });
+  test('an email wallet entry cannot be written without its approval', async () => {
+    await seed('review_items/r1', walletReview());
+    const c = collection(as(ALICE), 'wallet_transactions');
+    await assertFails(addDoc(c, newWalletTxn(ALICE, 'walletA', { source: 'email', reviewId: 'r1' })));
+    await assertFails(addDoc(c, newWalletTxn(ALICE, 'walletA', { source: 'email' })));
+    await assertFails(addDoc(c, newWalletTxn(ALICE, 'walletA', { reviewId: 'r1' }))); // no source, but a reviewId
+    await assertFails(addDoc(c, newWalletTxn(ALICE, 'walletA', { source: 'manual', reviewId: 'r1' })));
+  });
+  test('manual entries still work, with or without source', async () => {
+    const c = collection(as(ALICE), 'wallet_transactions');
+    await assertSucceeds(addDoc(c, newWalletTxn(ALICE, 'walletA')));
+    await assertSucceeds(addDoc(c, newWalletTxn(ALICE, 'walletA', { source: 'manual' })));
+  });
+  test("cannot approve into someone else's wallet", async () => {
+    await seed('review_items/r1', walletReview());
+    const db = as(ALICE);
+    const ref = doc(collection(db, 'wallet_transactions'));
+    const b = writeBatch(db);
+    b.set(ref, newWalletTxn(ALICE, 'walletB', { source: 'email', reviewId: 'r1' }));
+    b.update(doc(db, 'review_items/r1'), walletApproval(ref.id, 'walletB'));
+    await assertFails(b.commit());
+  });
+  test('approved wallet entries keep their source and reviewId', async () => {
+    await seed('wallet_transactions/t1', { ...newWalletTxn(ALICE, 'walletA', { source: 'email', reviewId: 'r1' }), createdAt: T('2026-11-10'), lastUpdated: T('2026-11-10') });
+    const ref = doc(as(ALICE), 'wallet_transactions/t1');
+    await assertSucceeds(updateDoc(ref, { amount: 130, lastUpdated: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { source: 'manual', lastUpdated: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { reviewId: 'r9', lastUpdated: serverTimestamp() }));
+  });
+  test('Gmail monitoring may include the wallets group', async () => {
+    await seed('gmail_connections/c1', { userId: ALICE, email: 'alice@gmail.com', status: 'active', paused: false, groups: ['bank'] });
+    const ref = doc(as(ALICE), 'gmail_connections/c1');
+    await assertSucceeds(updateDoc(ref, { groups: ['bank', 'wallets'] }));
+    await assertFails(updateDoc(ref, { groups: ['bank', 'crypto'] }));
+  });
+  test('demo wallet samples must point at the caller\'s own wallet', async () => {
+    const c = collection(as(ALICE), 'review_items');
+    const demo = o => ({ userId: ALICE, kind: 'wallet', origin: 'demo', cardId: null, walletId: 'walletA', walletHint: { provider: 'Paytm' },
+      cardHint: { bankName: '', lastFourDigits: '' }, extracted: { amount: 1 }, confidence: 0.9, email: { subject: 's' },
+      status: 'pending', createdAt: serverTimestamp(), ...o });
+    await assertSucceeds(addDoc(c, demo()));
+    await assertFails(addDoc(c, demo({ walletId: 'walletB' })));
+  });
+});
+
 // ════════════════════════════════════════════════════════════════
 // Phase 7.1: cross-user isolation matrix — every collection, every operation
 // Alice owns one document in each collection; Bob (a valid, verified Gmail user)

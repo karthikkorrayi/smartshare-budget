@@ -95,6 +95,7 @@ export const gmailConnect = onCall(callableOpts, async req => {
       status: 'active',
       paused: existing.exists ? !!existing.get('paused') : false,
       groups: chosen.length ? chosen : existing.get('groups') ?? [...MONITOR_GROUPS],
+      walletsOffered: true, // groups chosen now already include the Wallets choice
       backfillDays: days,
       ...(existing.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
       reconnectedAt: FieldValue.serverTimestamp(),

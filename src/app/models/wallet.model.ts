@@ -61,6 +61,9 @@ export interface WalletTransaction {
   date: Date;
   description: string;
   category: string;
+  /** 'manual' (typed in the app) or 'email' / 'demo' (approved in the Review Center, with its reviewId). */
+  source: 'manual' | 'email' | 'demo';
+  reviewId: string | null;
   createdAt: Date | null;
   lastUpdated: Date | null;
 }

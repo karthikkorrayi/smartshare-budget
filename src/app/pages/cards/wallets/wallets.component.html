@@ -99,6 +99,12 @@
                   @if (t.category) { · {{ t.category }} }
                   @if (t.type !== 'spend') { · <span class="type" [class]="'type-' + t.type">{{ txnInfo[t.type].label }}</span> }
                 </span>
+                @if (t.source !== 'manual') {
+                  <span class="tags">
+                    @if (t.source === 'email') { <span class="cc-badge tone-info" title="Approved from Gmail">✉ Gmail</span> }
+                    @if (t.source === 'demo') { <span class="cc-badge tone-demo">Sample</span> }
+                  </span>
+                }
               </div>
               <div class="txn-side">
                 <span class="amount" [class]="effect(t) > 0 ? 'cc-amount-credit' : 'cc-amount-debit'">

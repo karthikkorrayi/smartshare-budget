@@ -1,5 +1,5 @@
 /** gmail_connections/{connId} — one connected Gmail mailbox (created by Cloud Functions). */
-export const MONITOR_GROUPS = ['salary', 'bank', 'cards', 'bills', 'payments'] as const;
+export const MONITOR_GROUPS = ['salary', 'bank', 'cards', 'bills', 'payments', 'wallets'] as const;
 export type MonitorGroup = (typeof MONITOR_GROUPS)[number];
 
 export const MONITOR_GROUP_INFO: Record<MonitorGroup, { label: string; icon: string; hint: string }> = {
@@ -8,6 +8,7 @@ export const MONITOR_GROUP_INFO: Record<MonitorGroup, { label: string; icon: str
   cards: { label: 'Credit cards', icon: '💳', hint: 'Card spends, refunds, statements, due-date changes → Cards' },
   bills: { label: 'Bills & dues', icon: '🧾', hint: 'Bills generated, payment due reminders → Upcoming payments' },
   payments: { label: 'Payment confirmations', icon: '✅', hint: 'Payments received / successful → Cards or Expenses' },
+  wallets: { label: 'Wallets', icon: '👛', hint: 'Paytm, Amazon Pay, PhonePe, MobiKwik, FASTag spends, top-ups, refunds & cashback → Wallets' },
 };
 
 export type ConnectionStatus = 'active' | 'reauth_required' | 'error';

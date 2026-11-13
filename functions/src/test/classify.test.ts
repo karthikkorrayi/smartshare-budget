@@ -174,3 +174,81 @@ test('helpers', () => {
   assert.equal(htmlToText('<p>Rs&nbsp;100</p><br><b>&#8377;5</b>'), 'Rs 100\n₹5');
   assert.equal(makeSnippet('a'.repeat(300)).length, 220);
 });
+
+// ── Wallets ───────────────────────────────────────────────────────────────────
+test('Paytm wallet payment → wallet spend', () => {
+  const r = run('Paytm <no-reply@paytm.com>', 'Payment successful',
+    'You paid Rs.240 to SWIGGY from your Paytm Wallet on 12-11-2026. Order ID 12345. Updated Paytm Wallet balance: Rs.760');
+  assert.ok(r);
+  assert.equal(r.category, 'wallet_transaction');
+  assert.equal(r.destination, 'wallet');
+  assert.equal(r.walletProvider, 'Paytm');
+  assert.equal(r.extracted.walletType, 'spend');
+  assert.equal(r.extracted.amount, 240);
+  assert.equal(r.extracted.category, 'Food');
+  assert.equal(ymd(r.extracted.txnDate), '2026-11-12');
+});
+
+test('Amazon Pay balance top-up paid by card is a wallet top-up, not a card spend', () => {
+  const r = run('Amazon Pay <no-reply@amazonpay.in>', 'Money added to your Amazon Pay balance',
+    'Rs.1,000.00 has been added to your Amazon Pay balance using your HDFC Bank Credit Card ending 4242 on 11-11-2026.');
+  assert.ok(r);
+  assert.equal(r.category, 'wallet_transaction');
+  assert.equal(r.extracted.walletType, 'topup');
+  assert.equal(r.walletProvider, 'Amazon Pay');
+  assert.equal(r.extracted.amount, 1000);
+  assert.equal(r.extracted.description, 'Amazon Pay top-up');
+});
+
+test('bank debit to a Paytm wallet → wallet top-up (seen from the bank side)', () => {
+  const r = run('HDFC Bank <alerts@hdfcbank.net>', 'Account debited',
+    'Rs.500.00 debited from your A/c XX5678 to your Paytm Wallet on 10-11-2026. Ref 9988.');
+  assert.ok(r);
+  assert.equal(r.category, 'wallet_transaction');
+  assert.equal(r.extracted.walletType, 'topup');
+  assert.equal(r.walletProvider, 'Paytm');
+});
+
+test('PhonePe wallet cashback → cashback', () => {
+  const r = run('PhonePe <noreply@phonepe.com>', 'Cashback credited!',
+    'Cashback of ₹25 has been credited to your PhonePe Wallet on 09-11-2026 for your recharge.');
+  assert.ok(r);
+  assert.equal(r.extracted.walletType, 'cashback');
+  assert.equal(r.extracted.amount, 25);
+  assert.equal(r.walletProvider, 'PhonePe');
+});
+
+test('wallet refund → refund', () => {
+  const r = run('MobiKwik <alerts@mobikwik.com>', 'Refund processed',
+    'Refund of Rs. 199 for your cancelled order has been credited to your MobiKwik wallet on 08-11-2026.');
+  assert.ok(r);
+  assert.equal(r.extracted.walletType, 'refund');
+  assert.equal(r.extracted.category, 'Refund');
+});
+
+test('FASTag toll deduction → wallet spend in Travel', () => {
+  const r = run('ICICI FASTag <fastag@icicibank.com>', 'FASTag toll deduction',
+    'Rs.110.00 deducted from your FASTag for toll at KRISHNAGIRI PLAZA on 07-11-2026. Available balance Rs.390.');
+  assert.ok(r);
+  assert.equal(r.category, 'wallet_transaction');
+  assert.equal(r.walletProvider, 'FASTag');
+  assert.equal(r.extracted.walletType, 'spend');
+  assert.equal(r.extracted.category, 'Travel');
+});
+
+test('a UPI payment to name@paytm stays a BANK debit (no wallet wording)', () => {
+  const r = run('Kotak Bank <alerts@kotak.com>', 'Transaction alert',
+    'Sent Rs.350.00 from Kotak Bank AC X4321 to zomato@paytm on 07-11-26. UPI Ref 431234567890.');
+  assert.ok(r);
+  assert.equal(r.category, 'bank_debit');
+  assert.equal(r.walletProvider, null);
+});
+
+test('wallet promo without money movement is ignored', () => {
+  assert.equal(run('Paytm <offers@paytm.com>', 'Exclusive cashback offer', 'Get up to Rs.100 cashback offer on your next wallet payment. Apply now!'), null);
+});
+
+test('Gmail query also looks for wallet emails', () => {
+  const q = gmailQuery(1);
+  assert.ok(q.includes('wallet') && q.includes('FASTag') && q.includes('cashback'));
+});

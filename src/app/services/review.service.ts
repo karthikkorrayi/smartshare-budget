@@ -17,6 +17,8 @@ import { EmailCategory, ExtractedValues, ReviewItem, ReviewKind } from '../model
 import { Card, CARD_UPDATABLE_FIELDS } from '../models/card.model';
 import { CardTransactionsService } from './card-transactions.service';
 import { CardStatementsService } from './card-statements.service';
+import { WalletsService } from './wallets.service';
+import { Wallet } from '../models/wallet.model';
 import { datesToTimestamps, timestampsToDates, toDate } from '../utils/firestore.util';
 import { statusFromPaid } from '../models/card-statement.model';
 import { dayInMonth, monthKey } from '../utils/date-input.util';
@@ -25,6 +27,8 @@ export interface ApprovalInput {
   kind: ReviewKind;
   values: ExtractedValues;
   cardId: string | null;
+  /** Wallet destination only. */
+  walletId?: string | null;
   edited: boolean;
 }
 
@@ -175,6 +179,27 @@ export class ReviewService {
         });
         break;
       }
+      case 'wallet': {
+        const ref = doc(collection(this.firestore, 'wallet_transactions'));
+        targetId = ref.id;
+        const type = v.walletType ?? 'spend';
+        batch.set(ref, {
+          ...WalletsService.cleanTxn({
+            walletId: a.walletId!,
+            type,
+            amount: Number(v.amount) || 0,
+            date: when,
+            description: v.description?.trim() || 'Wallet payment',
+            category: v.category ?? '',
+          }),
+          userId: uid,
+          source: cardSource,
+          reviewId: item.id,
+          createdAt: serverTimestamp(),
+          lastUpdated: serverTimestamp(),
+        });
+        break;
+      }
       case 'card_update': {
         targetId = a.cardId!;
         const changes: Record<string, number> = {};
@@ -196,6 +221,7 @@ export class ReviewService {
       status: 'approved',
       kind: a.kind,
       cardId: KIND_NEEDS_CARD[a.kind] ? a.cardId : null,
+      walletId: a.kind === 'wallet' ? a.walletId ?? null : null,
       targetId,
       edited: a.edited,
       resolvedValues: datesToTimestamps(v),
@@ -204,6 +230,9 @@ export class ReviewService {
     await batch.commit();
 
     // Approved spends count toward daily limits just like manual ones.
+    if (a.kind === 'wallet' && (v.walletType ?? 'spend') === 'spend') {
+      void this.spending.afterSpend({ date: when, amount: Number(v.amount) || 0 });
+    }
     if (a.kind === 'expense' || (a.kind === 'transaction' && (v.direction ?? 'debit') === 'debit')) {
       void this.spending.afterSpend({ date: when, amount: Number(v.amount) || 0, cardId: a.kind === 'transaction' ? a.cardId ?? undefined : undefined });
     }
@@ -235,7 +264,7 @@ export class ReviewService {
    * Sample review items that look like real Gmail results, so the whole flow can be tried
    * before (or without) connecting Gmail. Everything is marked origin 'demo'.
    */
-  async loadSamples(card: Card | null): Promise<number> {
+  async loadSamples(card: Card | null, wallet: Wallet | null = null): Promise<number> {
     const uid = this.auth.requireUid();
     const now = new Date();
     const y = now.getFullYear();
@@ -244,7 +273,7 @@ export class ReviewService {
     let n = 0;
     const batch = writeBatch(this.firestore);
 
-    const add = (kind: ReviewKind, category: EmailCategory, confidence: number, extracted: ExtractedValues, subject: string, snippet: string, from: string, withCard = false) => {
+    const add = (kind: ReviewKind, category: EmailCategory, confidence: number, extracted: ExtractedValues, subject: string, snippet: string, from: string, withCard = false, walletId: string | null = null) => {
       n++;
       batch.set(doc(this.col), {
         userId: uid,
@@ -253,7 +282,9 @@ export class ReviewService {
         category,
         cardId: withCard && card ? card.id : null,
         cardHint: { bankName: withCard && card ? card.bankName : '', lastFourDigits: withCard && card ? card.lastFourDigits : '' },
-        accountHint: withCard ? '' : '5678',
+        accountHint: withCard || walletId ? '' : '5678',
+        walletId,
+        walletHint: { provider: walletId && wallet ? wallet.provider || wallet.name : '' },
         extracted: datesToTimestamps(extracted),
         confidence,
         email: { account: 'sample@gmail.com', from, subject, receivedAt: Timestamp.fromDate(now), messageId: `demo-${n}-${now.getTime()}`, snippet },
@@ -268,6 +299,12 @@ export class ReviewService {
       'Transaction alert', 'Sent Rs.350.00 from A/c X5678 to zomato@paytm via UPI.', 'alerts@samplebank.example');
     add('bill', 'bill_generated', 0.71, { amount: 1845, dueDate: d(14), description: 'Electricity bill', category: 'Bills' },
       'Your electricity bill is generated', 'Bill amount Rs. 1,845.00. Due date in two weeks.', 'noreply@power.example');
+
+    if (wallet) {
+      const w = wallet.provider || wallet.name;
+      add('wallet', 'wallet_transaction', 0.88, { txnDate: d(-1), amount: 240, direction: 'debit', description: 'SWIGGY', category: 'Food', walletType: 'spend' },
+        'Payment successful', `You paid Rs.240 to SWIGGY from your ${w} wallet.`, 'no-reply@wallet.example', false, wallet.id);
+    }
 
     if (card) {
       const stmt = dayInMonth(y, m - (now.getDate() >= card.statementDay ? 0 : 1), card.statementDay);
@@ -308,6 +345,8 @@ export class ReviewService {
       cardId: d.cardId ?? null,
       cardHint: { bankName: d.cardHint?.bankName ?? '', lastFourDigits: d.cardHint?.lastFourDigits ?? '' },
       accountHint: d.accountHint ?? '',
+      walletId: d.walletId ?? null,
+      walletHint: { provider: d.walletHint?.provider ?? '' },
       extracted: timestampsToDates<ExtractedValues>(d.extracted),
       confidence: Number(d.confidence) || 0,
       email: {
@@ -335,4 +374,5 @@ const KIND_NEEDS_CARD: Record<ReviewKind, boolean> = {
   transaction: true,
   statement: true,
   card_update: true,
+  wallet: false,
 };

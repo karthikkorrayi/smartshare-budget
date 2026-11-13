@@ -102,7 +102,28 @@
                   </select>
                 </label>
               }
+              @if (kindOf(item) === 'wallet') {
+                @if (activeWallets().length) {
+                  <label class="cc-field">
+                    <span>Wallet
+                      @if (!walletIdOf(item)) { <small class="warn">{{ item.walletHint.provider ? 'No single ' + item.walletHint.provider + ' wallet — choose' : 'Choose' }}</small> }
+                    </span>
+                    <select [ngModel]="walletIdOf(item)" (ngModelChange)="chooseWallet(item, $event)" [name]="'wallet-' + item.id">
+                      <option value="" disabled>Select wallet</option>
+                      @for (w of activeWallets(); track w.id) { <option [value]="w.id">{{ walletLabel(w) }}</option> }
+                    </select>
+                  </label>
+                } @else {
+                  <p class="wallet-missing">
+                    No wallet yet{{ item.walletHint.provider ? ' for ' + item.walletHint.provider : '' }}.
+                    <a routerLink="/cards/wallets">Add one</a>, then come back to approve.
+                  </p>
+                }
+              }
             </div>
+            @if (canSendToWallet(item) && editingId() !== item.id) {
+              <button type="button" class="link-btn to-wallet" (click)="sendToWallet(item)">👛 Paid from a wallet? Add it to a wallet instead</button>
+            }
 
             <!-- Values -->
             @if (editingId() !== item.id) {
@@ -129,6 +150,15 @@
                     <div><dt>Amount</dt><dd>₹{{ v.amount | number: '1.0-2' }}</dd></div>
                     <div><dt>Description</dt><dd>{{ v.description || '—' }}</dd></div>
                     <div><dt>Category</dt><dd>{{ v.category || '—' }}</dd></div>
+                  </dl>
+                }
+                @case ('wallet') {
+                  <dl class="values">
+                    <div><dt>Date</dt><dd>{{ v.txnDate ? (v.txnDate | date: 'd MMM y') : '—' }}</dd></div>
+                    <div><dt>Amount</dt><dd>{{ v.walletType === 'spend' ? '−' : '+' }}₹{{ v.amount | number: '1.0-2' }}</dd></div>
+                    <div><dt>Entry</dt><dd>{{ walletTypeInfo[v.walletType ?? 'spend'].label }} <small class="muted">· {{ walletTypeInfo[v.walletType ?? 'spend'].counts }}</small></dd></div>
+                    <div><dt>Description</dt><dd>{{ v.description || '—' }}</dd></div>
+                    @if (v.category) { <div><dt>Category</dt><dd>{{ v.category }}</dd></div> }
                   </dl>
                 }
                 @default {
@@ -176,11 +206,20 @@
                           </select>
                         </label>
                       }
-                      <label class="cc-field"><span>Category</span>
-                        <select [(ngModel)]="draft.category" name="category">
-                          @for (c of categoriesFor(kindOf(item)); track c) { <option [value]="c">{{ c }}</option> }
-                        </select>
-                      </label>
+                      @if (kindOf(item) === 'wallet') {
+                        <label class="cc-field"><span>Entry</span>
+                          <select [(ngModel)]="draft.walletType" name="walletType">
+                            @for (t of walletTypes; track t) { <option [value]="t">{{ walletTypeInfo[t].label }}</option> }
+                          </select>
+                        </label>
+                      }
+                      @if (kindOf(item) !== 'wallet' || draft.walletType === 'spend' || draft.walletType === 'refund') {
+                        <label class="cc-field"><span>Category</span>
+                          <select [(ngModel)]="draft.category" name="category">
+                            @for (c of categoriesFor(kindOf(item)); track c) { <option [value]="c">{{ c }}</option> }
+                          </select>
+                        </label>
+                      }
                     </div>
                     <label class="cc-field"><span>Description</span><input maxlength="120" [(ngModel)]="draft.description" name="description" /></label>
                   }
@@ -254,7 +293,8 @@
                       @for (r of historyRows(item); track r.label) {
                         <div><dt>{{ r.label }}</dt><dd>{{ r.value }} @if (r.was) { <s class="was" title="What the email said">{{ r.was }}</s> }</dd></div>
                       }
-                      @if (cardName(item.cardId); as cn) { <div><dt>Card</dt><dd>{{ cn }}</dd></div> }
+                      @if (item.cardId) { <div><dt>Card</dt><dd>{{ cardName(item.cardId) }}</dd></div> }
+                      @if (item.walletId) { <div><dt>Wallet</dt><dd>{{ walletName(item.walletId) }}</dd></div> }
                     </dl>
                     <a class="cc-btn cc-btn--sm" [routerLink]="destinationLink(item)">Open in {{ kindInfo[item.kind].module }} →</a>
                   } @else {

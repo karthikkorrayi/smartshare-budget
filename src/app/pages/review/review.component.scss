@@ -105,3 +105,12 @@
   .route { grid-template-columns: 1fr; }
   .toolbar { flex-direction: column; align-items: stretch; }
 }
+
+// ── Wallet destination ─────────────────────────────────────
+.wallet-missing { margin: 0; align-self: end; font-size: 13px; color: #92400e; a { color: #0f766e; font-weight: 650; } }
+.link-btn.to-wallet {
+  align-self: flex-start; margin: -2px 0 8px; padding: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 650; color: #0f766e;
+  &:hover, &:focus-visible { text-decoration: underline; }
+}
+.values small.muted { color: #94a3b8; font-weight: 400; }

@@ -118,6 +118,7 @@ export class WalletsService {
     const ref = await addDoc(this.txns, {
       ...WalletsService.cleanTxn(input),
       userId: this.auth.requireUid(),
+      source: 'manual',
       createdAt: serverTimestamp(),
       lastUpdated: serverTimestamp(),
     });
@@ -183,6 +184,8 @@ export class WalletsService {
       date: toDate(d.date) ?? new Date(),
       description: d.description ?? '',
       category: d.category ?? '',
+      source: d.source === 'email' ? 'email' : d.source === 'demo' ? 'demo' : 'manual',
+      reviewId: d.reviewId ?? null,
       createdAt: toDate(d.createdAt),
       lastUpdated: toDate(d.lastUpdated),
     };

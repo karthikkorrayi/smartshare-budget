@@ -166,6 +166,34 @@ describe('sync engine (emulator)', () => {
     assert.equal(notes.docs[0].get('read'), false);
   });
 
+  test('wallet emails become wallet review items, matched to the user\'s wallet', async () => {
+    await db.doc('wallets/wPaytm').set({ userId: ALICE, name: 'Paytm', kind: 'upi', provider: 'Paytm', openingBalance: 0, status: 'Active' });
+    await db.doc('wallets/bobPaytm').set({ userId: 'bob', name: 'Paytm', kind: 'upi', provider: 'Paytm', openingBalance: 0, status: 'Active' });
+    const WALLET = msg('m-wallet', 'Payment successful', 'You paid Rs.240 to SWIGGY from your Paytm Wallet on 12-11-2026.', { from: 'Paytm <no-reply@paytm.com>' });
+    await syncConnection(CONN_A, secrets, 60_000, fakeGmail([WALLET]));
+    const items = await db.collection('review_items').where('userId', '==', ALICE).get();
+    assert.equal(items.size, 1);
+    const it = items.docs[0];
+    assert.equal(it.get('kind'), 'wallet');
+    assert.equal(it.get('category'), 'wallet_transaction');
+    assert.equal(it.get('walletId'), 'wPaytm'); // never Bob's wallet
+    assert.equal(it.get('walletHint.provider'), 'Paytm');
+    assert.equal(it.get('extracted.walletType'), 'spend');
+    assert.equal(await count('wallet_transactions'), 0, 'nothing reaches a wallet before approval');
+  });
+
+  test('connections made before Wallets get wallet scanning switched on once', async () => {
+    await syncConnection(CONN_A, secrets, 60_000, fakeGmail([]));
+    let conn = await db.doc(`gmail_connections/${CONN_A}`).get();
+    assert.ok((conn.get('groups') as string[]).includes('wallets'));
+    assert.equal(conn.get('walletsOffered'), true);
+    // The user turns it off → it stays off.
+    await db.doc(`gmail_connections/${CONN_A}`).update({ groups: ['bank'] });
+    await syncConnection(CONN_A, secrets, 60_000, fakeGmail([]));
+    conn = await db.doc(`gmail_connections/${CONN_A}`).get();
+    assert.deepEqual(conn.get('groups'), ['bank']);
+  });
+
   test('the same email delivered to two connected Gmail accounts creates ONE item', async () => {
     await seedConnection(CONN_A2, ALICE, 'alice.work@gmail.com');
     await syncConnection(CONN_A, secrets, 60_000, fakeGmail([SALARY]));

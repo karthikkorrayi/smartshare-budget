@@ -4,11 +4,13 @@
  * Created by the Gmail sync Cloud Function (origin 'gmail') or by "Load samples" (origin 'demo').
  * `category` = what the email IS (salary credit, card statement…), suggested by the classifier.
  * `kind`     = where it GOES once approved (Income, Expenses, Upcoming payments, Card transactions,
- *              Card statements, Card details). The reviewer can change it.
+ *              Card statements, Card details, a Wallet). The reviewer can change it.
  * Firestore rules only accept the destination record when it is written in the same batch that
  * approves this item, so unreviewed email data can never become verified data.
  */
-export const REVIEW_KINDS = ['income', 'expense', 'bill', 'transaction', 'statement', 'card_update'] as const;
+import { WALLET_CATEGORIES, WalletTxnType } from './wallet.model';
+
+export const REVIEW_KINDS = ['income', 'expense', 'bill', 'transaction', 'statement', 'card_update', 'wallet'] as const;
 export type ReviewKind = (typeof REVIEW_KINDS)[number];
 export type ReviewOrigin = 'gmail' | 'demo';
 export type ReviewStatus = 'pending' | 'approved' | 'rejected';
@@ -23,10 +25,11 @@ export const EMAIL_CATEGORIES = [
   'payment_due',
   'payment_confirmation',
   'card_update',
+  'wallet_transaction',
 ] as const;
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
 
-export const CATEGORY_INFO: Record<EmailCategory, { label: string; icon: string; group: 'salary' | 'bank' | 'cards' | 'bills' | 'payments' }> = {
+export const CATEGORY_INFO: Record<EmailCategory, { label: string; icon: string; group: 'salary' | 'bank' | 'cards' | 'bills' | 'payments' | 'wallets' }> = {
   salary_credit: { label: 'Salary credit', icon: '💰', group: 'salary' },
   bank_credit: { label: 'Bank credit', icon: '⬇️', group: 'bank' },
   bank_debit: { label: 'Bank debit', icon: '⬆️', group: 'bank' },
@@ -36,6 +39,7 @@ export const CATEGORY_INFO: Record<EmailCategory, { label: string; icon: string;
   bill_generated: { label: 'Bill generated', icon: '🧾', group: 'bills' },
   payment_due: { label: 'Payment due', icon: '⏰', group: 'bills' },
   payment_confirmation: { label: 'Payment confirmation', icon: '✅', group: 'payments' },
+  wallet_transaction: { label: 'Wallet transaction', icon: '👛', group: 'wallets' },
 };
 
 export const KIND_INFO: Record<ReviewKind, { label: string; module: string; needsCard: boolean }> = {
@@ -45,10 +49,11 @@ export const KIND_INFO: Record<ReviewKind, { label: string; module: string; need
   transaction: { label: 'Card transaction', module: 'Cards → Transactions', needsCard: true },
   statement: { label: 'Card statement', module: 'Cards → Statements', needsCard: true },
   card_update: { label: 'Card details', module: 'Cards → card details', needsCard: true },
+  wallet: { label: 'Wallet entry', module: 'Cards → Wallets', needsCard: false },
 };
 
 /** Destinations a reviewer may switch between (card_update stays card_update). */
-export const SWITCHABLE_KINDS: ReviewKind[] = ['income', 'expense', 'bill', 'transaction', 'statement'];
+export const SWITCHABLE_KINDS: ReviewKind[] = ['income', 'expense', 'bill', 'transaction', 'wallet', 'statement'];
 
 /** Values parsed from the email. Which keys are present depends on the category. */
 export interface ExtractedValues {
@@ -65,6 +70,8 @@ export interface ExtractedValues {
   expiryYear?: number;
   statementDay?: number;
   dueDay?: number;
+  /** Wallet destination only: spend / topup / refund / cashback. */
+  walletType?: WalletTxnType;
 }
 
 export interface ReviewEmailMeta {
@@ -86,6 +93,9 @@ export interface ReviewItem {
   cardId: string | null; // null when the parser couldn't match a card
   cardHint: { bankName: string; lastFourDigits: string };
   accountHint: string;
+  /** Wallet chosen for a 'wallet' destination (matched by the sync when exactly one wallet fits). */
+  walletId: string | null;
+  walletHint: { provider: string };
   extracted: ExtractedValues;
   confidence: number; // 0–1 from the parser
   email: ReviewEmailMeta;
@@ -116,6 +126,8 @@ export function categoryFor(kind: ReviewKind, suggested: string | undefined, txn
       return pick(BILL_CATEGORIES, 'Bills');
     case 'transaction':
       return pick(txnCategories, 'Others', { Transport: 'Travel', Petrol: 'Fuel', Tickets: 'Entertainment', Salary: 'Others' });
+    case 'wallet':
+      return pick(WALLET_CATEGORIES, 'Others', { Transport: 'Travel', Petrol: 'Fuel', Tickets: 'Entertainment', Shopping: 'Shopping', EMI: 'Bills' });
     default:
       return s;
   }

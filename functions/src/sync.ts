@@ -30,6 +30,8 @@ interface Connection {
   lastSyncAt?: Timestamp;
   cursor?: { query: string; pageToken?: string; startedAt: Timestamp };
   syncLockUntil?: Timestamp;
+  /** Set once the 'wallets' group has been offered to this (pre-Wallets) connection. */
+  walletsOffered?: boolean;
 }
 
 interface Secrets {
@@ -100,6 +102,26 @@ function matchCard(c: Classification, cards: CardLite[]): string | null {
   return (active[0] ?? byBank[0] ?? hits[0]).id;
 }
 
+export interface WalletLite {
+  id: string;
+  name: string;
+  provider?: string;
+  status: string;
+}
+
+/** The user's wallet for this provider — only when exactly one active wallet matches (else the reviewer picks). */
+export function matchWallet(provider: string | null, wallets: WalletLite[]): string | null {
+  if (!provider) return null;
+  const key = provider.toLowerCase().split(/[\s(]/)[0]; // "amazon pay" → "amazon", "pluxee (sodexo)" → "pluxee"
+  const alt = /sodexo/i.test(provider) ? 'sodexo' : null;
+  const hits = wallets.filter(w => {
+    if (w.status !== 'Active') return false;
+    const hay = `${w.provider ?? ''} ${w.name}`.toLowerCase();
+    return hay.includes(key) || (alt !== null && hay.includes(alt));
+  });
+  return hits.length === 1 ? hits[0].id : null;
+}
+
 /**
 - Scans one Gmail connection for new financial emails and files them as PENDING review items.
 - Never writes to income/expenses/cards directly — approval happens in the app.
@@ -138,7 +160,16 @@ export async function syncConnection(
 
     const cardsSnap = await db().collection('cards').where('userId', '==', conn.userId).get();
     const cards: CardLite[] = cardsSnap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<CardLite, 'id'>) }));
-    const groups = new Set<MonitorGroup>(conn.groups?.length ? conn.groups : ['salary', 'bank', 'cards', 'bills', 'payments']);
+    const walletsSnap = await db().collection('wallets').where('userId', '==', conn.userId).get();
+    const wallets: WalletLite[] = walletsSnap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<WalletLite, 'id'>) }));
+
+    // Connections made before Wallets existed: switch wallet scanning on once (the user can turn it off).
+    let groupList: MonitorGroup[] = conn.groups?.length ? conn.groups : ['salary', 'bank', 'cards', 'bills', 'payments', 'wallets'];
+    if (!conn.walletsOffered) {
+      if (!groupList.includes('wallets')) groupList = [...groupList, 'wallets'];
+      await connRef.update({ groups: groupList, walletsOffered: true });
+    }
+    const groups = new Set<MonitorGroup>(groupList);
 
     // 3. Walk result pages until done, or until this run's message/time budget is spent.
     let pageToken = cursor.pageToken;
@@ -149,7 +180,7 @@ export async function syncConnection(
         if (stats.scanned >= MAX_MESSAGES_PER_RUN || Date.now() - started > budgetMs) break outer;
         stats.scanned++;
         try {
-          await processMessage(conn, connId, token, id, cards, groups, stats, deps);
+          await processMessage(conn, connId, token, id, cards, wallets, groups, stats, deps);
         } catch (e) {
           stats.errors++;
           logger.warn('message failed', { connId, id, err: String(e) });
@@ -239,6 +270,7 @@ async function processMessage(
   token: string,
   gmailId: string,
   cards: CardLite[],
+  wallets: WalletLite[],
   groups: Set<MonitorGroup>,
   stats: SyncStats,
   deps: SyncDeps
@@ -290,7 +322,8 @@ async function processMessage(
 
   if (outcome === 'review_created' && result) {
     stats.matched++;
-    const cardId = matchCard(result, cards);
+    const cardId = result.destination === 'wallet' ? null : matchCard(result, cards);
+    const walletId = result.destination === 'wallet' ? matchWallet(result.walletProvider, wallets) : null;
     batch.create(db().doc(`review_items/${dedupeKey}`), {
       userId: conn.userId,
       connectionId: connId,
@@ -300,6 +333,8 @@ async function processMessage(
       cardId,
       cardHint: { bankName: result.bankName ?? '', lastFourDigits: result.cardLast4 ?? '' },
       accountHint: result.accountLast4 ?? '',
+      walletId,
+      walletHint: { provider: result.walletProvider ?? '' },
       extracted: extractedForFirestore(result.extracted),
       confidence: cardId || !result.cardLast4 ? result.confidence : Math.max(0.3, result.confidence - 0.15),
       email: {

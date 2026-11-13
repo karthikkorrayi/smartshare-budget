@@ -21,14 +21,17 @@ import { CARD_FIELD_LABELS, CARD_UPDATABLE_FIELDS, Card, CardUpdateField, cardLa
 import { TXN_CATEGORIES } from '../../models/card-transaction.model';
 import { fromDateInput, toDateInput } from '../../utils/date-input.util';
 import { NotificationsService } from '../../services/notifications.service';
+import { WalletsService } from '../../services/wallets.service';
+import { WALLET_CATEGORIES, WALLET_TXN_INFO, WALLET_TXN_TYPES, Wallet, WalletTxnType, walletLabel } from '../../models/wallet.model';
 import { UndoService } from '../../services/undo.service';
 
-type GroupFilter = 'all' | 'salary' | 'bank' | 'cards' | 'bills' | 'payments';
+type GroupFilter = 'all' | 'salary' | 'bank' | 'cards' | 'bills' | 'payments' | 'wallets';
 
 interface Draft {
   date: string; // txnDate (income/expense/transaction) or dueDate (bill)
   amount: string;
   direction: 'debit' | 'credit';
+  walletType: WalletTxnType;
   description: string;
   category: string;
   statementDate: string;
@@ -54,6 +57,7 @@ export class ReviewComponent {
   private review = inject(ReviewService);
   private cardsService = inject(CardsService);
   private undo = inject(UndoService);
+  private walletsService = inject(WalletsService);
   private readonly _visit = inject(NotificationsService).markReadOnVisit('/review');
 
   readonly categoryInfo = CATEGORY_INFO;
@@ -62,6 +66,9 @@ export class ReviewComponent {
   readonly cardFields = CARD_UPDATABLE_FIELDS;
   readonly fieldLabels = CARD_FIELD_LABELS;
   readonly label = cardLabel;
+  readonly walletLabel = walletLabel;
+  readonly walletTypes = WALLET_TXN_TYPES;
+  readonly walletTypeInfo = WALLET_TXN_INFO;
   readonly groupFilters: { id: GroupFilter; label: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'salary', label: '💰 Salary' },
@@ -69,11 +76,15 @@ export class ReviewComponent {
     { id: 'cards', label: '💳 Cards' },
     { id: 'bills', label: '🧾 Bills' },
     { id: 'payments', label: '✅ Payments' },
+    { id: 'wallets', label: '👛 Wallets' },
   ];
 
   private rawPending = toSignal(this.review.pending$);
   resolved = toSignal(this.review.resolved$, { initialValue: [] as ReviewItem[] });
   cards = toSignal(this.cardsService.cards$, { initialValue: [] as Card[] });
+  wallets = toSignal(this.walletsService.wallets$, { initialValue: [] as Wallet[] });
+  activeWallets = computed(() => this.wallets().filter(w => w.status === 'Active'));
+  private walletMap = computed(() => new Map(this.wallets().map(w => [w.id, w])));
 
   loading = computed(() => this.rawPending() === undefined);
   /** Items held for Undo disappear (and leave the counts) straight away. */
@@ -93,7 +104,7 @@ export class ReviewComponent {
       (this.historyStatus() === 'all' || i.status === this.historyStatus()) &&
       (this.group() === 'all' || this.groupOf(i) === this.group()) &&
       (!q || [i.email.subject, i.email.from, i.email.account, i.extracted.description, i.resolvedValues?.description,
-              String(i.resolvedValues?.amount ?? i.extracted.amount ?? ''), this.cardName(i.cardId)]
+              String(i.resolvedValues?.amount ?? i.extracted.amount ?? ''), this.cardName(i.cardId), this.walletName(i.walletId)]
               .some(v => (v ?? '').toString().toLowerCase().includes(q)))
     );
   });
@@ -107,6 +118,7 @@ export class ReviewComponent {
   /** Reviewer choices (default to the parser's suggestion). */
   kindChoice = signal<Record<string, ReviewKind>>({});
   cardChoice = signal<Record<string, string>>({});
+  walletChoice = signal<Record<string, string>>({});
   editingId = signal<string | null>(null);
   draft: Draft = this.emptyDraft();
 
@@ -125,12 +137,13 @@ export class ReviewComponent {
       if (v === undefined || v === null || v === '') return '—';
       if (v instanceof Date) return v.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
       if (['amount', 'totalDue', 'minDue'].includes(k)) return '₹' + Number(v).toLocaleString('en-IN');
+      if (k === 'walletType') return WALLET_TXN_INFO[v as WalletTxnType]?.label ?? String(v);
       return String(v);
     };
     const labels: Record<string, string> = {
       txnDate: 'Date', dueDate: 'Due date', statementDate: 'Statement date', amount: 'Amount', totalDue: 'Total due', minDue: 'Minimum due',
       description: 'Description', category: 'Category', direction: 'Type', expiryMonth: 'Expiry month', expiryYear: 'Expiry year',
-      statementDay: 'Statement day', dueDay: 'Due day',
+      statementDay: 'Statement day', dueDay: 'Due day', walletType: 'Wallet entry',
     };
     const final = (i.resolvedValues ?? this.valuesFor(i, i.kind)) as Record<string, unknown>;
     const original = this.valuesFor(i, i.kind) as Record<string, unknown>;
@@ -144,7 +157,7 @@ export class ReviewComponent {
   }
 
   destinationLink(i: ReviewItem): string {
-    return i.kind === 'transaction' ? '/cards/transactions' : i.kind === 'statement' ? '/cards/statements' : i.kind === 'card_update' ? '/cards' : '/';
+    return i.kind === 'transaction' ? '/cards/transactions' : i.kind === 'statement' ? '/cards/statements' : i.kind === 'card_update' ? '/cards' : i.kind === 'wallet' ? '/cards/wallets' : '/';
   }
 
   toggleHistory(id: string): void {
@@ -153,7 +166,7 @@ export class ReviewComponent {
 
   /** Items that can be approved as-is in one tap. */
   bulkReady = computed(() =>
-    this.shown().filter(i => i.confidence >= BULK_CONFIDENCE && this.kindOf(i) !== 'card_update' && !this.validate(i, this.kindOf(i), this.valuesFor(i, this.kindOf(i)), this.cardIdOf(i)))
+    this.shown().filter(i => i.confidence >= BULK_CONFIDENCE && this.kindOf(i) !== 'card_update' && !this.validate(i, this.kindOf(i), this.valuesFor(i, this.kindOf(i)), this.cardIdOf(i), this.walletIdOf(i)))
   );
 
   // ── Accessors ─────────────────────────────────────────────────
@@ -174,6 +187,32 @@ export class ReviewComponent {
     return KIND_INFO[this.kindOf(i)].needsCard;
   }
 
+  /**
+   * Wallet for a 'wallet' destination: the reviewer's choice, else the one matched by Gmail sync,
+   * else the only active wallet for the detected provider, else the only active wallet at all.
+   */
+  walletIdOf(i: ReviewItem): string {
+    const chosen = this.walletChoice()[i.id] ?? i.walletId;
+    if (chosen) return chosen;
+    const active = this.activeWallets();
+    const p = i.walletHint.provider.toLowerCase().split(/[\s(]/)[0];
+    const byProvider = p ? active.filter(w => `${w.provider} ${w.name}`.toLowerCase().includes(p)) : [];
+    if (byProvider.length === 1) return byProvider[0].id;
+    return active.length === 1 ? active[0].id : '';
+  }
+
+  walletName(id: string | null): string {
+    const w = id ? this.walletMap().get(id) : undefined;
+    return w ? walletLabel(w) : '—';
+  }
+
+  /** A spend headed to Expenses or a card that may really have been paid from a wallet. */
+  canSendToWallet(i: ReviewItem): boolean {
+    const k = this.kindOf(i);
+    const v = this.view(i);
+    return this.activeWallets().length > 0 && (k === 'expense' || (k === 'transaction' && v.direction !== 'credit'));
+  }
+
   cardName(id: string | null): string {
     const c = id ? this.cardMap().get(id) : undefined;
     return c ? cardLabel(c) : '—';
@@ -181,11 +220,11 @@ export class ReviewComponent {
 
   /** Only flag what needs attention: low-confidence matches get a "check carefully" chip; others show nothing. */
   needsCheck(i: ReviewItem): boolean {
-    return i.confidence < 0.6 || (KIND_INFO[this.kindOf(i)].needsCard && !this.cardIdOf(i));
+    return i.confidence < 0.6 || (KIND_INFO[this.kindOf(i)].needsCard && !this.cardIdOf(i)) || (this.kindOf(i) === 'wallet' && !this.walletIdOf(i));
   }
 
   categoriesFor(kind: ReviewKind): readonly string[] {
-    return kind === 'expense' ? EXPENSE_CATEGORIES : kind === 'income' ? INCOME_CATEGORIES : kind === 'bill' ? BILL_CATEGORIES : TXN_CATEGORIES;
+    return kind === 'expense' ? EXPENSE_CATEGORIES : kind === 'income' ? INCOME_CATEGORIES : kind === 'bill' ? BILL_CATEGORIES : kind === 'wallet' ? WALLET_CATEGORIES : TXN_CATEGORIES;
   }
 
   currentValue(i: ReviewItem, f: CardUpdateField): number | undefined {
@@ -210,6 +249,11 @@ export class ReviewComponent {
         return { txnDate: when, amount, direction: e.direction ?? (kind === 'transaction' && i.category === 'payment_confirmation' ? 'credit' : 'debit'), description, category: categoryFor(kind, e.category, TXN_CATEGORIES) };
       case 'bill':
         return { dueDate: e.dueDate ?? when, amount, description, category: categoryFor(kind, e.category, TXN_CATEGORIES) };
+      case 'wallet': {
+        const walletType: WalletTxnType = e.walletType ?? (e.direction === 'credit' ? (e.category === 'Refund' ? 'refund' : 'topup') : 'spend');
+        const category = walletType === 'spend' ? categoryFor(kind, e.category, TXN_CATEGORIES) : walletType === 'refund' ? 'Others' : '';
+        return { txnDate: when, amount, walletType, description, category };
+      }
       case 'statement':
         return { statementDate: e.statementDate ?? when, dueDate: e.dueDate, totalDue: e.totalDue ?? e.amount, minDue: e.minDue ?? 0 };
       case 'card_update': {
@@ -232,6 +276,16 @@ export class ReviewComponent {
     this.clearError(i.id);
   }
 
+  chooseWallet(i: ReviewItem, walletId: string): void {
+    this.walletChoice.update(m => ({ ...m, [i.id]: walletId }));
+    this.clearError(i.id);
+  }
+
+  /** "Paid from a wallet?" shortcut on expense / card spends. */
+  sendToWallet(i: ReviewItem): void {
+    this.chooseKind(i, 'wallet');
+  }
+
   chooseCard(i: ReviewItem, cardId: string): void {
     this.cardChoice.update(m => ({ ...m, [i.id]: cardId }));
     this.clearError(i.id);
@@ -244,6 +298,7 @@ export class ReviewComponent {
       date: toDateInput(this.kindOf(i) === 'bill' ? v.dueDate ?? null : v.txnDate ?? null),
       amount: s(v.amount),
       direction: v.direction ?? 'debit',
+      walletType: v.walletType ?? 'spend',
       description: v.description ?? '',
       category: v.category ?? '',
       statementDate: toDateInput(v.statementDate ?? null),
@@ -271,13 +326,15 @@ export class ReviewComponent {
     const editing = this.editingId() === i.id;
     const values = editing ? this.valuesFromDraft(kind) : this.valuesFor(i, kind);
     const cardId = KIND_INFO[kind].needsCard ? this.cardIdOf(i) : null;
-    const problem = this.validate(i, kind, values, cardId ?? '');
+    const walletId = kind === 'wallet' ? this.walletIdOf(i) : null;
+    const problem = this.validate(i, kind, values, cardId ?? '', walletId ?? '');
     if (problem) return problem;
     const edited =
       kind !== i.kind ||
       (KIND_INFO[kind].needsCard && cardId !== i.cardId) ||
+      (kind === 'wallet' && walletId !== i.walletId) ||
       (editing && this.differs(this.valuesFor(i, kind), values));
-    return { kind, values, cardId, edited };
+    return { kind, values, cardId, walletId, edited };
   }
 
   /** Validates now; the approval itself is held for 5 s (Undo cancels it). */
@@ -308,7 +365,7 @@ export class ReviewComponent {
   async loadSamples(): Promise<void> {
     this.loadingSamples.set(true);
     try {
-      const n = await this.review.loadSamples(this.activeCards()[0] ?? null);
+      const n = await this.review.loadSamples(this.activeCards()[0] ?? null, this.activeWallets()[0] ?? null);
       this.banner.set({ kind: 'ok', text: `${n} sample items added.` });
     } catch (err) {
       console.error('[Review] samples failed', err);
@@ -331,6 +388,11 @@ export class ReviewComponent {
         return { txnDate: fromDateInput(d.date) ?? undefined, amount: num(d.amount), direction: d.direction, description: d.description.trim(), category: d.category };
       case 'bill':
         return { dueDate: fromDateInput(d.date) ?? undefined, amount: num(d.amount), description: d.description.trim(), category: d.category };
+      case 'wallet':
+        return {
+          txnDate: fromDateInput(d.date) ?? undefined, amount: num(d.amount), walletType: d.walletType, description: d.description.trim(),
+          category: d.walletType === 'spend' || d.walletType === 'refund' ? d.category : '',
+        };
       case 'statement':
         return { statementDate: fromDateInput(d.statementDate) ?? undefined, dueDate: fromDateInput(d.dueDate) ?? undefined, totalDue: num(d.totalDue), minDue: num(d.minDue) };
       case 'card_update': {
@@ -344,12 +406,16 @@ export class ReviewComponent {
     }
   }
 
-  private validate(i: ReviewItem, kind: ReviewKind, v: ExtractedValues, cardId: string): string | null {
+  private validate(i: ReviewItem, kind: ReviewKind, v: ExtractedValues, cardId: string, walletId = ''): string | null {
     if (KIND_INFO[kind].needsCard && (!cardId || !this.cardMap().has(cardId))) return 'Choose which card this belongs to.';
+    if (kind === 'wallet' && (!walletId || !this.walletMap().has(walletId))) {
+      return this.activeWallets().length ? 'Choose which wallet this belongs to.' : 'Add a wallet first (Cards → Wallets), then approve.';
+    }
     switch (kind) {
       case 'income':
       case 'expense':
       case 'transaction':
+      case 'wallet':
         if (!v.txnDate) return 'Date is missing — tap Edit to add it.';
         if (!(Number(v.amount) > 0)) return 'Amount must be more than 0 — tap Edit to fix it.';
         if (!v.description?.trim()) return 'Description is missing — tap Edit.';
@@ -398,7 +464,7 @@ export class ReviewComponent {
 
   private emptyDraft(): Draft {
     return {
-      date: '', amount: '', direction: 'debit', description: '', category: '',
+      date: '', amount: '', direction: 'debit', walletType: 'spend', description: '', category: '',
       statementDate: '', dueDate: '', totalDue: '', minDue: '',
       expiryMonth: '', expiryYear: '', statementDay: '', dueDay: '',
     };

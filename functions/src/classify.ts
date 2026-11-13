@@ -16,14 +16,15 @@ export const EMAIL_CATEGORIES = [
   'payment_due',
   'payment_confirmation',
   'card_update',
+  'wallet_transaction',
 ] as const;
 export type EmailCategory = (typeof EMAIL_CATEGORIES)[number];
 
 /** Which app module an approved item goes to. */
-export type Destination = 'income' | 'expense' | 'bill' | 'transaction' | 'statement' | 'card_update';
+export type Destination = 'income' | 'expense' | 'bill' | 'transaction' | 'statement' | 'card_update' | 'wallet';
 
 /** User-facing monitoring groups (toggled per Gmail connection). */
-export const MONITOR_GROUPS = ['salary', 'bank', 'cards', 'bills', 'payments'] as const;
+export const MONITOR_GROUPS = ['salary', 'bank', 'cards', 'bills', 'payments', 'wallets'] as const;
 export type MonitorGroup = (typeof MONITOR_GROUPS)[number];
 
 export const CATEGORY_GROUP: Record<EmailCategory, MonitorGroup> = {
@@ -36,7 +37,11 @@ export const CATEGORY_GROUP: Record<EmailCategory, MonitorGroup> = {
   bill_generated: 'bills',
   payment_due: 'bills',
   payment_confirmation: 'payments',
+  wallet_transaction: 'wallets',
 };
+
+/** Wallet entry types — same values as the app's wallet_transactions.type. */
+export type WalletType = 'spend' | 'topup' | 'refund' | 'cashback';
 
 export interface Extracted {
   amount?: number;
@@ -49,6 +54,7 @@ export interface Extracted {
   totalDue?: number;
   minDue?: number;
   dueDay?: number;
+  walletType?: WalletType;
 }
 
 export interface Classification {
@@ -59,6 +65,8 @@ export interface Classification {
   cardLast4: string | null;
   accountLast4: string | null;
   bankName: string | null;
+  /** Wallet provider for wallet_transaction ("Paytm", "Amazon Pay"…), used to pick the user's wallet. */
+  walletProvider: string | null;
 }
 
 export interface EmailInput {
@@ -74,6 +82,7 @@ export const GMAIL_KEYWORDS = [
   'credited', 'debited', 'spent', 'transaction', 'statement', 'salary',
   '"amount due"', '"due date"', '"payment received"', '"payment of"', 'bill',
   '"minimum due"', '"total due"', 'UPI', 'NEFT', 'IMPS', 'withdrawn', 'refund',
+  'wallet', 'cashback', 'FASTag', '"Amazon Pay balance"', '"added money"',
 ];
 export function gmailQuery(afterEpochSeconds: number): string {
   return `after:${afterEpochSeconds} -in:chats -in:spam -in:trash {${GMAIL_KEYWORDS.join(' ')}}`;
@@ -176,6 +185,53 @@ export function detectBank(from: string, text: string): string | null {
   return null;
 }
 
+// ── Wallets (Paytm, Amazon Pay, PhonePe, MobiKwik, FASTag, meal cards) ──────
+const WALLET_PROVIDERS: Array<[RegExp, string]> = [
+  [/paytm/i, 'Paytm'],
+  [/amazon\s*pay|amazonpay/i, 'Amazon Pay'],
+  [/phonepe/i, 'PhonePe'],
+  [/mobikwik/i, 'MobiKwik'],
+  [/freecharge/i, 'Freecharge'],
+  [/airtel\s*(?:payments\s*bank\s*)?wallet/i, 'Airtel Wallet'],
+  [/pluxee|sodexo/i, 'Pluxee (Sodexo)'],
+  [/fastag/i, 'FASTag'],
+];
+/** Words that mean "money held in a wallet" — not just a UPI handle like name@paytm. */
+const WALLET_CONTEXT =
+  /\b(?:wallet|amazon\s*pay\s*balance|pay\s*balance|paytm\s*balance|fastag|meal\s*card|gift\s*card\s*balance|pluxee\s*card|sodexo\s*card)\b/i;
+
+export function walletProvider(from: string, text: string): string | null {
+  for (const [re, name] of WALLET_PROVIDERS) if (re.test(from)) return name;
+  // In the text, require the provider next to wallet wording ("Paytm Wallet", "Amazon Pay balance", "FASTag").
+  for (const [re, name] of WALLET_PROVIDERS) {
+    const p = `(?:${re.source})`;
+    const near = new RegExp(p + String.raw`[^.]{0,25}\b(?:wallet|balance)\b|\b(?:wallet|balance)\b[^.]{0,25}` + p, 'i');
+    if (name === 'FASTag' ? re.test(text) : near.test(text)) return name;
+  }
+  return null;
+}
+
+/**
+ * A wallet entry: the money moved in or out of a wallet balance, not a bank account or card.
+ * A UPI payment to "zomato@paytm" is a BANK debit (the VPA just lives at Paytm), so wallet wording
+ * is required; a bank debit that tops up a wallet ("to Paytm Wallet") is a wallet top-up.
+ */
+export function walletEntry(from: string, text: string): { type: WalletType; provider: string } | null {
+  if (!WALLET_CONTEXT.test(text)) return null;
+  const provider = walletProvider(from, text);
+  if (!provider) return null;
+  let type: WalletType | null = null;
+  if (/\bcashback\b[^.]{0,50}\b(?:credited|added|received|earned)\b|\b(?:credited|added|received|earned)\b[^.]{0,50}\bcashback\b/i.test(text)) type = 'cashback';
+  else if (/\b(?:refund(?:ed)?|reversal|reversed)\b/i.test(text)) type = 'refund';
+  else if (
+    /\b(?:added|loaded|topped\s*up|top[\s-]?up|recharged?|add\s*money)\b[^.]{0,60}\b(?:to|in|into|of)\s+(?:your\s+)?[a-z ]{0,25}\b(?:wallet|balance|fastag)\b/i.test(text) ||
+    /\b(?:wallet|fastag)\b[^.]{0,30}\b(?:top[\s-]?up|recharge|loaded|added)\b/i.test(text) ||
+    /\b(?:debited|paid|sent|transferred)\b[^.]{0,60}\bto\s+(?:your\s+)?[a-z ]{0,15}\bwallet\b/i.test(text)
+  ) type = 'topup';
+  else if (/\b(?:paid|debited|spent|deducted|payment\s+of|purchase|used|toll)\b/i.test(text)) type = 'spend';
+  return type ? { type, provider } : null;
+}
+
 /** "at AMAZON PAY INDIA on …", "to SWIGGY via UPI", "Info: UPI/…/ZOMATO". */
 export function merchant(text: string): string | undefined {
   const patterns = [
@@ -250,8 +306,31 @@ export function classify(email: EmailInput): Classification | null {
       cardLast4: card,
       accountLast4: account,
       bankName: bank,
+      walletProvider: null,
     };
   };
+
+  // 0. Wallet entry (before cards/banks: a top-up "using HDFC card ending 1234" is still a wallet top-up).
+  const wallet = amount ? walletEntry(email.from ?? '', text) : null;
+  if (wallet) {
+    const what = wallet.type === 'topup' ? `${wallet.provider} top-up` : wallet.type === 'cashback' ? `${wallet.provider} cashback` : null;
+    const desc = what ?? (wallet.provider === 'FASTag' && /toll/i.test(text) ? merchant(text) ?? 'Toll' : merchant(text) ?? `${wallet.provider} payment`);
+    const spendCategory = wallet.provider === 'FASTag' ? 'Travel' : suggestSpendCategory(desc);
+    const c = out(
+      'wallet_transaction',
+      'wallet',
+      {
+        amount,
+        direction: wallet.type === 'spend' ? 'debit' : 'credit',
+        txnDate: date ?? email.receivedAt,
+        description: desc,
+        category: wallet.type === 'spend' ? spendCategory : wallet.type === 'refund' ? 'Refund' : '',
+        walletType: wallet.type,
+      },
+      2 + (WALLET_PROVIDERS.some(([re]) => re.test(email.from ?? '')) ? 1 : 0)
+    );
+    return { ...c, walletProvider: wallet.provider };
+  }
 
   // 1. Card due-date change ("your payment due date has been revised to the 5th")
   const dueChange = /(payment\s+)?due\s+date[^.]{0,60}?(?:changed|revised|updated|modified)[^.]{0,30}?(\d{1,2})(?:st|nd|rd|th)?\b/i.exec(text);

@@ -49,6 +49,12 @@ service cloud.firestore {
     function unchanged(key) {
       return request.resource.data.get(key, null) == resource.data.get(key, null);
     }
+    // The wallet exists and belongs to the caller.
+    function ownsWallet(walletId) {
+      return walletId is string
+        && exists(docPath('wallets', walletId))
+        && get(docPath('wallets', walletId)).data.userId == request.auth.uid;
+    }
     // The card exists and belongs to the caller.
     function ownsCard(cardId) {
       return cardId is string
@@ -245,14 +251,11 @@ service cloud.firestore {
 
     // ── wallet_transactions/{txnId} ─────────────────────────────────
     // spend / refund count in the budget like card debits / refunds; topup and cashback only move the balance.
-    function ownsWallet(walletId) {
-      return walletId is string
-        && exists(docPath('wallets', walletId))
-        && get(docPath('wallets', walletId)).data.userId == request.auth.uid;
-    }
+    // Manual entries carry source 'manual' (or, for entries made before email import existed, no source);
+    // entries from email carry source 'email'/'demo' + the reviewId of the approval written in the same batch.
     function isValidWalletTxn(d) {
       return d.keys().hasOnly(['userId', 'walletId', 'type', 'amount', 'date', 'description', 'category',
-                               'createdAt', 'lastUpdated'])
+                               'source', 'reviewId', 'createdAt', 'lastUpdated'])
         && d.keys().hasAll(['userId', 'walletId', 'type', 'amount', 'date', 'description', 'createdAt', 'lastUpdated'])
         && ownsWallet(d.walletId)
         && d.type in ['spend', 'topup', 'refund', 'cashback']
@@ -260,13 +263,17 @@ service cloud.firestore {
         && d.date is timestamp
         && str(d.description, 1, 120)
         && optStr(d, 'category', 30)
+        && (!('source' in d) || d.source in ['manual', 'email', 'demo'])
         && d.createdAt is timestamp
         && d.lastUpdated == request.time;
     }
     match /wallet_transactions/{txnId} {
       allow read: if ownerRead();
-      allow create: if ownerCreate() && isValidWalletTxn(request.resource.data) && request.resource.data.createdAt == request.time;
-      allow update: if ownerUpdate() && isValidWalletTxn(request.resource.data) && unchanged('createdAt');
+      allow create: if ownerCreate() && isValidWalletTxn(request.resource.data) && request.resource.data.createdAt == request.time
+        && ((!('source' in request.resource.data) && !('reviewId' in request.resource.data))
+            || createdManuallyOrApproved(request.resource.data, 'wallet', txnId));
+      allow update: if ownerUpdate() && isValidWalletTxn(request.resource.data) && unchanged('createdAt')
+        && unchanged('source') && unchanged('reviewId');
       allow delete: if ownerDelete();
     }
 
@@ -304,14 +311,14 @@ service cloud.firestore {
     // Gmail items are created by Cloud Functions (Admin SDK). Clients may only create 'demo' samples.
     // `kind` is the destination module; the reviewer may change it (except card_update).
     function reviewKinds() {
-      return ['income', 'expense', 'bill', 'transaction', 'statement', 'card_update'];
+      return ['income', 'expense', 'bill', 'transaction', 'statement', 'card_update', 'wallet'];
     }
     function cardKind(kind) {
       return kind in ['transaction', 'statement', 'card_update'];
     }
     function isValidReviewCreate(d) {
       return d.keys().hasOnly(['userId', 'kind', 'category', 'origin', 'cardId', 'cardHint', 'accountHint',
-                               'extracted', 'confidence', 'email', 'status', 'createdAt'])
+                               'walletId', 'walletHint', 'extracted', 'confidence', 'email', 'status', 'createdAt'])
         && d.kind in reviewKinds()
         && d.origin == 'demo'
         && d.status == 'pending'
@@ -319,6 +326,7 @@ service cloud.firestore {
         && d.email is map
         && d.confidence is number
         && (d.cardId == null || ownsCard(d.cardId))
+        && (d.get('walletId', null) == null || ownsWallet(d.walletId))
         && d.createdAt == request.time;
     }
     // The approved review must point at a record that exists after the batch and points back at it.
@@ -334,6 +342,7 @@ service cloud.firestore {
         || (kind == 'income'      && linkedBack('income', targetId, 'reviewId', reviewId))
         || (kind == 'expense'     && linkedBack('expenses', targetId, 'reviewId', reviewId))
         || (kind == 'bill'        && linkedBack('upcoming_payments', targetId, 'reviewId', reviewId))
+        || (kind == 'wallet'      && linkedBack('wallet_transactions', targetId, 'reviewId', reviewId))
       );
     }
     match /review_items/{reviewId} {
@@ -342,7 +351,7 @@ service cloud.firestore {
       allow update: if ownerUpdate()
         && resource.data.status == 'pending'
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['status', 'resolvedAt', 'resolvedValues', 'edited', 'targetId', 'cardId', 'kind'])
+             .hasOnly(['status', 'resolvedAt', 'resolvedValues', 'edited', 'targetId', 'cardId', 'walletId', 'kind'])
         && request.resource.data.resolvedAt == request.time
         && request.resource.data.kind in reviewKinds()
         && ((request.resource.data.kind == 'card_update') == (resource.data.kind == 'card_update'))
@@ -350,6 +359,7 @@ service cloud.firestore {
           request.resource.data.status == 'rejected'
           || (request.resource.data.status == 'approved'
               && (!cardKind(request.resource.data.kind) || ownsCard(request.resource.data.cardId))
+              && (request.resource.data.kind != 'wallet' || ownsWallet(request.resource.data.walletId))
               && request.resource.data.edited is bool
               && request.resource.data.resolvedValues is map
               && targetLinked(request.resource.data.kind, request.resource.data.targetId, reviewId))
@@ -390,8 +400,8 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paused', 'groups'])
         && request.resource.data.paused is bool
         && request.resource.data.groups is list
-        && request.resource.data.groups.size() <= 5
-        && request.resource.data.groups.hasOnly(['salary', 'bank', 'cards', 'bills', 'payments']);
+        && request.resource.data.groups.size() <= 6
+        && request.resource.data.groups.hasOnly(['salary', 'bank', 'cards', 'bills', 'payments', 'wallets']);
       allow create, delete: if false;
     }
 
