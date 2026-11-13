@@ -28,7 +28,7 @@ export class LoginComponent {
     // A Google redirect sign-in that failed after the page reloaded.
     effect(() => {
       const err = this.authService.redirectError();
-      if (err) this.showError(err);
+      if (err) this.showError(err, 'google');
     });
   }
 
@@ -99,13 +99,22 @@ export class LoginComponent {
         }
       }
     } catch (err: any) {
-      this.showError(err);
+      this.showError(err, kind);
     } finally {
       this.busy.set('');
     }
   }
 
-  private showError(err: any): void {
+  private showError(err: any, kind: 'google' | 'email'): void {
+    if (kind === 'google' && (err?.code === 'auth/invalid-credential' || err?.code === 'auth/invalid-idp-response')) {
+      // Google accepted you, but Firebase couldn't finish with Google: almost always the Google
+      // provider's client ID/secret in Firebase Authentication no longer matches Google Cloud.
+      console.warn('[Login] Google sign-in rejected by Firebase', err?.code, err?.message ?? '');
+      this.error.set(
+        `Google sign-in isn't working right now (${err.code}). Sign in with your Gmail and password instead — it opens the same account.`
+      );
+      return;
+    }
     if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password' || err?.code === 'auth/user-not-found') {
       // Firebase deliberately doesn't say which part is wrong (email-enumeration protection),
       // so offer both recovery paths instead of a dead end.
