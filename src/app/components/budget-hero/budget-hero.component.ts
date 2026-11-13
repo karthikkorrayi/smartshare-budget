@@ -39,9 +39,9 @@ import { BudgetSummary } from '../../utils/budget.util';
           </div>
           <p class="pace-text">
             @switch (s.pace) {
-              @case ('under') { 👍 You're spending slower than the month is passing. }
-              @case ('on') { ⚖️ Spending is in step with the month. }
-              @case ('over') { ⚠️ Spending is ahead of the month — {{ s.usedPercent }}% used with {{ s.monthPercent }}% of the month gone. }
+              @case ('under') { You're spending slower than the month is passing. }
+              @case ('on') { Spending is in step with the month. }
+              @case ('over') { Spending is ahead of the month — {{ s.usedPercent }}% used with {{ s.monthPercent }}% of the month gone. }
             }
           </p>
         }
@@ -61,10 +61,10 @@ import { BudgetSummary } from '../../utils/budget.util';
         </div>
 
         <div class="split">
-          <span>🧾 Expenses <strong>₹{{ s.expenseSpend | number: '1.0-0' }}</strong></span>
-          <a routerLink="/cards/transactions">💳 Card spends <strong>₹{{ s.cardSpend | number: '1.0-0' }}</strong></a>
+          <span>Expenses <strong>₹{{ s.expenseSpend | number: '1.0-0' }}</strong></span>
+          <a routerLink="/cards/transactions">Card spends <strong>₹{{ s.cardSpend | number: '1.0-0' }}</strong></a>
           @if (s.walletSpend !== 0) {
-            <a routerLink="/cards/wallets">👛 Wallet spends <strong>₹{{ s.walletSpend | number: '1.0-0' }}</strong></a>
+            <a routerLink="/cards/wallets">Wallet spends <strong>₹{{ s.walletSpend | number: '1.0-0' }}</strong></a>
           }
           @if (s.cardBillsPaid > 0) {
             <span class="muted" title="Card bill payments and wallet top-ups aren't counted — what you bought with them already is">Card bills &amp; top-ups paid ₹{{ s.cardBillsPaid | number: '1.0-0' }} (not counted twice)</span>
@@ -76,7 +76,7 @@ import { BudgetSummary } from '../../utils/budget.util';
   styles: [`
     :host { display: block; }
     .hero { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; border-radius: 22px; color: #fff;
-      background: linear-gradient(135deg, #115e59, #0f172a); box-shadow: 0 14px 40px rgba(15,23,42,.18); }
+      background: linear-gradient(135deg, #0f766e 0%, #0f1729 100%); box-shadow: 0 14px 40px rgba(15,23,42,.18); }
     .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
     .spent, .balance { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
     .balance { align-items: flex-end; text-align: right; }
@@ -84,24 +84,24 @@ import { BudgetSummary } from '../../utils/budget.util';
     .big { font-size: 34px; font-weight: 800; letter-spacing: -1px; line-height: 1.1; }
     .mid { font-size: 24px; font-weight: 800; letter-spacing: -.5px; color: #5eead4; }
     .balance.neg .mid { color: #fca5a5; }
-    .of { font-size: 14px; color: #cbd5e1; }
+    .of { font-size: 14px; color: rgba(255,255,255,.7); }
     .of strong { color: #fff; }
     .meter { position: relative; height: 12px; border-radius: 999px; background: rgba(255,255,255,.16); overflow: visible; }
     .used { display: block; height: 100%; border-radius: inherit; background: #2dd4bf; transition: width .4s; }
     .pace-over .used { background: #f87171; }
     .today-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #fff; border-radius: 2px; transform: translateX(-1px); }
     .pace-text { margin: -4px 0 0; font-size: 13px; color: #e2e8f0; }
-    .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
     .facts div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.08); }
-    .facts span { font-size: 12px; color: #cbd5e1; }
+    .facts span { font-size: 12px; color: rgba(255,255,255,.7); }
     .facts strong { font-size: 17px; }
-    .facts small { font-size: 11px; color: #94a3b8; }
+    .facts small { font-size: 11px; color: rgba(255,255,255,.7); }
     .warn { color: #fca5a5; }
     .good { color: #86efac; }
-    .split { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: #cbd5e1; }
+    .split { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: rgba(255,255,255,.7); }
     .split a { color: inherit; text-decoration: none; }
     .split strong { color: #fff; }
-    .split .muted { color: #94a3b8; }
+    .split .muted { color: rgba(255,255,255,.7); }
     @media (max-width: 760px) {
       .hero { padding: 16px; border-radius: 18px; }
       .big { font-size: 28px; }

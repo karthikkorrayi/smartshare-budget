@@ -14,10 +14,10 @@ export const WALLET_KINDS = ['cash', 'upi', 'prepaid', 'other'] as const;
 export type WalletKind = (typeof WALLET_KINDS)[number];
 
 export const WALLET_KIND_INFO: Record<WalletKind, { icon: string; label: string; hint: string }> = {
-  cash: { icon: '💵', label: 'Cash', hint: 'Money in your purse or at home' },
-  upi: { icon: '📱', label: 'UPI / app wallet', hint: 'Paytm, Amazon Pay, PhonePe, MobiKwik…' },
-  prepaid: { icon: '🎟️', label: 'Prepaid card', hint: 'Meal, gift, FASTag or forex card' },
-  other: { icon: '👛', label: 'Other', hint: 'Anything else that holds a balance' },
+  cash: { icon: 'banknote', label: 'Cash', hint: 'Money in your purse or at home' },
+  upi: { icon: 'smartphone', label: 'UPI / app wallet', hint: 'Paytm, Amazon Pay, PhonePe, MobiKwik…' },
+  prepaid: { icon: 'ticket', label: 'Prepaid card', hint: 'Meal, gift, FASTag or forex card' },
+  other: { icon: 'wallet', label: 'Other', hint: 'Anything else that holds a balance' },
 };
 
 export const WALLET_PROVIDERS = ['Paytm', 'Amazon Pay', 'PhonePe', 'MobiKwik', 'Google Pay', 'Pluxee (Sodexo)', 'FASTag'] as const;
@@ -71,7 +71,7 @@ export interface WalletTransaction {
 export type WalletTxnInput = Pick<WalletTransaction, 'walletId' | 'type' | 'amount' | 'date' | 'description' | 'category'>;
 
 export function walletLabel(w: Pick<Wallet, 'name' | 'kind'>): string {
-  return `${WALLET_KIND_INFO[w.kind]?.icon ?? '👛'} ${w.name}`;
+  return w.name;
 }
 
 /** Signed effect of one transaction on the wallet's balance. */

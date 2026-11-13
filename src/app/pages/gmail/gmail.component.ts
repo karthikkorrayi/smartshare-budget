@@ -8,11 +8,12 @@ import { GmailConnection, MONITOR_GROUPS, MONITOR_GROUP_INFO, MonitorGroup } fro
 import { AuthService } from '../../services/auth.service';
 import { NotificationsService } from '../../services/notifications.service';
 import { UndoService } from '../../services/undo.service';
+import { IconComponent } from '../../ui/icon.component';
 
 @Component({
   selector: 'app-gmail',
   standalone: true,
-  imports: [DatePipe, RouterLink],
+  imports: [IconComponent, DatePipe, RouterLink],
   templateUrl: './gmail.component.html',
   styleUrl: './gmail.component.scss',
 })

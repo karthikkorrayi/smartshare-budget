@@ -4,16 +4,16 @@
   gap: 14px;
   margin-bottom: 20px;
   padding: 14px 16px;
-  border-color: #fde68a;
-  background: #fffbeb;
+  border-color: var(--warn);
+  background: var(--warn-soft);
   color: inherit;
   text-decoration: none;
 
   .icon { font-size: 26px; }
   .text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;
-    strong { color: #92400e; }
-    small { color: #78716c; } }
-  .go { font-weight: 700; color: #b45309; white-space: nowrap; }
+    strong { color: var(--warn); }
+    small { color: var(--text-3); } }
+  .go { font-weight: 700; color: var(--warn); white-space: nowrap; }
 }
 
 .section {
@@ -22,10 +22,10 @@
   gap: 8px;
   margin: 22px 0 10px;
   font-size: 16px;
-  color: #0f172a;
+  color: var(--text);
 }
 
-.quiet { margin: 0; color: #64748b; font-size: 14px; }
+.quiet { margin: 0; color: var(--text-3); font-size: 14px; }
 
 .inbox-head {
   display: flex;
@@ -45,12 +45,12 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border);
   color: inherit;
   text-decoration: none;
   &:last-child { border-bottom: none; }
-  &.unread { background: #f0fdfa; }
-  &.unread strong::before { content: '● '; color: #0f766e; }
+  &.unread { background: var(--accent-soft); }
+  &.unread strong::before { content: '● '; color: var(--accent-strong); }
 }
 
 .row-icon {
@@ -60,7 +60,7 @@
   height: 38px;
   flex-shrink: 0;
   border-radius: 12px;
-  background: #f1f5f9;
+  background: var(--surface-2);
   font-size: 18px;
 }
 
@@ -71,14 +71,14 @@
   flex: 1;
   min-width: 0;
   text-align: left;
-  strong { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: #0f172a; font-size: 15px; }
-  small { color: #475569; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
-  .when { color: #94a3b8; font-size: 12px; }
+  strong { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--text); font-size: 15px; }
+  small { color: var(--text-2); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+  .when { color: var(--text-4); font-size: 12px; }
 }
 
 .as-link { padding: 0; border: none; background: none; font: inherit; cursor: pointer; }
 
-.row-date { font-size: 13px; font-weight: 700; color: #475569; white-space: nowrap; }
+.row-date { font-size: 13px; font-weight: 700; color: var(--text-2); white-space: nowrap; }
 .row-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
 @media (max-width: 600px) {

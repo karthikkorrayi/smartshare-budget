@@ -1,15 +1,73 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
-  <title>BudgetTracker</title>
+  <title>SmartShare Budget</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="SmartShare Budget — your accounts, spending, bills and money habits in one calm place.">
+  <meta name="theme-color" content="#f6f7f9">
+  <meta name="color-scheme" content="light dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SmartShare">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    // Apply the saved theme before first paint (no light flash in dark mode).
+    (function () {
+      try {
+        var p = localStorage.getItem('ssb_theme') || 'system';
+        var dark = p === 'dark' || (p === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#0b0d12' : '#f6f7f9');
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    /* Branded loading screen (removed by AppComponent once sign-in state is known). */
+    #ssb-splash { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: #f6f7f9; color: #0f1729;
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; transition: opacity .4s ease, visibility .4s; }
+    [data-theme='dark'] #ssb-splash { background: #0b0d12; color: #eef1f6; }
+    #ssb-splash.done { opacity: 0; visibility: hidden; }
+    #ssb-splash .box { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+    #ssb-splash .mark { width: 72px; height: 72px; filter: drop-shadow(0 10px 24px rgba(13,148,136,.4)); }
+    #ssb-splash .bar1, #ssb-splash .bar2, #ssb-splash .bar3 { transform-origin: bottom; animation: ssb-grow 1.2s cubic-bezier(.2,.7,.2,1) infinite; }
+    #ssb-splash .bar2 { animation-delay: .12s; } #ssb-splash .bar3 { animation-delay: .24s; }
+    #ssb-splash .line { stroke-dasharray: 40; stroke-dashoffset: 40; animation: ssb-draw 1.2s ease-in-out infinite; }
+    #ssb-splash h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+    #ssb-splash p { margin: -10px 0 0; font-size: 13px; opacity: .6; }
+    #ssb-splash .track { width: 140px; height: 3px; border-radius: 3px; background: rgba(100,116,139,.18); overflow: hidden; }
+    #ssb-splash .track i { display: block; width: 40%; height: 100%; border-radius: 3px; background: #0d9488; animation: ssb-slide 1.1s ease-in-out infinite; }
+    @keyframes ssb-grow { 0%, 100% { transform: scaleY(.55); } 50% { transform: scaleY(1); } }
+    @keyframes ssb-draw { 0% { stroke-dashoffset: 40; } 60%, 100% { stroke-dashoffset: 0; } }
+    @keyframes ssb-slide { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+    @media (prefers-reduced-motion: reduce) { #ssb-splash * { animation: none !important; } }
+  </style>
 </head>
 <body>
+  <div id="ssb-splash" role="status" aria-live="polite">
+    <div class="box">
+      <svg class="mark" viewBox="0 0 48 48" aria-hidden="true">
+        <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14b8a6"/><stop offset="1" stop-color="#0f766e"/></linearGradient></defs>
+        <rect width="48" height="48" rx="13" fill="url(#sg)"/>
+        <rect class="bar1" x="11" y="27" width="6" height="10" rx="2" fill="#fff" opacity=".7"/>
+        <rect class="bar2" x="21" y="21" width="6" height="16" rx="2" fill="#fff" opacity=".85"/>
+        <rect class="bar3" x="31" y="14" width="6" height="23" rx="2" fill="#fff"/>
+        <path class="line" d="M10 22l9-6 7 4 11-9" stroke="#ccfbf1" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h1>SmartShare Budget</h1>
+      <p>Getting your finances ready…</p>
+      <div class="track"><i></i></div>
+    </div>
+  </div>
   <app-root></app-root>
+  <noscript>SmartShare Budget needs JavaScript to run.</noscript>
 </body>
 </html>

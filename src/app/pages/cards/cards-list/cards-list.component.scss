@@ -4,9 +4,9 @@
   gap: 8px;
   margin-bottom: 14px;
   font-size: 14px;
-  color: #475569;
+  color: var(--text-2);
   cursor: pointer;
-  input { width: 18px; height: 18px; accent-color: #0f766e; }
+  input { width: 18px; height: 18px; accent-color: var(--accent-strong); }
 }
 
 .grid {
@@ -25,8 +25,8 @@
 
 .tile-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .tile-title { display: flex; flex-direction: column; gap: 2px; min-width: 0;
-  .bank { font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f766e; }
-  .name { font-size: 18px; font-weight: 700; color: #0f172a; overflow-wrap: anywhere; } }
+  .bank { font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--accent-strong); }
+  .name { font-size: 18px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; } }
 .badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 .plastic {
@@ -35,8 +35,8 @@
   gap: 14px;
   padding: 16px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #134e4a, #0f172a);
-  color: #fff;
+  background: linear-gradient(135deg, #134e4a, var(--text));
+  color: var(--on-accent);
 
   .plastic-number { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 18px; letter-spacing: 1.5px; }
   .dots { opacity: 0.55; }
@@ -54,9 +54,9 @@
   gap: 8px;
   margin: 0;
 
-  dt { font-size: 12px; color: #64748b; }
-  dd { margin: 2px 0 0; font-size: 15px; font-weight: 700; color: #0f172a; }
-  small { display: block; font-size: 12px; font-weight: 500; color: #64748b; }
+  dt { font-size: 12px; color: var(--text-3); }
+  dd { margin: 2px 0 0; font-size: 15px; font-weight: 700; color: var(--text); }
+  small { display: block; font-size: 12px; font-weight: 500; color: var(--text-3); }
 }
 
 .latest {
@@ -65,16 +65,16 @@
   gap: 10px;
   padding: 12px;
   border-radius: 14px;
-  background: #f8fafc;
+  background: var(--surface-2);
 
-  .latest-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: #475569; }
+  .latest-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
   .latest-amounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
-    span { display: block; font-size: 12px; color: #64748b; }
-    strong { font-size: 15px; color: #0f172a; } }
+    span { display: block; font-size: 12px; color: var(--text-3); }
+    strong { font-size: 15px; color: var(--text); } }
   .cc-btn { align-self: flex-start; }
 }
 
-.no-statement { margin: 0; padding: 12px; border-radius: 14px; background: #f8fafc; color: #64748b; font-size: 14px; }
+.no-statement { margin: 0; padding: 12px; border-radius: 14px; background: var(--surface-2); color: var(--text-3); font-size: 14px; }
 
 .quick { display: flex; flex-wrap: wrap; gap: 8px; }
 
@@ -85,12 +85,12 @@
   justify-content: space-between;
   gap: 10px;
   padding-top: 12px;
-  border-top: 1px solid #f1f5f9;
-  .source { font-size: 12px; color: #64748b; }
+  border-top: 1px solid var(--border);
+  .source { font-size: 12px; color: var(--text-3); }
 }
 
 .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-  &.confirm span { font-size: 13px; font-weight: 600; color: #b91c1c; } }
+  &.confirm span { font-size: 13px; font-weight: 600; color: var(--neg); } }
 
 @media (max-width: 600px) {
   .grid { grid-template-columns: 1fr; }

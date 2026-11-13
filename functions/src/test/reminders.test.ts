@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CardLite, StatementLite, computeDueReminders, digest, istDay, statementIsTomorrow } from '../reminders';
+import { BillLite, CardLite, StatementLite, computeBillReminders, computeDueReminders, digest, istDay, statementIsTomorrow } from '../reminders';
 
 // 9:00 AM IST on 12 Nov 2026 = 03:30 UTC
 const now = new Date('2026-11-12T03:30:00Z');
@@ -59,4 +59,38 @@ test('digest headline + line limit', () => {
   assert.match(d.title, /1 card payment overdue/);
   assert.equal(d.body.split('\n').length, 4); // 3 lines + "+1 more"
   assert.equal(digest([]), null);
+});
+
+// ── Bills / recurring payments (redesign) ─────────────────────────
+const bill = (o: Partial<BillLite> = {}): BillLite => ({
+  id: 'b1', userId: 'u', description: 'Electricity', amount: 1840, dueDate: ist(2026, 11, 13), ...o,
+});
+
+test('bill due tomorrow is reminded with its amount', () => {
+  const r = computeBillReminders([bill()], now, 3);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].kind, 'bill_due');
+  assert.match(r[0].text, /Electricity: ₹1,840 due tomorrow/);
+});
+
+test('bill reminder respects its own reminderDays and skips paused payments', () => {
+  assert.equal(computeBillReminders([bill({ dueDate: ist(2026, 11, 20) })], now, 3).length, 0);
+  assert.equal(computeBillReminders([bill({ dueDate: ist(2026, 11, 20), reminderDays: 10 })], now, 3).length, 1);
+  assert.equal(computeBillReminders([bill({ paused: true })], now, 3).length, 0);
+  assert.equal(computeBillReminders([bill({ dueDate: new Date(NaN) })], now, 3).length, 0);
+});
+
+test('overdue bill is reported once and the digest counts it as a payment', () => {
+  const r = computeBillReminders([bill({ dueDate: ist(2026, 11, 9) })], now, 3);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].kind, 'bill_overdue');
+  const d = digest(r)!;
+  assert.match(d.title, /1 payment overdue/);
+  assert.doesNotMatch(d.title, /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
+});
+
+test('cards and bills are merged into one digest, overdue first', () => {
+  const d = digest([...computeDueReminders([card()], [stmt()], now, 3), ...computeBillReminders([bill({ dueDate: ist(2026, 11, 10) })], now, 3)])!;
+  assert.match(d.title, /1 payment overdue/);
+  assert.match(d.body.split('\n')[0], /Electricity/);
 });

@@ -1,14 +1,16 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService, authMessage } from '../../services/auth.service';
+import { IconComponent } from '../../ui/icon.component';
 
 @Component({
   selector: 'app-verify-email',
   standalone: true,
+  imports: [IconComponent],
   template: `
     <section class="auth-screen">
       <div class="auth-card">
-        <div class="emblem" aria-hidden="true">📧</div>
+        <div class="emblem" aria-hidden="true"><app-icon name="mail" [size]="28" /></div>
         <h1>Verify your Gmail</h1>
         <p class="hint">
           We sent a verification link to <strong>{{ auth.account()?.email }}</strong>.
@@ -34,12 +36,12 @@ import { AuthService, authMessage } from '../../services/auth.service';
   `,
   styleUrl: '../login/login.component.scss',
   styles: [
-    `.emblem { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 18px; background: #f0fdfa; font-size: 26px; }
+    `.emblem { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 18px; background: var(--accent-soft); font-size: 26px; }
      h1 { text-align: center; }
-     .hint, .why { text-align: center; color: #475569; line-height: 1.6; font-size: 14px; }
-     .why { margin: 0 0 18px; padding: 10px 12px; border-radius: 12px; background: #f8fafc; font-size: 13px; }
-     .btn { margin-top: 10px; border: 1px solid #dbe3eb; background: #fff; }
-     .btn.primary { border: none; background: #0f766e; color: #fff; }
+     .hint, .why { text-align: center; color: var(--text-2); line-height: 1.6; font-size: 14px; }
+     .why { margin: 0 0 18px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 13px; }
+     .btn { margin-top: 10px; border: 1px solid var(--border); background: var(--surface); }
+     .btn.primary { border: none; background: var(--accent); color: var(--on-accent); }
      .link { display: block; margin: 16px auto 0; }`,
   ],
 })

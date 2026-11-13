@@ -22,7 +22,7 @@ import { open, seal, sha256, Sealed } from './crypto';
 import { OAuthError, exchangeCode, revoke } from './google';
 import { syncConnection } from './sync';
 import { ownedConnection } from './ownership';
-import { CardLite, StatementLite, computeDueReminders, digest } from './reminders';
+import { BillLite, CardLite, StatementLite, computeBillReminders, computeDueReminders, digest } from './reminders';
 import { pushToUser } from './push';
 
 initializeApp();
@@ -192,19 +192,31 @@ export const dailyDueDigest = onSchedule(
     let sent = 0;
     for (const uid of users) {
       try {
-        const [cardsSnap, stmtSnap, userSnap] = await Promise.all([
+        const [cardsSnap, stmtSnap, userSnap, billSnap] = await Promise.all([
           db.collection('cards').where('userId', '==', uid).where('status', '==', 'Active').get(),
           db.collection('card_statements').where('userId', '==', uid).where('status', 'in', ['Unpaid', 'Partially Paid']).get(),
           db.doc(`users/${uid}`).get(),
+          db.collection('upcoming_payments').where('userId', '==', uid).get(),
         ]);
-        if (cardsSnap.empty) continue;
         const lead = Math.min(10, Math.max(1, Number(userSnap.get('settings.reminderDays')) || 3));
         const cards = cardsSnap.docs.map(d => ({ id: d.id, ...d.data() }) as CardLite);
         const statements = stmtSnap.docs.map(d => {
           const x = d.data();
           return { id: d.id, ...x, statementDate: x.statementDate.toDate(), dueDate: x.dueDate.toDate() } as StatementLite;
         });
-        const msg = digest(computeDueReminders(cards, statements, now, lead));
+        const bills = billSnap.docs.map(d => {
+          const x = d.data();
+          return {
+            id: d.id,
+            userId: uid,
+            description: String(x.description ?? 'Payment'),
+            amount: Number(x.amount) || 0,
+            dueDate: typeof x.dueDate?.toDate === 'function' ? x.dueDate.toDate() : new Date(NaN),
+            paused: !!x.paused,
+            reminderDays: x.reminderDays === undefined || x.reminderDays === null ? undefined : Number(x.reminderDays),
+          } as BillLite;
+        });
+        const msg = digest([...computeDueReminders(cards, statements, now, lead), ...computeBillReminders(bills, now, lead)]);
         if (!msg) continue;
         sent += await pushToUser(uid, { ...msg, route: '/notifications', tag: 'daily-due' }, 'dues');
       } catch (e) {

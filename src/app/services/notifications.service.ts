@@ -20,6 +20,10 @@ import { AuthService } from './auth.service';
 import { CardsService } from './cards.service';
 import { CardStatementsService } from './card-statements.service';
 import { WalletsService, WalletView } from './wallets.service';
+import { UpcomingPaymentService } from './upcoming-payment.service';
+import { ReceivableService } from './receivable.service';
+import { recurringFrom } from '../models/recurring.model';
+import { lendingFrom } from '../models/lending.model';
 import { AppNotification, Reminder } from '../models/app-notification.model';
 import { Card, cardLabel, expiryInfo, nextDueDate, nextStatementDate } from '../models/card.model';
 import { CardStatement, dueInfo } from '../models/card-statement.model';
@@ -37,6 +41,8 @@ export class NotificationsService {
   private cards = inject(CardsService);
   private statements = inject(CardStatementsService);
   private wallets = inject(WalletsService);
+  private upcoming = inject(UpcomingPaymentService);
+  private receivables = inject(ReceivableService);
   private col = collection(this.firestore, 'notifications');
 
   /** Stored event notifications, newest first. Needs index notifications(userId ASC, createdAt DESC). */
@@ -51,8 +57,19 @@ export class NotificationsService {
     .pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
   /** Live reminders computed from cards + statements (never stored, never stale). */
-  readonly reminders$: Observable<Reminder[]> = combineLatest([this.cards.cards$, this.statements.statements$, this.wallets.views$]).pipe(
-    map(([cards, statements, wallets]) => [...NotificationsService.computeReminders(cards, statements), ...NotificationsService.walletReminders(wallets)]),
+  readonly reminders$: Observable<Reminder[]> = combineLatest([
+    this.cards.cards$,
+    this.statements.statements$,
+    this.wallets.views$,
+    this.upcoming.getAll(),
+    this.receivables.getAll(),
+  ]).pipe(
+    map(([cards, statements, wallets, bills, loans]) => [
+      ...NotificationsService.computeReminders(cards, statements),
+      ...NotificationsService.billReminders(bills),
+      ...NotificationsService.lendingReminders(loans),
+      ...NotificationsService.walletReminders(wallets),
+    ].sort((a, b) => (a.tone === b.tone ? 0 : a.tone === 'overdue' ? -1 : 1) || a.date.getTime() - b.date.getTime())),
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
@@ -198,6 +215,55 @@ export class NotificationsService {
       }
     }
     return out.sort((a, b) => (a.tone === b.tone ? 0 : a.tone === 'overdue' ? -1 : 1) || a.date.getTime() - b.date.getTime());
+  }
+
+  /**
+   * Bills / recurring payments inside their reminder window. The key holds the due date and the
+   * stage, so each cycle reminds once when it comes up and once more if it becomes overdue.
+   */
+  static billReminders(docs: any[], today = new Date()): Reminder[] {
+    const out: Reminder[] = [];
+    for (const d of docs) {
+      const p = recurringFrom(d);
+      if (p.paused) continue;
+      const days = daysBetween(today, p.dueDate);
+      if (days > p.reminderDays) continue;
+      const overdue = days < 0;
+      out.push({
+        key: `bill-${p.id}-${p.dueDate.getTime()}-${overdue ? 'overdue' : 'soon'}`,
+        type: overdue ? 'bill_overdue' : 'bill_due',
+        tone: overdue || days === 0 ? 'overdue' : 'soon',
+        title: overdue ? `Payment overdue · ${p.description}` : `${p.description} due ${relativeDays(days)}`,
+        body: `₹${p.amount.toLocaleString('en-IN')} ${overdue ? `was due ${p.dueDate.toDateString()}` : `due ${p.dueDate.toDateString()}`}.`,
+        date: p.dueDate,
+        cardId: p.id,
+        link: '/recurring',
+      });
+    }
+    return out;
+  }
+
+  /** Money you lent / borrowed with a repayment date within 3 days or past it. */
+  static lendingReminders(docs: any[], today = new Date()): Reminder[] {
+    const out: Reminder[] = [];
+    for (const d of docs) {
+      const r = lendingFrom(d);
+      if (r.status === 'PAID' || !r.dueDate) continue;
+      const days = daysBetween(today, r.dueDate);
+      if (days > 3) continue;
+      const lent = r.direction === 'lent';
+      out.push({
+        key: `lend-${r.id}-${r.dueDate.getTime()}-${days < 0 ? 'overdue' : 'soon'}`,
+        type: 'lending_due',
+        tone: days <= 0 ? 'overdue' : 'soon',
+        title: lent ? `${r.person} owes you ₹${r.outstanding.toLocaleString('en-IN')}` : `You owe ${r.person} ₹${r.outstanding.toLocaleString('en-IN')}`,
+        body: days < 0 ? `Repayment was expected ${r.dueDate.toDateString()}.` : `Repayment expected ${relativeDays(days)}.`,
+        date: r.dueDate,
+        cardId: r.id,
+        link: '/',
+      });
+    }
+    return out;
   }
 
   /** Wallets below their warning amount. The key holds the threshold, so changing it can alert again. */

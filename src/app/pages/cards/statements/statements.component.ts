@@ -9,13 +9,14 @@ import { CardStatement, dueInfo } from '../../../models/card-statement.model';
 import { StatementFormComponent, StatementFormData } from '../../../dialogs/statement-form/statement-form.component';
 import { UndoService } from '../../../services/undo.service';
 import { VisiblePipe } from '../../../pipes/visible.pipe';
+import { IconComponent } from '../../../ui/icon.component';
 
 type StatusFilter = 'open' | 'all' | 'Paid';
 
 @Component({
   selector: 'app-card-statements',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, VisiblePipe],
+  imports: [IconComponent, DatePipe, DecimalPipe, VisiblePipe],
   templateUrl: './statements.component.html',
   styleUrl: './statements.component.scss',
 })

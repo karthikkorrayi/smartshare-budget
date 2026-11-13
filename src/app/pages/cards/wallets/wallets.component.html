@@ -17,7 +17,7 @@
   <div class="cc-empty"><div class="cc-spinner"></div><p>Loading wallets…</p></div>
 } @else if (!wallets().length) {
   <div class="cc-empty">
-    <div class="icon">👛</div>
+    <div class="icon"><app-icon name="wallet" [size]="30" /></div>
     <h2>No wallets yet</h2>
     <p>Add the cash you carry, or a Paytm / Amazon Pay / PhonePe wallet, to see its balance and count what you spend from it.</p>
     <button class="cc-btn cc-btn--primary" (click)="addWallet()">+ Add your first wallet</button>
@@ -37,7 +37,7 @@
       <article class="cc-panel wallet" [class.selected]="selected() === w.id" [class.closed]="w.status === 'Closed'">
         <button type="button" class="wallet-main" (click)="select(w.id)" [attr.aria-pressed]="selected() === w.id"
                 [attr.aria-label]="'Show only ' + w.name">
-          <span class="w-icon" aria-hidden="true">{{ kindInfo[w.kind].icon }}</span>
+          <span class="w-icon" aria-hidden="true"><app-icon [name]="kindInfo[w.kind].icon" [size]="18" /></span>
           <span class="w-text">
             <span class="w-name">{{ w.name }}</span>
             <span class="w-sub">{{ w.provider || kindInfo[w.kind].label }}</span>
@@ -62,7 +62,7 @@
               <button class="cc-btn cc-btn--sm" (click)="record('topup', w.id)">Top-up</button>
             }
             <button class="cc-btn cc-btn--sm" (click)="editWallet(w)">Edit</button>
-            <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="confirmDeleteId.set(w.id)" aria-label="Delete wallet">✕</button>
+            <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="confirmDeleteId.set(w.id)" aria-label="Delete wallet"><app-icon name="trash2" [size]="15" /></button>
           </div>
         }
       </article>
@@ -75,7 +75,7 @@
   }
 
   <section class="cc-filters activity-head">
-    <h2>Activity @if (selected() !== 'all') { <button type="button" class="cc-chip active" (click)="selected.set('all')" [attr.aria-label]="'Show all wallets'">{{ walletName(selected()) }} ✕</button> }</h2>
+    <h2>Activity @if (selected() !== 'all') { <button type="button" class="cc-chip active" (click)="selected.set('all')" [attr.aria-label]="'Show all wallets'">{{ walletName(selected()) }} <app-icon name="x" [size]="13" /></button> }</h2>
     <div class="month-nav">
       <button class="cc-btn cc-btn--sm" (click)="shiftMonth(-1)" aria-label="Previous month">‹</button>
       <input type="month" [value]="month()" (change)="month.set($any($event.target).value || month())" aria-label="Month" />
@@ -101,7 +101,7 @@
                 </span>
                 @if (t.source !== 'manual') {
                   <span class="tags">
-                    @if (t.source === 'email') { <span class="cc-badge tone-info" title="Approved from Gmail">✉ Gmail</span> }
+                    @if (t.source === 'email') { <span class="cc-badge tone-info" title="Approved from Gmail"><app-icon name="mail" [size]="12" /> Gmail</span> }
                     @if (t.source === 'demo') { <span class="cc-badge tone-demo">Sample</span> }
                   </span>
                 }
@@ -112,7 +112,7 @@
                 </span>
                 <span class="row-actions">
                   <button class="cc-btn cc-btn--sm" (click)="editTxn(t)">Edit</button>
-                  <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="removeTxn(t)" aria-label="Delete">✕</button>
+                  <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="removeTxn(t)" aria-label="Delete"><app-icon name="trash2" [size]="15" /></button>
                 </span>
               </div>
             </div>

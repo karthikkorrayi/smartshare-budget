@@ -3,12 +3,12 @@ export const MONITOR_GROUPS = ['salary', 'bank', 'cards', 'bills', 'payments', '
 export type MonitorGroup = (typeof MONITOR_GROUPS)[number];
 
 export const MONITOR_GROUP_INFO: Record<MonitorGroup, { label: string; icon: string; hint: string }> = {
-  salary: { label: 'Salary', icon: '💰', hint: 'Salary credits → Income' },
-  bank: { label: 'Bank transactions', icon: '🏦', hint: 'Account credits & debits, UPI/NEFT/IMPS → Income / Expenses' },
-  cards: { label: 'Credit cards', icon: '💳', hint: 'Card spends, refunds, statements, due-date changes → Cards' },
-  bills: { label: 'Bills & dues', icon: '🧾', hint: 'Bills generated, payment due reminders → Upcoming payments' },
-  payments: { label: 'Payment confirmations', icon: '✅', hint: 'Payments received / successful → Cards or Expenses' },
-  wallets: { label: 'Wallets', icon: '👛', hint: 'Paytm, Amazon Pay, PhonePe, MobiKwik, FASTag spends, top-ups, refunds & cashback → Wallets' },
+  salary: { label: 'Salary', icon: 'briefcase', hint: 'Salary credits → Income' },
+  bank: { label: 'Bank transactions', icon: 'landmark', hint: 'Account credits & debits, UPI/NEFT/IMPS → Income / Expenses' },
+  cards: { label: 'Credit cards', icon: 'credit-card', hint: 'Card spends, refunds, statements, due-date changes → Cards' },
+  bills: { label: 'Bills & dues', icon: 'receipt', hint: 'Bills generated, payment due reminders → Upcoming payments' },
+  payments: { label: 'Payment confirmations', icon: 'circle-check', hint: 'Payments received / successful → Cards or Expenses' },
+  wallets: { label: 'Wallets', icon: 'wallet', hint: 'Paytm, Amazon Pay, PhonePe, MobiKwik, FASTag spends, top-ups, refunds & cashback → Wallets' },
 };
 
 export type ConnectionStatus = 'active' | 'reauth_required' | 'error';

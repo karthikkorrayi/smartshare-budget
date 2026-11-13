@@ -34,7 +34,7 @@ export interface AppNotification {
 /** A live, computed reminder (not stored). */
 export interface Reminder {
   key: string;
-  type: 'statement_upcoming' | 'payment_due' | 'payment_overdue' | 'card_expiring' | 'wallet_low';
+  type: 'statement_upcoming' | 'payment_due' | 'payment_overdue' | 'card_expiring' | 'wallet_low' | 'bill_due' | 'bill_overdue' | 'lending_due';
   tone: 'soon' | 'overdue';
   title: string;
   body: string;
@@ -44,16 +44,20 @@ export interface Reminder {
   link: string;
 }
 
+/** Lucide icon names (rendered with <app-icon>). */
 export const NOTIFICATION_ICONS: Record<string, string> = {
-  new_transaction: '💳',
-  statement_generated: '🧾',
-  statement_upcoming: '🗓️',
-  payment_due: '⏰',
-  payment_reminder: '⏰',
-  payment_overdue: '⚠️',
-  card_updated: '✏️',
-  card_expiring: '⌛',
-  wallet_low: '👛',
-  review_pending: '🔍',
-  limit_exceeded: '🚦',
+  new_transaction: 'credit-card',
+  statement_generated: 'receipt-text',
+  statement_upcoming: 'calendar-days',
+  payment_due: 'alarm-clock',
+  payment_reminder: 'alarm-clock',
+  payment_overdue: 'alert-triangle',
+  card_updated: 'square-pen',
+  card_expiring: 'hourglass',
+  wallet_low: 'wallet',
+  review_pending: 'inbox',
+  limit_exceeded: 'zap',
+  bill_due: 'calendar-clock',
+  bill_overdue: 'alert-triangle',
+  lending_due: 'handshake',
 };

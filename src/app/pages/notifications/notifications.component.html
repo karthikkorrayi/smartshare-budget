@@ -12,7 +12,7 @@
   <!-- Pending review call-to-action -->
   @if (pending().length) {
     <a class="cc-panel review-cta" routerLink="/review">
-      <span class="icon">🔍</span>
+      <span class="icon"><app-icon name="inbox" [size]="20" /></span>
       <span class="text">
         <strong>{{ pending().length }} item{{ pending().length === 1 ? '' : 's' }} waiting for review</strong>
         <small>Extracted from email — approve, edit or reject before they count.</small>
@@ -61,7 +61,7 @@
     <section class="cc-panel list">
       @for (n of shown(); track n.id) {
         <div class="row" [class.unread]="!n.read || isNew(n.id)">
-          <span class="row-icon">{{ icons[n.type] || '🔔' }}</span>
+          <span class="row-icon"><app-icon [name]="icons[n.type] || 'bell'" [size]="18" /></span>
           <button class="row-text as-link" (click)="open(n)">
             <strong>
               {{ n.title }}
@@ -71,8 +71,8 @@
             <small class="when">{{ n.createdAt ? (n.createdAt | date: 'd MMM, h:mm a') : 'just now' }}</small>
           </button>
           <span class="row-actions">
-            @if (!n.read) { <button class="cc-btn cc-btn--sm" (click)="markRead(n)" aria-label="Mark read">✓</button> }
-            <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="remove(n)" aria-label="Delete">✕</button>
+            @if (!n.read) { <button class="cc-btn cc-btn--sm" (click)="markRead(n)" aria-label="Mark read"><app-icon name="check" [size]="15" /></button> }
+            <button class="cc-btn cc-btn--sm cc-btn--danger-text" (click)="remove(n)" aria-label="Delete"><app-icon name="trash2" [size]="15" /></button>
           </span>
         </div>
       }

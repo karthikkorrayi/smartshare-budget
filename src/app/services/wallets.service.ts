@@ -17,6 +17,8 @@ import {
 import { Observable, combineLatest, map, shareReplay } from 'rxjs';
 import { AuthService } from './auth.service';
 import { SpendingService } from './spending.service';
+import { IncomeService } from './income.service';
+import { TransfersService } from './transfers.service';
 import {
   Wallet,
   WalletInput,
@@ -43,6 +45,8 @@ export class WalletsService {
   private firestore = inject(Firestore);
   private auth = inject(AuthService);
   private spending = inject(SpendingService);
+  private income = inject(IncomeService);
+  private transfers = inject(TransfersService);
   private wallets = collection(this.firestore, 'wallets');
   private txns = collection(this.firestore, 'wallet_transactions');
 
@@ -71,11 +75,22 @@ export class WalletsService {
     )
     .pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
-  /** Wallets with their live balance. */
-  readonly views$: Observable<WalletView[]> = combineLatest([this.wallets$, this.transactions$]).pipe(
-    map(([wallets, txns]) =>
+  /**
+   * Wallets with their live balance: opening + wallet transactions, plus income received straight
+   * into the wallet and transfers to / from bank accounts (both added with the redesign).
+   */
+  readonly views$: Observable<WalletView[]> = combineLatest([
+    this.wallets$,
+    this.transactions$,
+    this.income.linkedTo('wallet'),
+    this.transfers.transfers$,
+  ]).pipe(
+    map(([wallets, txns, income, transfers]) =>
       wallets.map(w => {
-        const balance = walletBalance(w, txns);
+        const extra =
+          income.filter(i => i['accountId'] === w.id).reduce((s, i) => s + (Number(i['amount']) || 0), 0) +
+          transfers.reduce((s, t) => s + (t.toType === 'wallet' && t.toId === w.id ? t.amount : 0) - (t.fromType === 'wallet' && t.fromId === w.id ? t.amount : 0), 0);
+        const balance = Math.round((walletBalance(w, txns) + extra) * 100) / 100;
         return { ...w, balance, low: isLowBalance(w, balance) };
       })
     ),
@@ -105,9 +120,21 @@ export class WalletsService {
   async deleteWithHistory(id: string): Promise<void> {
     const uid = this.auth.requireUid();
     const snap = await getDocs(query(this.txns, where('userId', '==', uid), where('walletId', '==', id)));
-    for (const part of chunk(snap.docs)) {
+    const transfers = [];
+    for (const field of ['fromId', 'toId']) {
+      const t = await getDocs(query(collection(this.firestore, 'transfers'), where('userId', '==', uid), where(field, '==', id)));
+      transfers.push(...t.docs);
+    }
+    for (const part of chunk([...snap.docs, ...transfers])) {
       const b = writeBatch(this.firestore);
       part.forEach(d => b.delete(d.ref));
+      await b.commit();
+    }
+    // Income received into this wallet stays in the budget, just no longer linked to it.
+    const inc = await getDocs(query(collection(this.firestore, 'income'), where('userId', '==', uid), where('accountId', '==', id)));
+    for (const part of chunk(inc.docs)) {
+      const b = writeBatch(this.firestore);
+      part.forEach(d => b.update(d.ref, { accountType: null, accountId: null }));
       await b.commit();
     }
     await deleteDoc(doc(this.firestore, 'wallets', id));

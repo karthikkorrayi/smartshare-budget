@@ -1,6 +1,6 @@
 <div class="cc-dialog">
   <div class="cc-dialog-head">
-    <span class="icon" aria-hidden="true">🧾</span>
+    <span class="icon" aria-hidden="true"><app-icon name="receipt" [size]="22" /></span>
     <div>
       <h2>{{ isEdit ? 'Edit transaction' : 'Add transaction' }}</h2>
       @if (isEdit && data.txn!.source !== 'manual') {

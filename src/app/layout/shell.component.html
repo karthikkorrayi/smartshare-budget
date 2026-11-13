@@ -1,0 +1,198 @@
+<a class="skip" href="#main" (click)="$event.preventDefault(); mainEl.focus()">Skip to content</a>
+
+<div class="shell" [class.collapsed]="collapsed()" [class.drawer-open]="drawerOpen()">
+  <!-- ── Sidebar (desktop) / drawer (mobile) ─────────────────────── -->
+  <aside class="sidebar" aria-label="Main navigation">
+    <div class="brand">
+      <app-logo [size]="34" />
+      <div class="brand-text">
+        <span class="name">SmartShare</span>
+        <span class="tag">Budget</span>
+      </div>
+      <button class="btn btn-ghost btn-icon btn-sm collapse-btn" (click)="toggleCollapsed()"
+              [attr.aria-label]="collapsed() ? 'Expand sidebar' : 'Collapse sidebar'" [attr.aria-expanded]="!collapsed()">
+        <app-icon [name]="collapsed() ? 'panel-left-open' : 'panel-left-close'" [size]="18" />
+      </button>
+      <button class="btn btn-ghost btn-icon btn-sm drawer-close" (click)="drawerOpen.set(false)" aria-label="Close menu">
+        <app-icon name="x" />
+      </button>
+    </div>
+
+    <button class="btn btn-primary btn-block add-btn" (click)="add('expense')">
+      <app-icon name="plus" [size]="18" /><span class="lbl">New transaction</span>
+    </button>
+
+    <nav class="nav">
+      @for (n of primary; track n.path) {
+        <a [routerLink]="n.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!n.exact }" [attr.title]="collapsed() ? n.label : null">
+          <app-icon [name]="n.icon" [size]="19" />
+          <span class="lbl">{{ n.label }}</span>
+          @if (n.badge && n.badge()) { <span class="count-pill">{{ n.badge() > 99 ? '99+' : n.badge() }}</span> }
+        </a>
+      }
+
+      <div class="nav-section"><span class="lbl">Accounts</span></div>
+      @for (n of manage; track n.path) {
+        <a [routerLink]="n.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!n.exact }" [attr.title]="collapsed() ? n.label : null">
+          <app-icon [name]="n.icon" [size]="19" />
+          <span class="lbl">{{ n.label }}</span>
+        </a>
+      }
+
+      <div class="nav-section"><span class="lbl">Connections</span></div>
+      @for (n of connect; track n.path) {
+        <a [routerLink]="n.path" routerLinkActive="active" [attr.title]="collapsed() ? n.label : null">
+          <app-icon [name]="n.icon" [size]="19" />
+          <span class="lbl">{{ n.label }}</span>
+          @if (n.badge && n.badge()) { <span class="count-pill">{{ n.badge() > 99 ? '99+' : n.badge() }}</span> }
+        </a>
+      }
+    </nav>
+
+    <div class="side-foot">
+      <div class="theme-switch seg" role="radiogroup" aria-label="Theme">
+        <button role="radio" [attr.aria-checked]="theme.pref() === 'light'" [class.on]="theme.pref() === 'light'" (click)="setTheme('light')" title="Light"><app-icon name="sun" [size]="15" /></button>
+        <button role="radio" [attr.aria-checked]="theme.pref() === 'dark'" [class.on]="theme.pref() === 'dark'" (click)="setTheme('dark')" title="Dark"><app-icon name="moon" [size]="15" /></button>
+        <button role="radio" [attr.aria-checked]="theme.pref() === 'system'" [class.on]="theme.pref() === 'system'" (click)="setTheme('system')" title="System"><app-icon name="monitor" [size]="15" /></button>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" (click)="drawerOpen.set(false)" aria-hidden="true"></div>
+
+  <!-- ── Main column ─────────────────────────────────────────────── -->
+  <div class="main">
+    <header class="topbar">
+      <button class="btn btn-ghost btn-icon menu-btn" (click)="drawerOpen.set(true)" aria-label="Open menu">
+        <app-icon name="menu" [size]="20" />
+      </button>
+      <div class="title">
+        <h1>{{ title() }}</h1>
+        <span class="date">{{ today | date: 'EEEE, d MMMM' }}</span>
+      </div>
+
+      <div class="top-actions">
+        <div class="quick">
+          <button class="btn btn-sm" (click)="add('income')"><app-icon name="arrow-down-left" [size]="16" />Income</button>
+          <button class="btn btn-sm btn-primary" (click)="add('expense')"><app-icon name="arrow-up-right" [size]="16" />Expense</button>
+        </div>
+
+        <!-- Theme (compact, mobile + tablet) -->
+        <button class="btn btn-ghost btn-icon theme-btn" (click)="theme.cycle()"
+                [attr.aria-label]="'Theme: ' + theme.pref() + '. Change theme'" [title]="'Theme: ' + theme.pref()">
+          <app-icon [name]="theme.pref() === 'system' ? 'monitor' : theme.resolved() === 'dark' ? 'moon' : 'sun'" />
+        </button>
+
+        <!-- Notifications -->
+        <div class="pop-anchor">
+          <button class="btn btn-ghost btn-icon bell" (click)="toggle('bell', $event)" [attr.aria-expanded]="menu() === 'bell'"
+                  aria-haspopup="true" [attr.aria-label]="'Notifications' + (badge() ? ', ' + badge() + ' new' : '')">
+            <app-icon name="bell" [size]="19" />
+            @if (badge()) { <span class="count-pill bell-count">{{ badge() > 99 ? '99+' : badge() }}</span> }
+          </button>
+          @if (menu() === 'bell') {
+            <div class="pop pop-bell" role="dialog" aria-label="Notifications" (click)="$event.stopPropagation()">
+              <div class="pop-head">
+                <strong>Notifications</strong>
+                <a class="btn btn-ghost btn-sm" routerLink="/notifications">View all</a>
+              </div>
+              @if (feed().length) {
+                <div class="feed">
+                  @for (n of feed(); track n.key) {
+                    <button class="list-row feed-row" (click)="open(n.link)">
+                      <span class="icon-tile sm" [class.neg]="n.tone === 'overdue'" [class.warn]="n.tone === 'soon'" [class.info]="n.tone === 'info'">
+                        <app-icon [name]="n.icon" [size]="16" />
+                      </span>
+                      <span class="grow">
+                        <span class="title">{{ n.title }}</span>
+                        <span class="sub">{{ n.body }}</span>
+                      </span>
+                      @if (n.unread) { <span class="dot" style="background: var(--accent)" aria-label="Unread"></span> }
+                    </button>
+                  }
+                </div>
+              } @else {
+                <div class="pop-empty"><app-icon name="check-check" [size]="22" /><span>You're all caught up.</span></div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Profile -->
+        <div class="pop-anchor">
+          <button class="avatar-btn" (click)="toggle('profile', $event)" [attr.aria-expanded]="menu() === 'profile'" aria-haspopup="menu" aria-label="Profile menu">
+            <span class="avatar">{{ initial() }}</span>
+            <span class="who">{{ firstName() }}</span>
+            <app-icon name="chevron-down" [size]="15" />
+          </button>
+          @if (menu() === 'profile') {
+            <div class="pop pop-profile" role="menu" (click)="$event.stopPropagation()">
+              <div class="me">
+                <span class="avatar lg">{{ initial() }}</span>
+                <div class="truncate">
+                  <strong class="truncate">{{ auth.account()?.displayName || firstName() }}</strong>
+                  <span class="muted tiny truncate">{{ auth.account()?.email }}</span>
+                </div>
+              </div>
+              <div class="menu-list">
+                <a role="menuitem" routerLink="/profile"><app-icon name="user" [size]="17" />Profile &amp; preferences</a>
+                <a role="menuitem" routerLink="/notifications"><app-icon name="bell" [size]="17" />Notifications</a>
+                <a role="menuitem" routerLink="/gmail"><app-icon name="mail" [size]="17" />Gmail sync</a>
+                <a role="menuitem" routerLink="/profile" fragment="security"><app-icon name="shield-check" [size]="17" />Privacy &amp; security</a>
+              </div>
+              <div class="menu-theme">
+                <span class="muted tiny">Appearance</span>
+                <div class="seg" role="radiogroup" aria-label="Theme">
+                  <button role="radio" [attr.aria-checked]="theme.pref() === 'light'" [class.on]="theme.pref() === 'light'" (click)="setTheme('light')"><app-icon name="sun" [size]="14" />Light</button>
+                  <button role="radio" [attr.aria-checked]="theme.pref() === 'dark'" [class.on]="theme.pref() === 'dark'" (click)="setTheme('dark')"><app-icon name="moon" [size]="14" />Dark</button>
+                  <button role="radio" [attr.aria-checked]="theme.pref() === 'system'" [class.on]="theme.pref() === 'system'" (click)="setTheme('system')"><app-icon name="monitor" [size]="14" />System</button>
+                </div>
+              </div>
+              <div class="menu-list">
+                @if (install.canInstall()) {
+                  <button role="menuitem" (click)="installApp()"><app-icon name="download" [size]="17" />Install app</button>
+                }
+                <button role="menuitem" class="danger" (click)="logout()"><app-icon name="log-out" [size]="17" />Sign out</button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    @if (!online()) {
+      <div class="banner warn" role="status"><app-icon name="wifi-off" [size]="16" />You're offline. Changes are saved on this device and sync when you're back online.</div>
+    } @else if (auth.queryError()) {
+      <div class="banner neg" role="alert">
+        <app-icon name="alert-triangle" [size]="16" />
+        <span>Some data couldn't be loaded, so totals may be incomplete. Check your connection and reload.</span>
+        <button class="btn btn-ghost btn-sm" (click)="auth.queryError.set(null)">Dismiss</button>
+      </div>
+    }
+
+    <main id="main" class="content" tabindex="-1" #mainEl>
+      <router-outlet />
+    </main>
+  </div>
+
+  <!-- ── Bottom navigation (phones) ──────────────────────────────── -->
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><app-icon name="layout-dashboard" [size]="21" /><span>Home</span></a>
+    <a routerLink="/recurring" routerLinkActive="active"><app-icon name="repeat" [size]="21" /><span>Recurring</span></a>
+    <div class="fab-wrap pop-anchor">
+      <button class="fab" (click)="toggle('add', $event)" [attr.aria-expanded]="menu() === 'add'" aria-label="Add transaction">
+        <app-icon [name]="menu() === 'add' ? 'x' : 'plus'" [size]="24" [stroke]="2.25" />
+      </button>
+      @if (menu() === 'add') {
+        <div class="pop pop-add" role="menu" (click)="$event.stopPropagation()">
+          <button role="menuitem" (click)="add('expense')"><span class="icon-tile sm neg"><app-icon name="arrow-up-right" [size]="16" /></span>Expense</button>
+          <button role="menuitem" (click)="add('income')"><span class="icon-tile sm pos"><app-icon name="arrow-down-left" [size]="16" /></span>Income</button>
+          <button role="menuitem" (click)="add('transfer')"><span class="icon-tile sm info"><app-icon name="arrow-left-right" [size]="16" /></span>Transfer</button>
+        </div>
+      }
+    </div>
+    <a routerLink="/review" routerLinkActive="active">
+      <span class="bn-icon"><app-icon name="clipboard-list" [size]="21" />@if (pending()) { <span class="count-pill">{{ pending() }}</span> }</span><span>Review</span>
+    </a>
+    <button (click)="drawerOpen.set(true)"><app-icon name="layers" [size]="21" /><span>More</span></button>
+  </nav>
+</div>

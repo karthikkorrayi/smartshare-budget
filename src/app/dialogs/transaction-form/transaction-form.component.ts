@@ -6,6 +6,7 @@ import { CardTransaction, TXN_CATEGORIES, TxnDirection } from '../../models/card
 import { CardTransactionsService } from '../../services/card-transactions.service';
 import { fromDateInput, toDateInput } from '../../utils/date-input.util';
 import { UndoService } from '../../services/undo.service';
+import { IconComponent } from '../../ui/icon.component';
 
 export interface TransactionFormData {
   cards: Card[];
@@ -16,7 +17,7 @@ export interface TransactionFormData {
 @Component({
   selector: 'app-transaction-form',
   standalone: true,
-  imports: [FormsModule],
+  imports: [IconComponent, FormsModule],
   templateUrl: './transaction-form.component.html',
 })
 export class TransactionFormComponent {

@@ -6,7 +6,7 @@
       <p>Everything detected in your Gmail waits here. Check the category and values, then approve — only approved items reach Income, Expenses, Bills and Cards.</p>
     </div>
     <div class="cc-heading-actions">
-      <a class="cc-btn" routerLink="/gmail">📬 Gmail settings</a>
+      <a class="cc-btn" routerLink="/gmail"><app-icon name="mail" [size]="16" />Gmail settings</a>
     </div>
   </section>
 
@@ -38,7 +38,7 @@
         @if (bulkReady().length > 1) {
           <button class="cc-btn cc-btn--sm" (click)="approveAllReady()" [disabled]="!!editingId()"
                   title="Approves the items the detector is sure about and that have every value filled in">
-            ✓ Approve {{ bulkReady().length }} ready items
+            <app-icon name="check-check" [size]="16" /> Approve {{ bulkReady().length }} ready items
           </button>
         }
       </section>
@@ -48,13 +48,13 @@
       <div class="cc-empty"><div class="cc-spinner"></div><p>Loading review queue…</p></div>
     } @else if (!pending().length) {
       <div class="cc-empty">
-        <div class="icon">✅</div>
+        <div class="icon"><app-icon name="inbox" [size]="30" /></div>
         <h2>All caught up</h2>
         <p>New salary credits, bank and card transactions, statements and bills found in your connected Gmail will appear here.</p>
         <div class="empty-actions">
           <a class="cc-btn cc-btn--primary" routerLink="/gmail">Connect Gmail</a>
           <button class="cc-btn" (click)="loadSamples()" [disabled]="loadingSamples()">
-            {{ loadingSamples() ? 'Creating…' : '🧪 Try with sample items' }}
+            {{ loadingSamples() ? 'Creating…' : 'Try with sample items' }}
           </button>
         </div>
       </div>
@@ -65,10 +65,10 @@
             <header class="item-head">
               <div class="kinds">
                 @if (item.category) {
-                  <span class="cc-badge tone-info">{{ categoryInfo[item.category].icon }} {{ categoryInfo[item.category].label }}</span>
+                  <span class="cc-badge tone-info"><app-icon [name]="categoryInfo[item.category].icon" [size]="13" /> {{ categoryInfo[item.category].label }}</span>
                 }
-                @if (item.origin === 'demo') { <span class="cc-badge tone-demo">🧪 Sample</span> }
-                @if (needsCheck(item)) { <span class="cc-badge tone-soon" title="The detector wasn't sure, or a value is missing">⚠ Check carefully</span> }
+                @if (item.origin === 'demo') { <span class="cc-badge tone-demo">Sample</span> }
+                @if (needsCheck(item)) { <span class="cc-badge tone-soon" title="The detector wasn't sure, or a value is missing"><app-icon name="alert-triangle" [size]="13" /> Check carefully</span> }
               </div>
               <span class="received">{{ item.email.receivedAt | date: 'd MMM, h:mm a' }}</span>
             </header>
@@ -122,7 +122,7 @@
               }
             </div>
             @if (canSendToWallet(item) && editingId() !== item.id) {
-              <button type="button" class="link-btn to-wallet" (click)="sendToWallet(item)">👛 Paid from a wallet? Add it to a wallet instead</button>
+              <button type="button" class="link-btn to-wallet" (click)="sendToWallet(item)"><app-icon name="wallet" [size]="14" /> Paid from a wallet? Add it to a wallet instead</button>
             }
 
             <!-- Values -->
@@ -245,13 +245,13 @@
     }
   } @else {
     @if (!resolved().length) {
-      <div class="cc-empty"><div class="icon">🗂️</div><h2>No decisions yet</h2><p>Everything you approve or reject is kept here, with what was saved and where it went.</p></div>
+      <div class="cc-empty"><div class="icon"><app-icon name="history" [size]="30" /></div><h2>No decisions yet</h2><p>Everything you approve or reject is kept here, with what was saved and where it went.</p></div>
     } @else {
       <section class="cc-filters toolbar">
         <div class="cc-chips">
           <button class="cc-chip" [class.active]="historyStatus() === 'all'" (click)="historyStatus.set('all')">All <span class="cc-count">{{ historyCounts().all }}</span></button>
-          <button class="cc-chip" [class.active]="historyStatus() === 'approved'" (click)="historyStatus.set('approved')">✓ Approved <span class="cc-count">{{ historyCounts().approved }}</span></button>
-          <button class="cc-chip" [class.active]="historyStatus() === 'rejected'" (click)="historyStatus.set('rejected')">✕ Rejected <span class="cc-count">{{ historyCounts().rejected }}</span></button>
+          <button class="cc-chip" [class.active]="historyStatus() === 'approved'" (click)="historyStatus.set('approved')"><app-icon name="check" [size]="14" /> Approved <span class="cc-count">{{ historyCounts().approved }}</span></button>
+          <button class="cc-chip" [class.active]="historyStatus() === 'rejected'" (click)="historyStatus.set('rejected')"><app-icon name="x" [size]="14" /> Rejected <span class="cc-count">{{ historyCounts().rejected }}</span></button>
         </div>
         <input class="history-search" type="search" placeholder="Search subject, sender, amount…" aria-label="Search history"
                [ngModel]="historyQuery()" (ngModelChange)="historyQuery.set($event)" />
@@ -281,7 +281,7 @@
                   @if (item.resolvedValues?.amount ?? item.extracted.amount; as amt) { <span class="amt">₹{{ amt | number: '1.0-2' }}</span> }
                   @if (item.edited) { <span class="cc-badge tone-soon">Edited</span> }
                   <span class="cc-badge" [class]="item.status === 'approved' ? 'tone-ok' : 'tone-closed'">
-                    {{ item.status === 'approved' ? '✓ Approved' : '✕ Rejected' }}
+                    {{ item.status === 'approved' ? 'Approved' : 'Rejected' }}
                   </span>
                   <span class="chev" aria-hidden="true">▾</span>
                 </span>

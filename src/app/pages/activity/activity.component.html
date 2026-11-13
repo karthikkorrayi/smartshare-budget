@@ -1,0 +1,168 @@
+<div class="page">
+  @if (pending()) {
+    <a class="inbox-banner" routerLink="/review/inbox">
+      <span class="icon-tile accent"><app-icon name="inbox" [size]="18" /></span>
+      <span class="grow"><b>{{ pending() }} item{{ pending() === 1 ? '' : 's' }} from Gmail waiting for review</b><span class="muted tiny">Approve, edit or reject them before they reach your accounts.</span></span>
+      <app-icon name="chevron-right" />
+    </a>
+  }
+
+  <div class="page-head">
+    <div>
+      <h1>Financial activity</h1>
+      <p>Review, organise and correct every entry. {{ range().label }}</p>
+    </div>
+    <div class="actions">
+      <button class="btn" (click)="quick.addTxn('transfer')"><app-icon name="arrow-left-right" [size]="16" />Transfer</button>
+      <button class="btn" (click)="quick.addTxn('income', null)"><app-icon name="arrow-down-left" [size]="16" />Add income</button>
+      <button class="btn btn-primary" (click)="quick.addTxn('expense', null)"><app-icon name="plus" [size]="16" />Add expense</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="seg seg-scroll" role="radiogroup" aria-label="Date range">
+      @for (p of presets; track p.id) { <button role="radio" [attr.aria-checked]="preset() === p.id" [class.on]="preset() === p.id" (click)="preset.set(p.id)">{{ p.label }}</button> }
+    </div>
+    <select class="input sel" [ngModel]="accountKey()" (ngModelChange)="accountKey.set($event)" aria-label="Account">
+      <option value="">All accounts</option>
+      @for (a of accounts(); track a.key) { <option [value]="a.key">{{ a.name }}</option> }
+    </select>
+    @if (preset() === 'custom') {
+      <input class="input sel" type="date" [max]="customEnd()" [ngModel]="customStart()" (ngModelChange)="customStart.set($event)" aria-label="From" />
+      <input class="input sel" type="date" [min]="customStart()" [ngModel]="customEnd()" (ngModelChange)="customEnd.set($event)" aria-label="To" />
+    }
+  </div>
+
+  <div class="metrics">
+    @if (txns() === null) { @for (i of [1, 2, 3, 4]; track i) { <app-skeleton variant="card" /> } }
+    @else {
+      <app-metric icon="arrow-down-left" tone="pos" label="Total income" [value]="sum().income | money" hint="Carry-forward excluded" />
+      <app-metric icon="arrow-up-right" tone="info" label="Total expenses" [value]="sum().spent | money" [hint]="sum().refunds ? 'Net of ' + (sum().refunds | money) + ' refunds' : 'Card bills & top-ups excluded'" />
+      <app-metric icon="activity" [tone]="sum().net >= 0 ? 'pos' : 'neg'" label="Net balance" [value]="sum().net | money" [negative]="sum().net < 0" hint="Income − expenses" />
+      <app-metric icon="list-checks" tone="accent" label="Transactions" [value]="'' + sum().count" [hint]="unlinked() ? unlinked() + ' not linked to an account' : 'All linked to accounts'" />
+    }
+  </div>
+
+  <div class="layout">
+    <nav class="sections" aria-label="Activity sections">
+      @for (s of sections; track s.id) {
+        <button [class.on]="section() === s.id" (click)="section.set(s.id)" [attr.aria-current]="section() === s.id ? 'page' : null">
+          <app-icon [name]="s.icon" [size]="16" /><span>{{ s.label }}</span>
+          @if (s.id === 'lending' && lendOpen().length) { <span class="badge">{{ lendOpen().length }}</span> }
+        </button>
+      }
+    </nav>
+
+    <section class="panel body">
+      @switch (section()) {
+        @case ('all') { <app-txn-table [txns]="txns()" [accounts]="accountMap()" /> }
+        @case ('expenses') { <app-txn-table [txns]="txns() === null ? null : expenses()" [accounts]="accountMap()" [showFlow]="false" emptyTitle="No expenses in this period" emptyText="Add an expense — pick the account, card or wallet you paid from." /> }
+        @case ('income') { <app-txn-table [txns]="txns() === null ? null : income()" [accounts]="accountMap()" [showFlow]="false" emptyTitle="No income in this period" emptyText="Record income into a bank account or wallet." /> }
+        @case ('transfers') {
+          <p class="muted tiny note"><app-icon name="info" [size]="14" /> Transfers, card bill payments, wallet top-ups and cashback move money you already have. They're shown here but never counted as income or spending.</p>
+          <app-txn-table [txns]="txns() === null ? null : moves()" [accounts]="accountMap()" [showFlow]="false" emptyTitle="No transfers in this period" emptyText="Use Transfer to move money between a bank account and a wallet." />
+        }
+        @case ('lending') {
+          <div class="panel-head">
+            <div><h2>Lending &amp; borrowing</h2><p>Partial repayments are supported.</p></div>
+            <div class="panel-actions">
+              <button class="btn btn-sm" (click)="quick.lending('borrowed')"><app-icon name="arrow-down-left" [size]="15" />I borrowed</button>
+              <button class="btn btn-sm btn-primary" (click)="quick.lending('lent')"><app-icon name="arrow-up-right" [size]="15" />I lent</button>
+            </div>
+          </div>
+          @if (!lendOpen().length && !lendClosed().length) {
+            <app-empty art="lending" title="No lending records" text="Keep track of money you lend to friends or borrow from them." />
+          } @else {
+            <div class="lend-list">
+              @for (r of lendOpen(); track r.id) {
+                <div class="lend">
+                  <span class="icon-tile" [class.pos]="r.direction === 'lent'" [class.warn]="r.direction === 'borrowed'"><app-icon [name]="r.direction === 'lent' ? 'arrow-up-right' : 'arrow-down-left'" [size]="17" /></span>
+                  <div class="grow">
+                    <div class="title">{{ r.person }} <span class="badge" [class.pos]="r.direction === 'lent'" [class.warn]="r.direction === 'borrowed'">{{ r.direction === 'lent' ? 'Owes you' : 'You owe' }}</span></div>
+                    <div class="sub muted tiny">{{ r.amount | money }} on {{ r.date | date: 'd MMM y' }} · {{ r.settled | money }} settled · <span [class.amt-neg]="lendDue(r).tone === 'overdue'">{{ lendDue(r).text }}</span>@if (r.notes) { · {{ r.notes }} }</div>
+                    <div class="progress"><span [style.width.%]="(r.settled / r.amount) * 100"></span></div>
+                  </div>
+                  <div class="lend-actions">
+                    <b class="num">{{ r.outstanding | money }}</b>
+                    <div class="settle">
+                      <input class="input" type="number" min="0" [max]="r.outstanding" step="0.01" [placeholder]="'' + r.outstanding" [(ngModel)]="settleAmount[r.id]" [attr.aria-label]="'Repayment amount for ' + r.person" />
+                      <button class="btn btn-sm btn-soft" (click)="settle(r)">Record</button>
+                      <button class="btn btn-sm btn-ghost btn-icon" (click)="removeLending(r)" [attr.aria-label]="'Delete record for ' + r.person"><app-icon name="trash2" [size]="15" /></button>
+                    </div>
+                  </div>
+                </div>
+              }
+              @if (lendClosed().length) {
+                <h3 class="h">Settled</h3>
+                @for (r of lendClosed(); track r.id) {
+                  <div class="list-row">
+                    <span class="icon-tile sm"><app-icon name="circle-check" [size]="15" /></span>
+                    <span class="grow"><span class="title">{{ r.person }}</span><span class="sub">{{ r.direction === 'lent' ? 'Lent' : 'Borrowed' }} {{ r.amount | money }} · settled {{ r.paidDate | date: 'd MMM y' }}</span></span>
+                    <button class="btn btn-sm btn-ghost btn-icon" (click)="removeLending(r)" [attr.aria-label]="'Delete record for ' + r.person"><app-icon name="trash2" [size]="15" /></button>
+                  </div>
+                }
+              }
+            </div>
+          }
+        }
+        @case ('categories') {
+          @if (txns() === null) { <app-skeleton variant="row" /> }
+          @else if (!cats().length && !incomeCats().length) { <app-empty art="chart" title="Nothing to categorise yet" /> }
+          @else {
+            <h3 class="h first">Spending</h3>
+            <div class="cat-table">
+              @for (c of cats(); track c.name) {
+                <button class="cat" (click)="openCategory(c.name)">
+                  <span class="icon-tile sm"><app-icon [name]="c.icon" [size]="15" /></span>
+                  <span class="name">{{ c.name }}<small class="muted">{{ c.count }} entr{{ c.count === 1 ? 'y' : 'ies' }}</small></span>
+                  <span class="bar"><span [style.width.%]="c.pct" [style.background]="c.color"></span></span>
+                  <span class="muted tiny pct">{{ c.pct }}%</span>
+                  <b class="num">{{ c.amount | money }}</b>
+                </button>
+              }
+            </div>
+            @if (incomeCats().length) {
+              <h3 class="h">Income</h3>
+              <div class="cat-table">
+                @for (c of incomeCats(); track c.name) {
+                  <button class="cat" (click)="openCategory(c.name)">
+                    <span class="icon-tile sm pos"><app-icon [name]="c.icon" [size]="15" /></span>
+                    <span class="name">{{ c.name }}</span>
+                    <span class="bar"><span [style.width.%]="c.pct" style="background: var(--pos)"></span></span>
+                    <span class="muted tiny pct">{{ c.pct }}%</span>
+                    <b class="num amt-in">{{ c.amount | money }}</b>
+                  </button>
+                }
+              </div>
+            }
+          }
+        }
+        @case ('accounts') {
+          @if (!perAccount().length) {
+            <app-empty art="accounts" title="No accounts yet" text="Add a bank account, wallet or card to see activity per account.">
+              <button class="btn btn-primary btn-sm" (click)="quick.addAccount('bank')">Add account</button>
+            </app-empty>
+          } @else {
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Account</th><th class="r">Money in</th><th class="r">Spending</th><th class="r">Net</th><th class="r">Entries</th><th class="r">Balance</th></tr></thead>
+                <tbody>
+                  @for (x of perAccount(); track x.a.key) {
+                    <tr (click)="openAccount(x.a)" tabindex="0" (keydown.enter)="openAccount(x.a)">
+                      <td><div class="acc"><span class="icon-tile sm accent"><app-icon [name]="x.a.icon" [size]="15" /></span><span><b>{{ x.a.name }}</b><br /><small class="muted">{{ x.a.subtitle }}</small></span></div></td>
+                      <td class="r num amt-in">{{ x.inflow | money }}</td>
+                      <td class="r num">{{ x.out | money }}</td>
+                      <td class="r num" [class.amt-neg]="x.net < 0">{{ x.net | money }}</td>
+                      <td class="r num">{{ x.count }}</td>
+                      <td class="r num"><b>{{ x.a.balance | money }}</b>@if (x.a.type === 'card') { <small class="muted"> due</small> }</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      }
+    </section>
+  </div>
+</div>

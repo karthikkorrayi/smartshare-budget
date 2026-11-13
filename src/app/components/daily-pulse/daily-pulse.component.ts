@@ -7,6 +7,7 @@ import { SettingsService } from '../../services/settings.service';
 import { AuthService } from '../../services/auth.service';
 import { DEFAULT_SETTINGS } from '../../models/settings.model';
 import { SpendEntry, dayKey, summarize } from '../../utils/spending.util';
+import { IconComponent } from '../../ui/icon.component';
 
 const DISMISS_KEY = 'ssb_pulse_dismissed';
 
@@ -14,7 +15,7 @@ const DISMISS_KEY = 'ssb_pulse_dismissed';
 @Component({
   selector: 'app-daily-pulse',
   standalone: true,
-  imports: [DecimalPipe, RouterLink],
+  imports: [IconComponent, DecimalPipe, RouterLink],
   template: `
     @if (s(); as p) {
       <section class="pulse" [class]="'tone-' + p.tone" aria-label="Today's spending">
@@ -49,9 +50,9 @@ const DISMISS_KEY = 'ssb_pulse_dismissed';
 
         @if (celebrate() && p.message && !dismissed()) {
           <div class="message">
-            <span class="icon">{{ p.message.icon }}</span>
+            <span class="icon"><app-icon [name]="p.message.icon" [size]="18" /></span>
             <span class="text">{{ p.message.text }}</span>
-            <button class="close" (click)="dismiss()" aria-label="Dismiss for today">✕</button>
+            <button class="close" (click)="dismiss()" aria-label="Dismiss for today"><app-icon name="x" [size]="14" /></button>
           </div>
         }
       </section>
@@ -59,27 +60,27 @@ const DISMISS_KEY = 'ssb_pulse_dismissed';
   `,
   styles: [`
     .pulse { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px 18px; margin: 0;
-      padding: 16px 18px; border: 1px solid #e2e8f0; border-radius: 20px; background: #fff; box-shadow: 0 6px 24px rgba(15,23,42,.04); }
+      padding: 16px 18px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: 0 6px 24px rgba(15,23,42,.04); }
     .today { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-    .label { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #64748b; }
-    .amount { font-size: 28px; font-weight: 800; letter-spacing: -.6px; color: #0f172a; }
-    .bar { height: 8px; border-radius: 999px; background: #f1f5f9; overflow: hidden; }
-    .bar span { display: block; height: 100%; border-radius: inherit; background: #0f766e; transition: width .3s; }
-    .tone-warn .bar span { background: #f59e0b; }
-    .tone-over { border-color: #fecaca; }
-    .tone-over .bar span { background: #dc2626; }
-    .tone-over .amount { color: #b91c1c; }
-    .sub { font-size: 13px; color: #475569; }
-    .link { color: #0f766e; font-weight: 650; text-decoration: none; }
+    .label { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-3); }
+    .amount { font-size: 28px; font-weight: 800; letter-spacing: -.6px; color: var(--text); }
+    .bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+    .bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width .3s; }
+    .tone-warn .bar span { background: var(--warn); }
+    .tone-over { border-color: var(--neg); }
+    .tone-over .bar span { background: var(--neg); }
+    .tone-over .amount { color: var(--neg); }
+    .sub { font-size: 13px; color: var(--text-2); }
+    .link { color: var(--accent-strong); font-weight: 650; text-decoration: none; }
     .streaks { display: flex; gap: 10px; align-items: stretch; }
-    .streak { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 10px 12px; border-radius: 14px; background: #f0fdfa; }
-    .num { font-size: 24px; font-weight: 800; color: #0f766e; line-height: 1; }
-    .what { font-size: 12px; color: #475569; }
-    .message { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #f8fafc; }
-    .tone-over .message { background: #fef2f2; }
+    .streak { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 10px 12px; border-radius: 14px; background: var(--accent-soft); }
+    .num { font-size: 24px; font-weight: 800; color: var(--accent-strong); line-height: 1; }
+    .what { font-size: 12px; color: var(--text-2); }
+    .message { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+    .tone-over .message { background: var(--neg-soft); }
     .icon { font-size: 20px; }
-    .text { flex: 1; font-size: 14px; font-weight: 600; color: #0f172a; }
-    .close { border: none; background: none; color: #94a3b8; font-size: 14px; cursor: pointer; padding: 4px 6px; }
+    .text { flex: 1; font-size: 14px; font-weight: 600; color: var(--text); }
+    .close { border: none; background: none; color: var(--text-4); font-size: 14px; cursor: pointer; padding: 4px 6px; }
     @media (max-width: 640px) { .pulse { grid-template-columns: 1fr; } .amount { font-size: 24px; } }
   `],
 })

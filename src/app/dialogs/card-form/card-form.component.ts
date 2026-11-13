@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Card, CardInput } from '../../models/card.model';
 import { CardsService } from '../../services/cards.service';
 import { UndoService } from '../../services/undo.service';
+import { IconComponent } from '../../ui/icon.component';
 
 export interface CardFormData {
   card?: Card;
@@ -14,7 +15,7 @@ const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'
 @Component({
   selector: 'app-card-form',
   standalone: true,
-  imports: [FormsModule],
+  imports: [IconComponent, FormsModule],
   templateUrl: './card-form.component.html',
 })
 export class CardFormComponent {

@@ -26,7 +26,7 @@
   <div class="cc-empty"><div class="cc-spinner" aria-hidden="true"></div><p>Loading your cards…</p></div>
 } @else if (!cards().length) {
   <div class="cc-empty">
-    <div class="icon" aria-hidden="true">💳</div>
+    <div class="icon" aria-hidden="true"><app-icon name="credit-card" [size]="30" /></div>
     <h2>No cards yet</h2>
     <p>Add a card with its statement day and due day. Record transactions and statements manually, or connect Gmail to have them detected for review.</p>
     <button class="cc-btn cc-btn--primary" (click)="addCard()">+ Add your first card</button>
@@ -61,7 +61,7 @@
         </div>
 
         @if (c.expiry.tone !== 'ok') {
-          <div class="row-alert" [class]="'tone-' + c.expiry.tone">⌛ {{ c.expiry.text }}</div>
+          <div class="row-alert" [class]="'tone-' + c.expiry.tone"><app-icon name="hourglass" [size]="13" /> {{ c.expiry.text }}</div>
         }
 
         <dl class="cycle">
@@ -91,7 +91,7 @@
               <div><span>Outstanding</span><strong>₹{{ c.latestDue!.outstanding | number: '1.0-2' }}</strong></div>
             </div>
             @if (s.status !== 'Paid') {
-              <button class="cc-btn cc-btn--sm" (click)="markPaid(s)">✓ Mark fully paid</button>
+              <button class="cc-btn cc-btn--sm" (click)="markPaid(s)"><app-icon name="check" [size]="14" /> Mark fully paid</button>
             }
           </div>
         } @else {

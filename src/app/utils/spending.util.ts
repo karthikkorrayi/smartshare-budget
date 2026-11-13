@@ -82,19 +82,19 @@ export function summarize(entries: SpendEntry[], limit: number, today: Date, sin
   let message: PulseSummary['message'] = null;
   const runNoSpend = noSpend + (todayNoSpend ? 1 : 0);
   if (tone === 'over') {
-    message = { icon: '⚠️', text: `₹${fmt(spent - limit)} over today's limit. Tomorrow is a fresh start.` };
+    message = { icon: 'alert-triangle', text: `₹${fmt(spent - limit)} over today's limit. Tomorrow is a fresh start.` };
   } else if (MILESTONES.includes(runNoSpend) && todayNoSpend) {
-    message = { icon: '🎉', text: `${runNoSpend} no-spend days in a row — that's a milestone!` };
+    message = { icon: 'trophy', text: `${runNoSpend} no-spend days in a row — that's a milestone!` };
   } else if (noSpend >= 1 && todayNoSpend) {
-    message = { icon: '🌱', text: `${runNoSpend} no-spend day${runNoSpend === 1 ? '' : 's'} in a row. Keep it going!` };
+    message = { icon: 'sparkles', text: `${runNoSpend} no-spend day${runNoSpend === 1 ? '' : 's'} in a row. Keep it going!` };
   } else if (limit > 0 && within >= 1 && MILESTONES.includes(within)) {
-    message = { icon: '🏆', text: `Within your daily limit ${within} days running. Brilliant discipline!` };
+    message = { icon: 'award', text: `Within your daily limit ${within} days running. Brilliant discipline!` };
   } else if (limit > 0 && within >= 2) {
-    message = { icon: '✅', text: `Within your daily limit ${within} days in a row.` };
+    message = { icon: 'circle-check', text: `Within your daily limit ${within} days in a row.` };
   } else if (todayNoSpend) {
-    message = { icon: '☀️', text: 'No spending yet today.' };
+    message = { icon: 'sun', text: 'No spending yet today.' };
   } else if (tone === 'warn') {
-    message = { icon: '🟡', text: `₹${fmt(limit - spent)} left in today's limit.` };
+    message = { icon: 'info', text: `₹${fmt(limit - spent)} left in today's limit.` };
   }
 
   return {

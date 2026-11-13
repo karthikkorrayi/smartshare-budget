@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { WALLET_KINDS, WALLET_KIND_INFO, WALLET_PROVIDERS, Wallet, WalletInput, WalletKind } from '../../models/wallet.model';
 import { WalletsService } from '../../services/wallets.service';
 import { UndoService } from '../../services/undo.service';
+import { IconComponent } from '../../ui/icon.component';
 
 export interface WalletFormData {
   wallet?: Wallet;
@@ -12,11 +13,11 @@ export interface WalletFormData {
 @Component({
   selector: 'app-wallet-form',
   standalone: true,
-  imports: [FormsModule],
+  imports: [IconComponent, FormsModule],
   template: `
     <div class="cc-dialog">
       <div class="cc-dialog-head">
-        <span class="icon" aria-hidden="true">👛</span>
+        <span class="icon" aria-hidden="true"><app-icon name="wallet" [size]="22" /></span>
         <div>
           <h2>{{ isEdit ? 'Edit wallet' : 'Add a wallet' }}</h2>
           <p>Cash, a UPI app wallet or a prepaid card. Its balance is worked out from what you record.</p>
@@ -27,7 +28,7 @@ export interface WalletFormData {
         <div class="kinds" role="radiogroup" aria-label="Wallet type">
           @for (k of kinds; track k) {
             <button type="button" class="kind" role="radio" [attr.aria-checked]="form.kind === k" [class.active]="form.kind === k" (click)="setKind(k)">
-              <span class="k-icon" aria-hidden="true">{{ kindInfo[k].icon }}</span>
+              <span class="k-icon" aria-hidden="true"><app-icon [name]="kindInfo[k].icon" [size]="20" /></span>
               <span class="k-label">{{ kindInfo[k].label }}</span>
               <small>{{ kindInfo[k].hint }}</small>
             </button>
@@ -86,12 +87,12 @@ export interface WalletFormData {
     .kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
     .kind {
       display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; text-align: left;
-      border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; cursor: pointer; font: inherit; color: #0f172a;
-      &.active { border-color: #0f766e; background: #f0fdfa; box-shadow: 0 0 0 1px #0f766e inset; }
-      .k-icon { font-size: 20px; } .k-label { font-weight: 700; font-size: 14px; } small { color: #64748b; font-size: 12px; }
+      border: 1px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; font: inherit; color: var(--text);
+      &.active { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+      .k-icon { font-size: 20px; } .k-label { font-weight: 700; font-size: 14px; } small { color: var(--text-3); font-size: 12px; }
     }
-    .cc-hint { margin: -4px 0 10px; font-size: 12px; color: #64748b; }
-    .cc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #334155; margin-bottom: 10px; }
+    .cc-hint { margin: -4px 0 10px; font-size: 12px; color: var(--text-3); }
+    .cc-check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-2); margin-bottom: 10px; }
   `],
 })
 export class WalletFormComponent {

@@ -28,8 +28,20 @@ export interface StatementLite {
   status: string;
 }
 
+/** upcoming_payments document (bills / recurring payments). */
+export interface BillLite {
+  id: string;
+  userId: string;
+  description: string;
+  amount: number;
+  dueDate: Date;
+  paused?: boolean;
+  /** Days before the due date to start reminding (default: the user's lead time). */
+  reminderDays?: number;
+}
+
 export interface DueReminder {
-  kind: 'overdue' | 'due_soon' | 'statement_tomorrow';
+  kind: 'overdue' | 'due_soon' | 'statement_tomorrow' | 'bill_overdue' | 'bill_due';
   cardId: string;
   text: string;
   sortKey: number;
@@ -85,17 +97,42 @@ export function computeDueReminders(cards: CardLite[], statements: StatementLite
   return out.sort((a, b) => a.sortKey - b.sortKey);
 }
 
+/**
+ * Bills and recurring payments due within their reminder window (or overdue). Paused payments
+ * are skipped. One line per payment — the daily digest never repeats a payment twice.
+ */
+export function computeBillReminders(bills: BillLite[], now: Date, leadDays = 3): DueReminder[] {
+  const today = istDay(now);
+  const out: DueReminder[] = [];
+  for (const b of bills) {
+    if (b.paused || !(b.dueDate instanceof Date) || isNaN(b.dueDate.getTime())) continue;
+    const lead = Number.isFinite(b.reminderDays as number) ? Math.min(30, Math.max(0, Number(b.reminderDays))) : leadDays;
+    const days = istDay(b.dueDate) - today;
+    const name = (b.description || 'Payment').slice(0, 60);
+    if (days < 0) {
+      out.push({ kind: 'bill_overdue', cardId: '', sortKey: days, text: `${name}: ${inr(b.amount)} overdue by ${-days} day${days === -1 ? '' : 's'}` });
+    } else if (days <= lead) {
+      const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+      out.push({ kind: 'bill_due', cardId: '', sortKey: days + 0.5, text: `${name}: ${inr(b.amount)} due ${when}` });
+    }
+  }
+  return out.sort((a, b) => a.sortKey - b.sortKey);
+}
+
 /** One push per user per day: title + up to 3 lines. */
 export function digest(reminders: DueReminder[]): { title: string; body: string } | null {
   if (!reminders.length) return null;
-  const overdue = reminders.filter(r => r.kind === 'overdue').length;
-  const due = reminders.filter(r => r.kind === 'due_soon').length;
+  const sorted = [...reminders].sort((a, b) => a.sortKey - b.sortKey);
+  const overdue = sorted.filter(r => r.kind === 'overdue' || r.kind === 'bill_overdue').length;
+  const due = sorted.filter(r => r.kind === 'due_soon' || r.kind === 'bill_due').length;
+  const onlyCards = sorted.every(r => r.kind === 'overdue' || r.kind === 'due_soon' || r.kind === 'statement_tomorrow');
+  const noun = onlyCards ? 'card payment' : 'payment';
   const title = overdue
-    ? `⚠️ ${overdue} card payment${overdue === 1 ? '' : 's'} overdue`
+    ? `${overdue} ${noun}${overdue === 1 ? '' : 's'} overdue`
     : due
-      ? `⏰ ${due} card payment${due === 1 ? '' : 's'} due soon`
-      : '🗓️ Card statement tomorrow';
-  const lines = reminders.slice(0, 3).map(r => r.text);
-  if (reminders.length > 3) lines.push(`+${reminders.length - 3} more`);
+      ? `${due} ${noun}${due === 1 ? '' : 's'} due soon`
+      : 'Card statement tomorrow';
+  const lines = sorted.slice(0, 3).map(r => r.text);
+  if (sorted.length > 3) lines.push(`+${sorted.length - 3} more`);
   return { title, body: lines.join('\n') };
 }

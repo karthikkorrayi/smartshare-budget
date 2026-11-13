@@ -14,6 +14,7 @@ import {
 import { WalletsService } from '../../services/wallets.service';
 import { UndoService } from '../../services/undo.service';
 import { fromDateInput, toDateInput } from '../../utils/date-input.util';
+import { IconComponent } from '../../ui/icon.component';
 
 export interface WalletTxnFormData {
   wallets: Wallet[];
@@ -25,11 +26,11 @@ export interface WalletTxnFormData {
 @Component({
   selector: 'app-wallet-txn-form',
   standalone: true,
-  imports: [FormsModule],
+  imports: [IconComponent, FormsModule],
   template: `
     <div class="cc-dialog">
       <div class="cc-dialog-head">
-        <span class="icon" aria-hidden="true">{{ form.type === 'spend' ? '🛒' : form.type === 'topup' ? '➕' : form.type === 'refund' ? '↩️' : '🎁' }}</span>
+        <span class="icon" aria-hidden="true"><app-icon [name]="form.type === 'spend' ? 'shopping-cart' : form.type === 'topup' ? 'plus' : form.type === 'refund' ? 'undo2' : 'gift'" [size]="22" /></span>
         <div>
           <h2>{{ isEdit ? 'Edit wallet entry' : 'Record wallet ' + info[form.type].label.toLowerCase() }}</h2>
           <p>{{ info[form.type].counts }}.</p>

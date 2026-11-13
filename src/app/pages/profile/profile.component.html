@@ -24,7 +24,7 @@
           }
           <span class="email">
             {{ a.email }}
-            <span class="cc-badge" [class]="a.emailVerified ? 'tone-ok' : 'tone-soon'">{{ a.emailVerified ? '✓ Verified' : 'Not verified' }}</span>
+            <span class="cc-badge" [class]="a.emailVerified ? 'tone-ok' : 'tone-soon'">{{ a.emailVerified ? 'Verified' : 'Not verified' }}</span>
           </span>
           @if (a.createdAt) { <span class="since">Member since {{ a.createdAt | date: 'd MMM y' }}</span> }
         </div>
@@ -34,7 +34,47 @@
     </section>
 
     <!-- Sign-in methods -->
-    <section class="cc-panel block">
+    <section class="cc-panel block" id="activity">
+      <h2>Your activity</h2>
+      <p class="sub">A snapshot built from what you've recorded.</p>
+      <div class="snap">
+        <div><span class="sub">Total wealth</span><b class="num">{{ (wealth()?.total ?? 0) | money }}</b><small class="sub">{{ wealth()?.accounts ?? 0 }} active account{{ wealth()?.accounts === 1 ? '' : 's' }}</small></div>
+        <div><span class="sub">Logged (90 days)</span><b class="num">{{ activityCount() }}</b><small class="sub">entries</small></div>
+        <div><span class="sub">Logging streak</span><b class="num">{{ habit().loggingStreak }}</b><small class="sub">day{{ habit().loggingStreak === 1 ? '' : 's' }} in a row</small></div>
+        <div><span class="sub">Recurring payments</span><b class="num">{{ recurringCount() }}</b><small class="sub">tracked</small></div>
+      </div>
+      @if (achievements().length) {
+        <div class="achievements">
+          @for (a of achievements(); track a.title) {
+            <div class="ach"><span class="icon-tile sm warn"><app-icon [name]="a.icon" [size]="15" /></span><span><b>{{ a.title }}</b><small class="sub">{{ a.text }}</small></span></div>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="cc-panel block" id="appearance">
+      <h2>Appearance &amp; app</h2>
+      <p class="sub">Theme is saved on this device. System follows your phone or computer setting.</p>
+      <div class="seg theme-seg" role="radiogroup" aria-label="Theme">
+        <button role="radio" [attr.aria-checked]="theme.pref() === 'light'" [class.on]="theme.pref() === 'light'" (click)="theme.set('light')"><app-icon name="sun" [size]="15" />Light</button>
+        <button role="radio" [attr.aria-checked]="theme.pref() === 'dark'" [class.on]="theme.pref() === 'dark'" (click)="theme.set('dark')"><app-icon name="moon" [size]="15" />Dark</button>
+        <button role="radio" [attr.aria-checked]="theme.pref() === 'system'" [class.on]="theme.pref() === 'system'" (click)="theme.set('system')"><app-icon name="monitor" [size]="15" />System</button>
+      </div>
+      <div class="install-row">
+        @if (install.installed()) {
+          <span class="cc-badge tone-ok">Installed</span><span class="sub">You're using the installed app.</span>
+        } @else if (install.canInstall()) {
+          <button class="btn btn-primary btn-sm" (click)="install.install()"><app-icon name="download" [size]="15" />Install SmartShare</button>
+          <span class="sub">Adds SmartShare to your home screen / app list. Works offline for viewing.</span>
+        } @else if (install.isIos) {
+          <span class="sub">On iPhone or iPad: tap Share, then “Add to Home Screen”.</span>
+        } @else {
+          <span class="sub">To install, use your browser menu → “Install app” (Chrome / Edge). The option appears once the browser allows it.</span>
+        }
+      </div>
+    </section>
+
+    <section class="cc-panel block" id="security">
       <h2>Sign-in methods</h2>
       <p class="sub">Both methods use <strong>{{ a.email }}</strong> and open the same account.</p>
 
@@ -56,7 +96,7 @@
       </div>
 
       <div class="method">
-        <span class="m-icon">🔑</span>
+        <span class="m-icon"><app-icon name="lock" [size]="18" /></span>
         <div class="m-text">
           <strong>Password</strong>
           <small>{{ hasPassword() ? 'Set — sign in with your Gmail address and password.' : 'Not set — add one to sign in without Google.' }}</small>

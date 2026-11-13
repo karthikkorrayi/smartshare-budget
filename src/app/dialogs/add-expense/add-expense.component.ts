@@ -7,6 +7,7 @@ import { UpcomingPaymentService } from '../../services/upcoming-payment.service'
 import { fromDateInput, monthKey, toDateInput } from '../../utils/date-input.util';
 import { toDate } from '../../utils/firestore.util';
 import { UndoService } from '../../services/undo.service';
+import { IconComponent } from '../../ui/icon.component';
 
 // 'Card Bill' = paying a credit-card bill; 'Wallet Top-up' = adding money to Paytm, Amazon Pay, etc.
 // Neither is spending: what you buy with that card or wallet already is.
@@ -22,13 +23,13 @@ const WALLET_TOPUP_HINT = /(add(ed)?\s*money|top[\s-]?up|recharge)\s.*(wallet|pa
  */
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [IconComponent, CommonModule, FormsModule],
   styleUrls: ['./add-expense.component.scss'],
   template: `
     <div class="form-container">
       <div class="form-header">
         <div class="header-content">
-          <span class="header-icon">💸</span>
+          <span class="header-icon"><app-icon name="arrow-up-right" [size]="22" /></span>
           <div>
             <h2 class="form-title">{{ expense.id ? 'Edit Expense' : 'Add Expense' }}</h2>
             <p class="form-subtitle">Track your spending</p>
@@ -96,8 +97,8 @@ const WALLET_TOPUP_HINT = /(add(ed)?\s*money|top[\s-]?up|recharge)\s.*(wallet|pa
     </div>
   `,
   styles: [`
-    .field-hint { margin: -4px 0 0; padding: 8px 12px; border-radius: 10px; background: #f0f9ff; color: #075985; font-size: 13px; line-height: 1.45; }
-    .form-errors { margin: 4px 0 0; padding: 10px 14px 10px 30px; border-radius: 12px; background: #fef2f2; color: #b91c1c; font-size: 14px; line-height: 1.5; }
+    .field-hint { margin: -4px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--info-soft); color: var(--info); font-size: 13px; line-height: 1.45; }
+    .form-errors { margin: 4px 0 0; padding: 10px 14px 10px 30px; border-radius: 12px; background: var(--neg-soft); color: var(--neg); font-size: 14px; line-height: 1.5; }
   `],
 })
 export class AddExpenseComponent {

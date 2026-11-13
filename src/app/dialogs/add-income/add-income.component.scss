@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  background: #fff;
+  background: var(--surface);
   border-radius: 20px;
   overflow: hidden;
   width: 100%;
@@ -11,9 +11,9 @@
 }
 
 .form-header {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, var(--pos), var(--pos));
   padding: 28px 24px;
-  color: #fff;
+  color: var(--on-accent);
 
   .header-content {
     display: flex;
@@ -46,7 +46,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  background: #fafafa;
+  background: var(--surface);
 }
 
 .input-group {
@@ -59,19 +59,19 @@
   width: 100%;
   min-height: 68px;
   padding: 26px 14px 10px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border);
   border-radius: 12px;
   font-size: 15px;
   line-height: 1.3;
   font-family: inherit;
-  background: #ffffff;
+  background: var(--surface);
   transition: all 0.25s ease;
   outline: none;
   box-sizing: border-box;
 
   &:focus {
     border-color: #10b981;
-    background: #fff;
+    background: var(--surface);
     box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.08);
   }
 
@@ -79,7 +79,7 @@
   &:not(:placeholder-shown) + .floating-label {
     top: 8px;
     font-size: 11px;
-    color: #10b981;
+    color: var(--pos);
     font-weight: 600;
   }
 
@@ -94,10 +94,10 @@
   top: 22px;
   font-size: 15px;
   line-height: 1.3;
-  color: #6b7280;
+  color: var(--text-3);
   pointer-events: none;
   transition: all 0.25s ease;
-  background: #ffffff;
+  background: var(--surface);
   padding: 0 4px;
   font-weight: 500;
 }
@@ -106,8 +106,8 @@
   display: flex;
   gap: 12px;
   padding: 20px 24px;
-  background: #ffffff;
-  border-top: 1px solid #e5e7eb;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
 }
 
 .btn {
@@ -149,13 +149,13 @@
 }
 
 .btn-cancel {
-  background: #f3f4f6;
-  color: #4b5563;
-  border: 2px solid #e5e7eb;
+  background: var(--surface-2);
+  color: var(--text-3);
+  border: 2px solid var(--border);
 
   &:hover {
-    background: #e5e7eb;
-    border-color: #d1d5db;
+    background: var(--surface-3);
+    border-color: var(--border-strong);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
@@ -167,11 +167,11 @@
 }
 
 .btn-save {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: #fff;
+  background: linear-gradient(135deg, var(--pos), var(--pos));
+  color: var(--on-accent);
 
   &:hover {
-    background: linear-gradient(135deg, #059669, #047857);
+    background: linear-gradient(135deg, var(--pos), #047857);
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(5, 150, 105, 0.3);
   }
@@ -223,11 +223,11 @@
 
 /* SmartShare responsive refresh */
 
-.form-container { background: #fff; border-radius: 24px; width: 100%; max-height: 85dvh; overflow-y: auto; }
-.form-header { background: #f0fdfa; border-bottom: 1px solid #ccfbf1; }
-.form-header .form-title { color: #134e4a; }
-.form-header .form-subtitle { color: #475569; }
+.form-container { background: var(--surface); border-radius: 24px; width: 100%; max-height: 85dvh; overflow-y: auto; }
+.form-header { background: var(--accent-soft); border-bottom: 1px solid var(--accent-soft); }
+.form-header .form-title { color: var(--accent-strong); }
+.form-header .form-subtitle { color: var(--text-2); }
 .form-actions .btn { min-height: 48px; border-radius: 12px; }
-.form-actions .btn-save { background: #0f766e; box-shadow: none; }
+.form-actions .btn-save { background: var(--accent); box-shadow: none; }
 .floating-input { min-height: 52px; font-size: 16px; }
 @media (max-width: 600px) { .form-row { display: flex; flex-direction: column; gap: 20px; } .form-content, .form-header, .form-actions { padding: 20px; } .form-actions { display: flex; gap: 12px; } .form-actions .btn { flex: 1; } }

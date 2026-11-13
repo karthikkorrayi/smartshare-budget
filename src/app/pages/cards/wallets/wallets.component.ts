@@ -9,6 +9,7 @@ import { WalletFormComponent, WalletFormData } from '../../../dialogs/wallet-for
 import { WalletTxnFormComponent, WalletTxnFormData } from '../../../dialogs/wallet-txn-form/wallet-txn-form.component';
 import { monthKey, toDateInput } from '../../../utils/date-input.util';
 import { UndoService } from '../../../services/undo.service';
+import { IconComponent } from '../../../ui/icon.component';
 
 const DIALOG = { width: 'min(94vw, 540px)', maxWidth: '96vw', autoFocus: 'first-tabbable' as const };
 
@@ -21,7 +22,7 @@ interface DayGroup {
 @Component({
   selector: 'app-wallets',
   standalone: true,
-  imports: [DatePipe, DecimalPipe],
+  imports: [IconComponent, DatePipe, DecimalPipe],
   templateUrl: './wallets.component.html',
   styleUrl: './wallets.component.scss',
 })
