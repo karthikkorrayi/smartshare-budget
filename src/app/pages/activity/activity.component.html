@@ -61,47 +61,12 @@
           <app-txn-table [txns]="txns() === null ? null : moves()" [accounts]="accountMap()" [showFlow]="false" emptyTitle="No transfers in this period" emptyText="Use Transfer to move money between a bank account and a wallet." />
         }
         @case ('lending') {
-          <div class="panel-head">
-            <div><h2>Lending &amp; borrowing</h2><p>Partial repayments are supported.</p></div>
-            <div class="panel-actions">
-              <button class="btn btn-sm" (click)="quick.lending('borrowed')"><app-icon name="arrow-down-left" [size]="15" />I borrowed</button>
-              <button class="btn btn-sm btn-primary" (click)="quick.lending('lent')"><app-icon name="arrow-up-right" [size]="15" />I lent</button>
-            </div>
+          <div class="moved">
+            <span class="icon-tile lg accent"><app-icon name="handshake" [size]="22" /></span>
+            <div><h2>Lending &amp; splits has its own page</h2>
+              <p class="muted">People, open records, split bills, WhatsApp reminders and repayments — {{ lendOpen().length }} open record{{ lendOpen().length === 1 ? '' : 's' }}.</p></div>
+            <a class="btn btn-primary" routerLink="/lending">Open Lending<app-icon name="arrow-right" [size]="16" /></a>
           </div>
-          @if (!lendOpen().length && !lendClosed().length) {
-            <app-empty art="lending" title="No lending records" text="Keep track of money you lend to friends or borrow from them." />
-          } @else {
-            <div class="lend-list">
-              @for (r of lendOpen(); track r.id) {
-                <div class="lend">
-                  <span class="icon-tile" [class.pos]="r.direction === 'lent'" [class.warn]="r.direction === 'borrowed'"><app-icon [name]="r.direction === 'lent' ? 'arrow-up-right' : 'arrow-down-left'" [size]="17" /></span>
-                  <div class="grow">
-                    <div class="title">{{ r.person }} <span class="badge" [class.pos]="r.direction === 'lent'" [class.warn]="r.direction === 'borrowed'">{{ r.direction === 'lent' ? 'Owes you' : 'You owe' }}</span></div>
-                    <div class="sub muted tiny">{{ r.amount | money }} on {{ r.date | date: 'd MMM y' }} · {{ r.settled | money }} settled · <span [class.amt-neg]="lendDue(r).tone === 'overdue'">{{ lendDue(r).text }}</span>@if (r.notes) { · {{ r.notes }} }</div>
-                    <div class="progress"><span [style.width.%]="(r.settled / r.amount) * 100"></span></div>
-                  </div>
-                  <div class="lend-actions">
-                    <b class="num">{{ r.outstanding | money }}</b>
-                    <div class="settle">
-                      <input class="input" type="number" min="0" [max]="r.outstanding" step="0.01" [placeholder]="'' + r.outstanding" [(ngModel)]="settleAmount[r.id]" [attr.aria-label]="'Repayment amount for ' + r.person" />
-                      <button class="btn btn-sm btn-soft" (click)="settle(r)">Record</button>
-                      <button class="btn btn-sm btn-ghost btn-icon" (click)="removeLending(r)" [attr.aria-label]="'Delete record for ' + r.person"><app-icon name="trash2" [size]="15" /></button>
-                    </div>
-                  </div>
-                </div>
-              }
-              @if (lendClosed().length) {
-                <h3 class="h">Settled</h3>
-                @for (r of lendClosed(); track r.id) {
-                  <div class="list-row">
-                    <span class="icon-tile sm"><app-icon name="circle-check" [size]="15" /></span>
-                    <span class="grow"><span class="title">{{ r.person }}</span><span class="sub">{{ r.direction === 'lent' ? 'Lent' : 'Borrowed' }} {{ r.amount | money }} · settled {{ r.paidDate | date: 'd MMM y' }}</span></span>
-                    <button class="btn btn-sm btn-ghost btn-icon" (click)="removeLending(r)" [attr.aria-label]="'Delete record for ' + r.person"><app-icon name="trash2" [size]="15" /></button>
-                  </div>
-                }
-              }
-            </div>
-          }
         }
         @case ('categories') {
           @if (txns() === null) { <app-skeleton variant="row" /> }

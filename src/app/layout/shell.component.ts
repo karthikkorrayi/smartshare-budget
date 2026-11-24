@@ -71,6 +71,7 @@ export class ShellComponent {
   readonly primary: NavItem[] = [
     { path: '/', label: 'Dashboard', icon: 'layout-dashboard', exact: true },
     { path: '/recurring', label: 'Recurring', icon: 'repeat' },
+    { path: '/lending', label: 'Lending & splits', icon: 'handshake' },
     { path: '/review', label: 'Review', icon: 'clipboard-list', badge: () => this.pending() },
   ];
   readonly manage: NavItem[] = [
@@ -137,6 +138,12 @@ export class ShellComponent {
     this.menu.set(null);
     this.quick.addTxn(mode);
   }
+  /** Bottom-bar "+" → Split a bill: the expense dialog with "Split this amount" switched on. */
+  splitBill(): void {
+    this.menu.set(null);
+    this.quick.addTxn('expense', null, { split: true });
+  }
+
 
   open(link: string | null): void {
     this.menu.set(null);

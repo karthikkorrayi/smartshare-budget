@@ -1,0 +1,210 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Lending &amp; splits</h1>
+      <p>Who owes you, whom you owe, and shared bills — with reminders on WhatsApp.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" (click)="quick.lending('borrowed')"><app-icon name="arrow-down-left" [size]="16" />I borrowed</button>
+      <button class="btn" (click)="quick.lending('lent')"><app-icon name="arrow-up-right" [size]="16" />I lent</button>
+      <button class="btn btn-primary" (click)="splitBill()"><app-icon name="split" [size]="16" />Split a bill</button>
+    </div>
+  </div>
+
+  <div class="metrics">
+    @if (loading()) { @for (i of [1, 2, 3, 4]; track i) { <app-skeleton variant="card" /> } }
+    @else {
+      <app-metric icon="arrow-up-right" tone="pos" label="Owed to you" [amount]="stats().owedToMe" privacyKey="owed-to-me"
+        [hint]="stats().openCount ? stats().openCount + ' open record' + (stats().openCount === 1 ? '' : 's') : 'Nothing outstanding'" />
+      <app-metric icon="arrow-down-left" tone="warn" label="You owe" [amount]="stats().iOwe" privacyKey="i-owe" hint="Borrowed and not yet repaid" />
+      <app-metric icon="hand-coins" tone="accent" label="Received this month" [value]="stats().receivedThisMonth | money"
+        [hint]="stats().collectionRate ? stats().collectionRate + '% of everything lent has come back' : 'Repayments you record show here'" />
+      <app-metric icon="alert-triangle" tone="neg" label="Overdue" [value]="'' + stats().overdueCount" [hint]="stats().overdueCount ? 'Past their repay-by date' : 'Nothing overdue'" />
+    }
+  </div>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="toolbar">
+        <div class="seg seg-scroll" role="tablist" aria-label="View">
+          @for (t of tabs; track t.id) {
+            <button role="tab" [attr.aria-selected]="tab() === t.id" [class.on]="tab() === t.id" (click)="tab.set(t.id)">
+              <app-icon [name]="t.icon" [size]="14" />{{ t.label }} @if (counts()[t.id]) { <span class="badge">{{ counts()[t.id] }}</span> }
+            </button>
+          }
+        </div>
+        <label class="input-icon search"><app-icon name="search" [size]="16" />
+          <input class="input" type="search" placeholder="Search people or bills" [ngModel]="q()" (ngModelChange)="q.set($event)" aria-label="Search lending" /></label>
+      </div>
+
+      @if (loading()) { <app-skeleton variant="row" [count]="4" /> }
+      @else if (!records().length) {
+        <app-empty art="lending" title="No lending yet" text="Record money you lend or borrow, or split a bill — the app keeps track of who owes what and reminds them on WhatsApp.">
+          <button class="btn btn-primary btn-sm" (click)="splitBill()"><app-icon name="split" [size]="15" />Split a bill</button>
+          <button class="btn btn-sm" (click)="quick.lending('lent')"><app-icon name="arrow-up-right" [size]="15" />I lent</button>
+        </app-empty>
+      } @else {
+        @switch (tab()) {
+          <!-- ── People ─────────────────────────────────────────── -->
+          @case ('people') {
+            @if (!people().length) { <p class="muted empty-q">No one matches “{{ q() }}”.</p> }
+            <div class="list">
+              @for (p of people(); track p.key) {
+                <div class="person" [class.done]="!p.open.length" [class.open]="expanded() === p.key">
+                  <button class="person-main" (click)="toggle(p.key)" [attr.aria-expanded]="expanded() === p.key">
+                    <span class="av" [class.pos]="p.net > 0" [class.warn]="p.net < 0">{{ initials(p.name) }}</span>
+                    <span class="grow">
+                      <span class="title">{{ p.name }}</span>
+                      <span class="sub">
+                        @if (p.phone) { {{ phone(p.phone) }} · }
+                        {{ p.open.length }} open@if (p.closed.length) { · {{ p.closed.length }} settled }
+                        @if (p.overdue) { · <span class="neg-t">overdue</span> } @else if (p.nextDue) { · due {{ p.nextDue | date: 'd MMM' }} }
+                      </span>
+                    </span>
+                    <span class="net num" [class.pos-t]="p.net > 0" [class.warn-t]="p.net < 0">{{ netLabel(p) }}</span>
+                    <app-icon class="chev" name="chevron-down" [size]="16" />
+                  </button>
+                  <div class="contact">
+                    @if (canRemind(p.open)) {
+                      <a class="btn btn-sm btn-soft wa" [href]="wa(p.open, p.phone)" target="_blank" rel="noopener" [attr.aria-label]="'WhatsApp ' + p.name"><app-icon name="message-circle" [size]="15" /><span>WhatsApp</span></a>
+                    }
+                    @if (p.phone) { <a class="btn btn-sm btn-ghost btn-icon" [href]="call(p.phone)" [attr.aria-label]="'Call ' + p.name" title="Call"><app-icon name="phone" [size]="15" /></a> }
+                  </div>
+                  @if (expanded() === p.key) {
+                    <div class="recs">
+                      @for (r of p.open.concat(p.closed); track r.id) {
+                        <div class="rec" [class.closed]="r.status === 'PAID'">
+                          <span class="icon-tile sm" [class.pos]="r.direction === 'lent'" [class.warn]="r.direction === 'borrowed'">
+                            <app-icon [name]="r.split ? 'split' : r.direction === 'lent' ? 'arrow-up-right' : 'arrow-down-left'" [size]="14" /></span>
+                          <span class="grow">
+                            <span class="title">{{ r.split ? r.split.title : r.direction === 'lent' ? 'Lent' : 'Borrowed' }} · {{ r.amount | money: true }}</span>
+                            <span class="sub">{{ r.date | date: 'd MMM y' }} · <span [class.neg-t]="due(r).tone === 'overdue'">{{ due(r).text }}</span>@if (r.notes) { · {{ r.notes }} }</span>
+                          </span>
+                          @if (r.status === 'PENDING') {
+                            <b class="num">{{ r.outstanding | money: true }}</b>
+                            <button class="btn btn-sm btn-soft" (click)="settle(r)">Record</button>
+                          }
+                          <button class="btn btn-sm btn-ghost btn-icon" (click)="edit(r)" [attr.aria-label]="'Edit record for ' + r.person"><app-icon name="pencil" [size]="14" /></button>
+                          <button class="btn btn-sm btn-ghost btn-icon" (click)="remove(r)" [attr.aria-label]="'Delete record for ' + r.person"><app-icon name="trash2" [size]="14" /></button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- ── Open records ───────────────────────────────────── -->
+          @case ('open') {
+            @if (!open().length) { <app-empty art="lending" [compact]="true" title="Nothing outstanding" text="Everyone's square." /> }
+            <div class="list">
+              @for (r of open(); track r.id) {
+                <div class="lend" [attr.data-tone]="due(r).tone">
+                  <span class="icon-tile" [class.pos]="r.direction === 'lent'" [class.warn]="r.direction === 'borrowed'">
+                    <app-icon [name]="r.split ? 'split' : r.direction === 'lent' ? 'arrow-up-right' : 'arrow-down-left'" [size]="17" /></span>
+                  <div class="grow">
+                    <div class="title">{{ r.person }}
+                      <span class="badge" [class.pos]="r.direction === 'lent'" [class.warn]="r.direction === 'borrowed'">{{ r.direction === 'lent' ? 'Owes you' : 'You owe' }}</span>
+                      @if (!r.trackInExpenses && r.direction === 'lent') { <span class="badge" title="Not counted in spending or income">Note only</span> }
+                    </div>
+                    <div class="sub">
+                      @if (r.split) { {{ r.split.title }} · } {{ r.amount | money: true }} on {{ r.date | date: 'd MMM' }}
+                      @if (r.settled) { · {{ r.settled | money: true }} back }
+                      · <span class="due" [class.neg-t]="due(r).tone === 'overdue'" [class.warn-t]="due(r).tone === 'soon'">{{ due(r).text }}</span>
+                    </div>
+                    <div class="bar"><i [style.width.%]="pct(r)"></i></div>
+                  </div>
+                  <div class="side">
+                    <b class="num">{{ r.outstanding | money: true }}</b>
+                    <div class="btns">
+                      @if (r.direction === 'lent') {
+                        <a class="btn btn-sm btn-ghost btn-icon" [href]="wa([r], r.phone)" target="_blank" rel="noopener" [attr.aria-label]="'Remind ' + r.person + ' on WhatsApp'" title="Remind on WhatsApp"><app-icon name="message-circle" [size]="15" /></a>
+                      }
+                      @if (r.phone) { <a class="btn btn-sm btn-ghost btn-icon" [href]="call(r.phone)" [attr.aria-label]="'Call ' + r.person" title="Call"><app-icon name="phone" [size]="15" /></a> }
+                      <button class="btn btn-sm btn-ghost btn-icon" (click)="edit(r)" [attr.aria-label]="'Edit record for ' + r.person" title="Edit"><app-icon name="pencil" [size]="15" /></button>
+                      <button class="btn btn-sm btn-ghost btn-icon" (click)="remove(r)" [attr.aria-label]="'Delete record for ' + r.person" title="Delete"><app-icon name="trash2" [size]="15" /></button>
+                      <button class="btn btn-sm btn-soft" (click)="settle(r)"><app-icon name="check" [size]="14" />Record</button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- ── Splits ─────────────────────────────────────────── -->
+          @case ('splits') {
+            @if (!splits().length) {
+              <app-empty art="lending" [compact]="true" title="No split bills yet" text="Paid for the group? Add the expense and switch on “Split this amount”, or open any expense and tap Split.">
+                <button class="btn btn-primary btn-sm" (click)="splitBill()"><app-icon name="split" [size]="15" />Split a bill</button>
+              </app-empty>
+            }
+            <div class="list">
+              @for (g of splits(); track g.id) {
+                <article class="split-card" [class.done]="g.done">
+                  <header>
+                    <span class="icon-tile accent"><app-icon name="split" [size]="17" /></span>
+                    <div class="grow">
+                      <div class="title">{{ g.title }}</div>
+                      <div class="sub">{{ g.date | date: 'd MMM y' }} · {{ g.total | money: true }} split {{ g.count }} ways@if (g.ownShare > 0) { · your share {{ g.ownShare | money: true }} }</div>
+                    </div>
+                    <button class="btn btn-sm btn-ghost btn-icon" (click)="removeSplit(g)" [disabled]="g.collected > 0" [attr.aria-label]="'Delete split ' + g.title"
+                      [title]="g.collected > 0 ? 'Someone has repaid — delete people one by one instead' : 'Delete split'"><app-icon name="trash2" [size]="15" /></button>
+                  </header>
+                  <div class="prog">
+                    <div class="bar"><i [style.width.%]="splitPct(g)"></i></div>
+                    <small>{{ g.done ? 'Everyone has paid' : (g.collected | money: true) + ' of ' + (g.owed | money: true) + ' back · ' + g.paidCount + ' of ' + g.members.length + ' paid' }}</small>
+                  </div>
+                  <div class="members">
+                    @for (m of g.members; track m.id) {
+                      <div class="member" [attr.data-state]="memberState(m)">
+                        <span class="av sm">{{ initials(m.person) }}</span>
+                        <span class="grow"><span class="title">{{ m.person }}</span>
+                          <span class="sub">{{ m.amount | money: true }} · {{ memberState(m) === 'paid' ? 'Paid' : memberState(m) === 'part' ? (m.outstanding | money: true) + ' left' : 'Not paid yet' }}</span></span>
+                        @if (m.status === 'PENDING') {
+                          <a class="btn btn-sm btn-ghost btn-icon" [href]="wa([m], m.phone)" target="_blank" rel="noopener" [attr.aria-label]="'Remind ' + m.person + ' on WhatsApp'" title="Remind on WhatsApp"><app-icon name="message-circle" [size]="15" /></a>
+                          <button class="btn btn-sm btn-soft" (click)="settle(m)">Paid</button>
+                        } @else { <app-icon class="ok" name="circle-check" [size]="18" /> }
+                      </div>
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          }
+
+          <!-- ── Settled ────────────────────────────────────────── -->
+          @case ('settled') {
+            @if (!settled().length) { <app-empty art="lending" [compact]="true" title="Nothing settled yet" text="Records move here once they're fully repaid." /> }
+            <div class="list">
+              @for (r of settled(); track r.id) {
+                <div class="list-row">
+                  <span class="icon-tile sm"><app-icon name="circle-check" [size]="15" /></span>
+                  <span class="grow"><span class="title">{{ r.person }}@if (r.split) { · {{ r.split.title }} }</span>
+                    <span class="sub">{{ r.direction === 'lent' ? 'Lent' : 'Borrowed' }} {{ r.amount | money: true }} · {{ due(r).text.toLowerCase() }} {{ r.paidDate | date: 'd MMM y' }}@if (r.waived) { · {{ r.waived | money: true }} forgiven }</span></span>
+                  <button class="btn btn-sm btn-ghost btn-icon" (click)="remove(r)" [attr.aria-label]="'Delete record for ' + r.person"><app-icon name="trash2" [size]="15" /></button>
+                </div>
+              }
+            </div>
+          }
+        }
+      }
+    </section>
+
+    <!-- ── How this shows in your budget ───────────────────────── -->
+    <aside class="panel budget">
+      <div class="panel-head"><div><h2>In your budget this month</h2><p>Counted once, never twice</p></div><span class="icon-tile sm info"><app-icon name="scale" [size]="16" /></span></div>
+      <dl class="effect">
+        <div><dt>Lent (counted as spending)</dt><dd class="num">{{ stats().lentSpendThisMonth | money: true }}</dd></div>
+        <div><dt>Repayments (counted as income)</dt><dd class="num">{{ stats().repaymentIncomeThisMonth | money: true }}</dd></div>
+        <div class="tot"><dt>Net effect on your budget</dt><dd class="num" [class.neg-t]="budgetNet() > 0">{{ budgetNet() > 0 ? '−' : budgetNet() < 0 ? '+' : '' }}{{ (budgetNet() < 0 ? -budgetNet() : budgetNet()) | money: true }}</dd></div>
+      </dl>
+      <ul class="rules">
+        <li><app-icon name="split" [size]="14" /><span>A split counts only <b>your share</b> in its category; the others' shares are “Lent”, so the category isn't inflated.</span></li>
+        <li><app-icon name="arrow-down-left" [size]="14" /><span>When someone repays, it's income — the Lent spending and the repayment cancel out over time.</span></li>
+        <li><app-icon name="notebook-pen" [size]="14" /><span>“Note only” loans and money you borrowed never touch spending or income.</span></li>
+        @if (stats().forgiven) { <li><app-icon name="gift" [size]="14" /><span>{{ stats().forgiven | money: true }} forgiven so far — it stays as spending and is never income.</span></li> }
+      </ul>
+    </aside>
+  </div>
+</div>

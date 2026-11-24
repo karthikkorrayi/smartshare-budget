@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { AccountRef } from '../models/account.model';
 import { FinanceTxn } from '../utils/analytics.util';
+import { LendingRecord } from '../models/lending.model';
 
 export type TxnMode = 'expense' | 'income' | 'transfer';
 
@@ -10,9 +11,9 @@ export type TxnMode = 'expense' | 'income' | 'transfer';
 export class QuickActionsService {
   private dialog = inject(MatDialog);
 
-  async addTxn(mode: TxnMode = 'expense', account: AccountRef | null = null) {
+  async addTxn(mode: TxnMode = 'expense', account: AccountRef | null = null, opts: { split?: boolean } = {}) {
     const { TxnDialogComponent } = await import('../dialogs/txn-dialog/txn-dialog.component');
-    return this.dialog.open(TxnDialogComponent, { data: { mode, account }, width: 'min(96vw, 560px)', panelClass: 'ss-sheet-pane', autoFocus: 'first-tabbable' });
+    return this.dialog.open(TxnDialogComponent, { data: { mode, account, split: !!opts.split }, width: 'min(96vw, 560px)', panelClass: 'ss-sheet-pane', autoFocus: 'first-tabbable' });
   }
 
   async editTxn(txn: FinanceTxn) {
@@ -48,8 +49,20 @@ export class QuickActionsService {
     return this.dialog.open(RecurringFormComponent, { data: { id }, width: 'min(96vw, 560px)', panelClass: 'ss-sheet-pane' });
   }
 
-  async lending(direction: 'lent' | 'borrowed' = 'lent') {
+  async lending(direction: 'lent' | 'borrowed' = 'lent', id: string | null = null) {
     const { LendingFormComponent } = await import('../dialogs/lending-form/lending-form.component');
-    return this.dialog.open(LendingFormComponent, { data: { direction }, width: 'min(96vw, 520px)', panelClass: 'ss-sheet-pane' });
+    return this.dialog.open(LendingFormComponent, { data: { direction, id }, width: 'min(96vw, 540px)', panelClass: 'ss-sheet-pane' });
+  }
+
+  /** Record a repayment (full or partial) for one lending record. */
+  async settle(record: LendingRecord) {
+    const { SettleLendingComponent } = await import('../dialogs/settle-lending/settle-lending.component');
+    return this.dialog.open(SettleLendingComponent, { data: { record }, width: 'min(96vw, 500px)', panelClass: 'ss-sheet-pane' });
+  }
+
+  /** "Split this amount" for an expense that's already recorded. */
+  async split(txn: FinanceTxn) {
+    const { SplitExpenseComponent } = await import('../dialogs/split-expense/split-expense.component');
+    return this.dialog.open(SplitExpenseComponent, { data: { txn }, width: 'min(96vw, 600px)', panelClass: 'ss-sheet-pane' });
   }
 }

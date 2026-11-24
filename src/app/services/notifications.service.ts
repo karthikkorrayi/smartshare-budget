@@ -264,7 +264,7 @@ export class NotificationsService {
         body: days < 0 ? `Repayment was expected ${r.dueDate.toDateString()}.` : `Repayment expected ${relativeDays(days)}.`,
         date: r.dueDate,
         cardId: r.id,
-        link: '/',
+        link: '/lending',
       });
     }
     return out;

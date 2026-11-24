@@ -126,6 +126,19 @@
             @if (touched() && dateError(); as e) { <small class="field-err">{{ e }}</small> }
           </div>
 
+          @if (splitAllowed()) {
+            <div class="field span-2">
+              <label class="split-toggle" [class.on]="splitOn()">
+                <input type="checkbox" role="switch" [ngModel]="splitOn()" (ngModelChange)="splitOn.set($event)" />
+                <span class="icon-tile sm" [class.accent]="splitOn()"><app-icon name="split" [size]="15" /></span>
+                <span><b>Split this amount</b><small>Shared a bill? Record who owes you their share — tracked in Lending.</small></span>
+              </label>
+              @if (splitOn()) {
+                <app-split-editor [total]="amount() || 0" [contacts]="contacts()" [category]="category()" [accountName]="selected()?.name ?? ''" [touched]="touched()" />
+              }
+            </div>
+          }
+
           @if (notesAllowed()) {
             <label class="field span-2">
               <span>Notes (optional)</span>
@@ -147,7 +160,7 @@
   <div class="dlg-foot">
     <button class="btn" (click)="close()" [disabled]="saving()">Cancel</button>
     <button class="btn btn-primary" (click)="save()" [disabled]="saving() || !options().length">
-      @if (saving()) { <span class="spinner"></span> Saving… } @else { <app-icon name="check" [size]="16" />{{ editing ? 'Save changes' : 'Save' }} }
+      @if (saving()) { <span class="spinner"></span> Saving… } @else { <app-icon name="check" [size]="16" />{{ editing ? 'Save changes' : splitOn() && splitAllowed() ? 'Save split' : 'Save' }} }
     </button>
   </div>
 </div>

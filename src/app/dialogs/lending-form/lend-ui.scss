@@ -1,0 +1,20 @@
+// Shared by the lending form, record-payment, split dialogs and the split editor (Phase 4).
+.money-in { position: relative; display: flex; align-items: center; flex: 1; min-width: 0;
+  i { position: absolute; left: 12px; font-style: normal; color: var(--text-3); pointer-events: none; }
+  input { padding-left: 28px !important; width: 100%; } }
+.seg.full { display: flex; width: 100%; button { flex: 1; justify-content: center; min-height: 36px; } }
+.toggle { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer;
+  input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
+  span { display: flex; flex-direction: column; gap: 2px; } b { font-size: 13.5px; } small { color: var(--text-3); font-size: 12px; line-height: 1.4; }
+  &.on { border-color: var(--accent); background: var(--accent-soft); } }
+.calc { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: var(--accent-soft);
+  .k { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-strong); }
+  .o { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--text-2);
+    app-icon { margin-top: 2px; color: var(--accent-strong); flex-shrink: 0; } b { color: var(--text); font-variant-numeric: tabular-nums; } } }
+.sugg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text-2); font: inherit; font-size: 12.5px; font-weight: 550; cursor: pointer;
+  &:hover { border-color: var(--border-strong); } &.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); } }
+.note { display: flex; gap: 6px; align-items: flex-start; margin: 0; font-size: 12.5px; color: var(--text-3); line-height: 1.45;
+  app-icon { margin-top: 2px; flex-shrink: 0; } }
+.field-err { margin: 0; font-size: 12.5px; color: var(--neg); }

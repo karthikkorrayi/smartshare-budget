@@ -52,7 +52,7 @@
       <app-metric icon="activity" [tone]="sum().net >= 0 ? 'pos' : 'neg'" label="Net cash flow" [value]="sum().net | money" [negative]="sum().net < 0"
         [hint]="sum().net >= 0 ? 'You kept more than you spent' : 'Spending is ahead of income'" />
       <app-metric icon="handshake" tone="warn" label="Money owed to you" [amount]="lendSummary().owedToMe" privacyKey="owed-to-me" [amountToggle]="false"
-        [hint]="lendSummary().iOwe ? 'You owe ' + (lendSummary().iOwe | money) : 'Currently lent out'" />
+        [hint]="lendSummary().count ? lendSummary().count + ' open record' + (lendSummary().count === 1 ? '' : 's') + ' · see Lending' : 'Nothing lent out'" />
       <app-metric icon="calendar-clock" tone="neg" label="Upcoming (30 days)" [value]="(commitments()?.total ?? 0) | money"
         [hint]="commitments()?.overdue ? commitments()!.overdue + ' overdue · ' + commitments()!.count + ' total' : (commitments()?.count ?? 0) + ' bills & card dues'" />
     }
@@ -258,14 +258,16 @@
       <!-- Lending ledger -->
       <section class="panel ledger">
         <div class="panel-head">
-          <div><h2>Lending &amp; borrowing</h2><p>Your personal money ledger</p></div>
+          <div><h2>Lending &amp; splits</h2><p>Your personal money ledger</p></div>
           <div class="panel-actions">
+            <button class="btn btn-sm btn-icon" (click)="quick.addTxn('expense', null, { split: true })" aria-label="Split a bill" title="Split a bill"><app-icon name="split" [size]="16" /></button>
             <button class="btn btn-sm btn-icon" (click)="quick.lending('lent')" aria-label="Add lending or borrowing" title="Add"><app-icon name="plus" [size]="16" /></button>
+            <a class="btn btn-sm btn-ghost" routerLink="/lending">Open<app-icon name="chevron-right" [size]="15" /></a>
           </div>
         </div>
         <div class="ledger-sum">
-          <div class="owed"><span class="tiny">Owed to you</span><b class="num">{{ lendSummary().owedToMe | money }}</b><span class="tiny muted">{{ lendSummary().received | money }} of {{ lendSummary().totalLent | money }} received</span></div>
-          <div class="owe"><span class="tiny">You owe</span><b class="num">{{ lendSummary().iOwe | money }}</b><span class="tiny muted">{{ lendSummary().repaid | money }} of {{ lendSummary().totalBorrowed | money }} repaid</span></div>
+          <div class="owed"><span class="tiny">Owed to you</span><b class="num"><app-amount [value]="lendSummary().owedToMe" privacyKey="owed-to-me" [toggle]="false" label="Owed to you" /></b><span class="tiny muted">{{ lendSummary().received | money }} of {{ lendSummary().totalLent | money }} received</span></div>
+          <div class="owe"><span class="tiny">You owe</span><b class="num"><app-amount [value]="lendSummary().iOwe" privacyKey="i-owe" [toggle]="false" label="You owe" /></b><span class="tiny muted">{{ lendSummary().repaid | money }} of {{ lendSummary().totalBorrowed | money }} repaid</span></div>
         </div>
         @if (!lendSummary().open.length) {
           <p class="muted tiny ledger-empty">Nothing outstanding. <button class="link" (click)="quick.lending('lent')">Record money you lent</button> or <button class="link" (click)="quick.lending('borrowed')">borrowed</button>.</p>
@@ -279,7 +281,7 @@
                   <span class="sub">{{ r.direction === 'lent' ? 'Owes you' : 'You owe' }} · <span [class.amt-neg]="lendDue(r).tone === 'overdue'">{{ lendDue(r).text }}</span></span>
                 </span>
                 <span class="num amt">{{ r.outstanding | money }}</span>
-                <button class="btn btn-icon btn-sm btn-soft" (click)="settle(r)" [attr.aria-label]="'Mark ' + r.person + ' as settled'" title="Mark settled"><app-icon name="check" [size]="16" /></button>
+                <button class="btn btn-icon btn-sm btn-soft" (click)="settle(r)" [attr.aria-label]="'Record repayment for ' + r.person" title="Record repayment"><app-icon name="check" [size]="16" /></button>
               </div>
             }
           </div>

@@ -48,3 +48,6 @@ app-select.sel, app-date.sel { width: 200px; max-width: 100%; }
   .cat { grid-template-columns: auto 1fr auto; .bar, .pct { display: none; } }
   .lend { flex-wrap: wrap; } .lend-actions { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
 }
+
+.moved { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 18px; border: 1px dashed var(--border-strong); border-radius: 16px;
+  > div { flex: 1; min-width: 200px; } h2 { font-size: 16px; margin: 0 0 4px; } p { margin: 0; font-size: 13px; } a { text-decoration: none; } }

@@ -1,25 +1,21 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { map, switchMap } from 'rxjs';
 import { FinanceService } from '../../services/finance.service';
-import { LedgerService } from '../../services/ledger.service';
 import { ReviewService } from '../../services/review.service';
 import { UndoService } from '../../services/undo.service';
 import { QuickActionsService } from '../../core/quick-actions.service';
-import { ConfirmService } from '../../ui/confirm.service';
 import { AccountSummary, parseRef, refKey } from '../../models/account.model';
-import { LendingRecord, lendingDue } from '../../models/lending.model';
+import { LendingRecord } from '../../models/lending.model';
 import {
   FinanceTxn,
   RANGE_PRESETS,
   RangePreset,
   byCategory,
   categoryIcon,
-  inr,
   rangeFor,
   totals,
   touches,
@@ -41,22 +37,19 @@ type Section = 'all' | 'expenses' | 'income' | 'transfers' | 'lending' | 'catego
 
 @Component({
   standalone: true,
-  imports: [DatePipe, FormsModule, RouterLink, IconComponent, MetricCardComponent, MoneyPipe, SkeletonComponent, EmptyStateComponent, TxnTableComponent, SelectComponent, DateFieldComponent, OptsPipe, AmountComponent],
+  imports: [FormsModule, RouterLink, IconComponent, MetricCardComponent, MoneyPipe, SkeletonComponent, EmptyStateComponent, TxnTableComponent, SelectComponent, DateFieldComponent, OptsPipe, AmountComponent],
   templateUrl: './activity.component.html',
   styleUrl: './activity.component.scss',
 })
 export class ActivityComponent {
   private finance = inject(FinanceService);
-  private ledger = inject(LedgerService);
   private undo = inject(UndoService);
-  private confirm = inject(ConfirmService);
   private dialog = inject(MatDialog);
   private router = inject(Router);
   quick = inject(QuickActionsService);
 
   readonly presets = RANGE_PRESETS;
   readonly catIcon = categoryIcon;
-  readonly lendDue = lendingDue;
   readonly today = new Date();
   readonly sections: { id: Section; label: string; icon: string }[] = [
     { id: 'all', label: 'All transactions', icon: 'list-checks' },
@@ -112,8 +105,6 @@ export class ActivityComponent {
   unlinked = computed(() => (this.txns() ?? []).filter(t => !t.account && t.kind !== 'transfer' && !t.system).length);
 
   lendOpen = computed(() => this.lending().filter(r => r.status === 'PENDING' && !this.undo.hidden().has(r.id)));
-  lendClosed = computed(() => this.lending().filter(r => r.status === 'PAID').slice(0, 20));
-  settleAmount: Record<string, number | null> = {};
 
   openCategory(name: string): void {
     const list = (this.txns() ?? []).filter(t => t.category === name);
@@ -122,28 +113,5 @@ export class ActivityComponent {
 
   openAccount(a: AccountSummary): void {
     this.router.navigate(['/account', a.type, a.ref.id]);
-  }
-
-  settle(r: LendingRecord): void {
-    const amt = Number(this.settleAmount[r.id] ?? r.outstanding);
-    if (!(amt > 0)) return;
-    const pay = Math.min(amt, r.outstanding);
-    const full = pay >= r.outstanding;
-    this.undo.defer(
-      `${r.direction === 'lent' ? `${r.person} repaid` : `You repaid ${r.person}`} ${inr(pay)}${full ? ' · settled' : ''}`,
-      full ? [r.id] : [],
-      () => this.ledger.settleLending(r, pay, r.account)
-    );
-    this.settleAmount[r.id] = null;
-  }
-
-  async removeLending(r: LendingRecord): Promise<void> {
-    const ok = await this.confirm.ask({
-      title: `Delete the record for ${r.person}?`,
-      message: r.status === 'PENDING' && r.trackInExpenses ? 'Its “Lent” expense is removed as well.' : 'Only this ledger entry is removed.',
-      confirm: 'Delete',
-      danger: true,
-    });
-    if (ok) this.undo.defer(`Deleted record for ${r.person}`, [r.id], () => this.ledger.deleteLending(r));
   }
 }

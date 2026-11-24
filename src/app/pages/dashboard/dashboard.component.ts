@@ -194,7 +194,7 @@ export class DashboardComponent implements OnInit {
   // ── Single eye for every balance on the dashboard ─────────────────
   private privacy = inject(PrivacyService);
   /** Keys of the balances this page shows: wealth, money owed to you, the month's "Left", every account. */
-  readonly balanceKeys = computed(() => ['wealth', 'owed-to-me', 'budget-left', ...(this.accounts() ?? []).map(a => a.key)]);
+  readonly balanceKeys = computed(() => ['wealth', 'owed-to-me', 'i-owe', 'budget-left', ...(this.accounts() ?? []).map(a => a.key)]);
   readonly balancesShown = computed(() => this.privacy.allVisible(this.balanceKeys()));
   toggleBalances(): void {
     this.privacy.setMany(this.balanceKeys(), !this.balancesShown());
@@ -313,12 +313,9 @@ export class DashboardComponent implements OnInit {
     );
   }
 
+  /** Opens "Record repayment" (full or partial, date, account) — no more one-tap full settle. */
   settle(r: LendingRecord): void {
-    this.undo.defer(
-      `${r.direction === 'lent' ? `${r.person} repaid` : `You repaid ${r.person}`} ${inr(r.outstanding)}${r.direction === 'lent' && r.trackInExpenses ? ' · added to income' : ''}`,
-      [r.id],
-      () => this.ledger.settleLending(r, r.outstanding, r.account)
-    );
+    this.quick.settle(r);
   }
 
   accountName(t: FinanceTxn): string {

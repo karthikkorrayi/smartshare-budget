@@ -111,6 +111,16 @@ import {
   EyeOff,
   Filter,
   Fingerprint,
+  Equal,
+  ListOrdered,
+  UserPlus,
+  Phone,
+  MessageCircle,
+  Users,
+  Split,
+  Share2,
+  NotebookPen,
+  Scale,
 } from 'lucide';
 
 export type IconNode = [string, Record<string, string | number>][];
@@ -227,4 +237,15 @@ export const ICONS: Record<string, IconNode> = {
   'eye-off': EyeOff as unknown as IconNode,
   'filter': Filter as unknown as IconNode,
   'fingerprint': Fingerprint as unknown as IconNode,
+  // Phase 4 — lending & splits
+  'equal': Equal as unknown as IconNode,
+  'list-ordered': ListOrdered as unknown as IconNode,
+  'user-plus': UserPlus as unknown as IconNode,
+  'phone': Phone as unknown as IconNode,
+  'message-circle': MessageCircle as unknown as IconNode,
+  'users': Users as unknown as IconNode,
+  'split': Split as unknown as IconNode,
+  'share2': Share2 as unknown as IconNode,
+  'notebook-pen': NotebookPen as unknown as IconNode,
+  'scale': Scale as unknown as IconNode,
 };

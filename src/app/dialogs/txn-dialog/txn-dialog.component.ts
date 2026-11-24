@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -15,11 +15,16 @@ import { EmptyStateComponent } from '../../ui/empty-state.component';
 import { DateFieldComponent } from '../../ui/date-field.component';
 import { AmountComponent } from '../../ui/amount.component';
 import { PrivateMoneyPipe } from '../../ui/money.pipe';
+import { SplitEditorComponent } from '../../components/split-editor/split-editor.component';
+import { knownContacts } from '../../models/lending.model';
+import { map } from 'rxjs';
 
 export interface TxnDialogData {
   mode?: TxnMode;
   account?: AccountRef | null;
   txn?: FinanceTxn;
+  /** Open a new expense with "Split this amount" switched on. */
+  split?: boolean;
 }
 
 // Spending categories offered for new entries (existing Overview list + a few common ones).
@@ -34,7 +39,7 @@ const INCOME_CATS = [...INCOME_CATEGORIES, 'Business', 'Gift', 'Repayment'];
  */
 @Component({
   standalone: true,
-  imports: [FormsModule, IconComponent, EmptyStateComponent, DateFieldComponent, AmountComponent, PrivateMoneyPipe],
+  imports: [FormsModule, IconComponent, EmptyStateComponent, DateFieldComponent, AmountComponent, PrivateMoneyPipe, SplitEditorComponent],
   templateUrl: './txn-dialog.component.html',
   styleUrl: './txn-dialog.component.scss',
 })
@@ -77,6 +82,13 @@ export class TxnDialogComponent {
   dateInput = signal<string>(toDateInput(this.editing?.date ?? new Date()));
   notes = signal<string>(this.editing?.raw?.notes ?? '');
   allowOverdraw = signal(false);
+
+  // ── Split this amount (new expenses only) ─────────────────────
+  splitOn = signal(!!this.data.split && !this.data.txn);
+  private splitEditor = viewChild(SplitEditorComponent);
+  contacts = toSignal(this.finance.lending$.pipe(map(list => knownContacts(list))), { initialValue: [] });
+  /** Splitting only makes sense for real spending you paid for. */
+  splitAllowed = computed(() => !this.editing && this.mode() === 'expense' && !['Lent', 'Card Bill', 'Wallet Top-up'].includes(this.category()));
 
   saving = signal(false);
   errors = signal<string[]>([]);
@@ -152,6 +164,7 @@ export class TxnDialogComponent {
     if (dateProblem) out.push(dateProblem);
     if (this.overdraw() && !this.allowOverdraw()) out.push(`This takes ${this.selected()!.name} below zero. Tick “Record anyway” if the balance shown is out of date.`);
     if (this.editing?.system) out.push('System-generated entries can’t be edited.');
+    if (this.splitOn() && this.splitAllowed()) out.push(...(this.splitEditor()?.problems() ?? []));
     return out;
   }
 
@@ -186,6 +199,13 @@ export class TxnDialogComponent {
         msg = `${this.editing ? 'Updated' : 'Added'} income "${title}" · ${inr(amount)}`;
       } else {
         const f = { description: title, amount, category: this.category(), date, notes: this.notesAllowed() ? this.notes() : '' };
+        if (this.splitOn() && this.splitAllowed() && this.splitEditor()) {
+          const v = this.splitEditor()!.value();
+          const s = await this.ledger.recordSplit(acc, f, v);
+          this.undo.offer(`Split "${title}" · ${inr(amount)} with ${v.people.length} ${v.people.length === 1 ? 'person' : 'people'}`, s.undo);
+          this.ref.close(true);
+          return;
+        }
         const s = this.editing ? await this.ledger.updateExpense(this.editing, acc, f) : await this.ledger.recordExpense(acc, f);
         undo = s.undo;
         msg = `${this.editing ? 'Updated' : 'Added'} "${title}" · ${inr(amount)} from ${this.selected()!.name}`;

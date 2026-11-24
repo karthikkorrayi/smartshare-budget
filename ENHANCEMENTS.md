@@ -86,3 +86,39 @@ no data migration, existing documents keep working.
   change list), privacy group spec, functions test for muted / completed bills.
 - **Deploy**: functions (reminder digest), then hosting. No rules change (`upcoming_payments` already accepts
   the new optional fields).
+
+## Phase 4 — Lending & "Split this amount"
+- **Lending & splits page** (`#/lending`, in the menu): people with what each owes you / you owe (netted when
+  money goes both ways), open records sorted by repay-by date, split bills with who has paid, and settled
+  records. Owed to you / You owe are hidden by default; the dashboard's single eye covers both.
+- **Split this amount**: switch it on when adding an expense (or tap **Split** on any expense's details, or
+  "Split a bill" from the + menu). "Me" is in the split by default; equal shares (paise left over go to you)
+  or exact amounts; optional phone numbers and a repay-by date; names you've used before are one tap.
+- **No double counting**: a split books **your share** in the expense's category and **each other person's
+  share** as a separate "Lent" entry on the same account, each with its own lending record. The account drops
+  by exactly what you paid, the category shows only your part, and each repayment comes back as income (as
+  before). A panel on the Lending page shows this month's Lent spending, repayment income and the net effect.
+- **Record repayment** dialog (replaces the inline box and the one-tap tick): full / half / any amount,
+  received-on date, received-into account, "forgive the rest" (closes the record; forgiven money is never
+  income), and a "what happens" preview. Partial payments as before.
+- **WhatsApp & call**: one tap opens WhatsApp with a ready reminder ("₹600 for Dinner at Paradise (22 Nov) is
+  still pending") — per record, per split member, or one message per person covering everything (netted when
+  both sides owe). Without a saved number WhatsApp lets you pick the chat. Numbers are stored with the
+  country code (10-digit numbers get +91).
+- **Lending form** rebuilt with the themed controls: lend from a bank account, wallet **or credit card**
+  (the "Lent" entry goes on that account), phone, repay-by date, notes, "what happens" preview; records can
+  now be **edited** (name, phone, repay-by, notes; the amount until the first repayment — its Lent entry is
+  re-booked).
+- **Safe deletes**: deleting a record removes its Lent entry only if nothing was repaid yet; once money has
+  come back, both the Lent spending and the repayment income stay (removing one would invent income). A split
+  can be deleted as a whole only before anyone pays. Lent entries open "Open in Lending" from their details
+  instead of being edited on their own.
+- **Dashboard**: lending panel links to the page, has "Split a bill", and its tick opens Record repayment.
+  Activity → Lending points to the new page. Lending reminders in the bell open the Lending page.
+- **Data** (all optional on `receivables`, no migration): `phone`, `lentKey`, `waivedAmount`, `splitId`,
+  `splitTitle`, `splitTotal`, `splitCount`, `splitOwnShare`, `splitOwnKey`; lent `accountType` may now be
+  `wallet` or `card`. No rules change (`receivables` already accepts the owner's fields).
+- **Tests**: `lending.model.spec.ts` (split maths to the paisa, phone/WhatsApp links, reminders, people,
+  splits, stats), `ledger.lending.spec.ts` (what a split books, card splits, rollback on bad shares,
+  partial repayment + forgive, borrowed / note-only never touch the budget, safe deletes).
+- **Deploy**: hosting only.

@@ -6,12 +6,13 @@ import { WalletsService } from './wallets.service';
 import { TransfersService } from './transfers.service';
 import { UpcomingPaymentService } from './upcoming-payment.service';
 import { ReceivableService } from './receivable.service';
-import { StateManagementService } from './state-management.service';
 import { AccountRef } from '../models/account.model';
 import { TXN_CATEGORIES } from '../models/card-transaction.model';
 import { WALLET_CATEGORIES } from '../models/wallet.model';
 import { RecurringPayment, nextOccurrence } from '../models/recurring.model';
-import { LendDirection, LendingRecord } from '../models/lending.model';
+import { LendDirection, LendingRecord, normalizePhone } from '../models/lending.model';
+import { toDate } from '../utils/firestore.util';
+import { Firestore, deleteField, doc, getDoc } from '@angular/fire/firestore';
 import { FinanceTxn } from '../utils/analytics.util';
 import { monthKey, startOfDay } from '../utils/date-input.util';
 
@@ -54,7 +55,7 @@ export class LedgerService {
   private transfers = inject(TransfersService);
   private upcoming = inject(UpcomingPaymentService);
   private receivables = inject(ReceivableService);
-  private state = inject(StateManagementService);
+  private firestore = inject(Firestore);
 
   // ── Expenses ──────────────────────────────────────────────────
   async recordExpense(ref: AccountRef | null, f: ExpenseFields): Promise<Saved> {
@@ -258,9 +259,15 @@ export class LedgerService {
   }
 
   // ── Lending / borrowing ───────────────────────────────────────
+  /**
+   * Money you lent or borrowed. A TRACKED loan you give is booked as a "Lent" entry on the account it
+   * left from (bank, wallet or card), so that account's balance and your spending stay right; repayments
+   * come back as income. Borrowed money is ledger-only.
+   */
   async addLending(x: {
     direction: LendDirection;
     person: string;
+    phone?: string;
     amount: number;
     date: Date;
     dueDate: Date | null;
@@ -270,16 +277,8 @@ export class LedgerService {
   }): Promise<Saved> {
     const amount = round(x.amount);
     const person = x.person.trim().slice(0, 60);
-    let lentExpenseId: string | null = null;
-    if (x.direction === 'lent' && x.track) {
-      const e = await this.recordExpense(x.account?.type === 'bank' ? x.account : null, {
-        description: `Lent: ${person}`,
-        amount,
-        category: 'Lent',
-        date: x.date,
-      });
-      lentExpenseId = e.key.split(':')[1];
-    }
+    const tracked = x.direction === 'lent' && !!x.track;
+    const lent = tracked ? await this.recordExpense(x.account, { description: `Lent: ${person}`, amount, category: 'Lent', date: x.date }) : null;
     const r = await this.receivables.add({
       title: person,
       amount,
@@ -287,27 +286,32 @@ export class LedgerService {
       date: x.date,
       status: 'PENDING',
       direction: x.direction,
-      trackInExpenses: x.direction === 'lent' && !!x.track,
+      trackInExpenses: tracked,
       settledAmount: 0,
+      ...(normalizePhone(x.phone) ? { phone: normalizePhone(x.phone) } : {}),
       ...(x.dueDate ? { dueDate: x.dueDate } : {}),
       ...(x.notes.trim() ? { notes: x.notes.trim().slice(0, 300) } : {}),
-      ...(x.account?.type === 'bank' ? { accountType: 'bank', accountId: x.account.id } : {}),
-      ...(lentExpenseId ? { lentExpenseId } : {}),
+      ...(x.direction === 'lent' && x.account ? { accountType: x.account.type, accountId: x.account.id } : {}),
+      ...lentLink(lent?.key ?? null),
     });
     return {
       key: `receivable:${r.id}`,
-      undo: () => this.state.removeReceivableCompletely({ receivableId: r.id, lentExpenseId }),
+      undo: async () => {
+        await this.receivables.delete(r.id);
+        if (lent) await lent.undo();
+      },
     };
   }
 
   /**
-   * Records a (partial) repayment. For tracked money you lent, the repayment is income on the day
-   * it's received — the same rule the dashboard always used.
+   * Records a (partial) repayment. For tracked money you lent, the repayment is income ("Repayment") on
+   * the day it's received, into the account it came into. `waiveRest` closes the record and forgives
+   * whatever is still outstanding after this payment — forgiven money is never income.
    */
-  async settleLending(r: LendingRecord, amount: number, account: AccountRef | null, date = new Date()): Promise<void> {
+  async settleLending(r: LendingRecord, amount: number, account: AccountRef | null, date = new Date(), waiveRest = false): Promise<void> {
     const pay = Math.min(round(amount), r.outstanding);
-    if (!(pay > 0)) return;
-    if (r.direction === 'lent' && r.trackInExpenses) {
+    if (!(pay > 0) && !waiveRest) return;
+    if (pay > 0 && r.direction === 'lent' && r.trackInExpenses) {
       await this.income.addIncome({
         source: `Received from ${r.person}`,
         amount: pay,
@@ -318,23 +322,226 @@ export class LedgerService {
         ...(account && account.type !== 'card' ? { accountType: account.type, accountId: account.id } : {}),
       });
     }
-    const settled = round(r.settled + pay);
-    const done = settled >= r.amount - 0.005;
+    const settled = round(r.settled + Math.max(0, pay));
+    const waived = waiveRest ? round(r.waived + Math.max(0, r.outstanding - Math.max(0, pay))) : r.waived;
+    const done = settled + waived >= r.amount - 0.005;
     await this.receivables.update(r.id, {
       settledAmount: settled,
-      history: [...r.history, { date, amount: pay }].slice(-24),
+      ...(waived > 0 ? { waivedAmount: waived } : {}),
+      ...(pay > 0 ? { history: [...r.history, { date, amount: pay }].slice(-24) } : {}),
       ...(done ? { status: 'PAID', paidDate: date, paidInMonth: monthKey(date) } : {}),
     });
   }
 
-  /** Pending: also removes its "Lent" expense (existing rule). Settled: only the ledger entry goes. */
-  deleteLending(r: LendingRecord) {
-    return r.status === 'PAID' ? this.receivables.delete(r.id) : this.state.deleteReceivable(r.id, [r.raw], []);
+  /**
+   * Edits a record. The amount can only change while nothing has been repaid (and not for a share of a
+   * split, whose shares must add up); its "Lent" entry is re-booked with the new amount.
+   */
+  async updateLending(r: LendingRecord, f: { person: string; phone: string; amount: number; dueDate: Date | null; notes: string }): Promise<Saved> {
+    const person = f.person.trim().slice(0, 60);
+    const amount = round(f.amount);
+    const amountChanged = Math.abs(amount - r.amount) > 0.004;
+    if (amountChanged && !canChangeAmount(r)) throw new Error('The amount can’t change after a repayment, or for a share of a split.');
+    const before = r.raw;
+    let link: Record<string, unknown> = {};
+    let undoEntry: (() => Promise<unknown>) | null = null;
+    if (r.lentKey && (amountChanged || person !== r.person)) {
+      if (amountChanged) {
+        // Re-book the Lent entry (works the same for bank, wallet and card entries).
+        const created = await this.recordExpense(r.account, { description: `Lent: ${person}`, amount, category: 'Lent', date: r.date ?? new Date() });
+        const old = await this.entrySnapshot(r.lentKey);
+        await this.deleteEntry(r.lentKey);
+        link = lentLink(created.key);
+        undoEntry = async () => {
+          await created.undo();
+          if (old) await this.recreate(r.account, old);
+        };
+      } else if (r.lentKey.startsWith('expense:')) {
+        const id = r.lentKey.slice(8);
+        const old = r.raw?.title ?? r.person;
+        await this.expenses.updateExpense({ id, description: `Lent: ${person}` });
+        undoEntry = () => this.expenses.updateExpense({ id, description: `Lent: ${old}` });
+      }
+    }
+    const phone = normalizePhone(f.phone);
+    await this.receivables.update(r.id, {
+      title: person,
+      amount,
+      phone: phone || deleteField(),
+      dueDate: f.dueDate ?? deleteField(),
+      notes: f.notes.trim() ? f.notes.trim().slice(0, 300) : deleteField(),
+      ...link,
+    });
+    return {
+      key: `receivable:${r.id}`,
+      undo: async () => {
+        if (undoEntry) await undoEntry();
+        await this.receivables.update(r.id, {
+          title: before.title,
+          amount: before.amount,
+          phone: before.phone ?? deleteField(),
+          dueDate: before.dueDate ?? deleteField(),
+          notes: before.notes ?? deleteField(),
+          lentKey: before.lentKey ?? deleteField(),
+          lentExpenseId: before.lentExpenseId ?? deleteField(),
+        });
+      },
+    };
+  }
+
+  /**
+   * Removes a record. If nothing has been repaid, its "Lent" entry goes too (as if the loan never
+   * happened). Once money has come back, only the ledger entry goes: the Lent spending and the
+   * repayment income both really happened, so removing just one of them would invent income.
+   */
+  async deleteLending(r: LendingRecord): Promise<void> {
+    if (removesLentEntry(r)) await this.deleteEntry(r.lentKey!);
+    await this.receivables.delete(r.id);
+  }
+
+  /**
+   * Removes a whole split: every person's record and Lent entry, and your own share's expense.
+   * Not allowed once anyone has repaid (their repayment is already income).
+   */
+  async deleteSplit(members: LendingRecord[]): Promise<void> {
+    if (members.some(m => m.settled > 0)) throw new Error('Someone has already repaid part of this split, so it can’t be deleted as a whole.');
+    const own = members.find(m => m.split?.ownKey)?.split?.ownKey ?? null;
+    for (const m of members) {
+      if (m.lentKey) await this.deleteEntry(m.lentKey).catch(() => undefined);
+      await this.receivables.delete(m.id);
+    }
+    if (own) await this.deleteEntry(own).catch(() => undefined);
+  }
+
+  /**
+   * "Split this amount": you paid `f.amount`; `people` owe you their shares. Your share (if any) is
+   * booked in the expense's own category, each person's share as a separate "Lent" entry on the same
+   * account with a lending record — so the account drops by the full amount, the category shows only
+   * your part, and each share comes back as income when repaid. Nothing is counted twice.
+   * With `existing`, that expense is re-used (for your share, or as the first person's share when you
+   * aren't in the split) so links such as email-review approvals are kept.
+   */
+  async recordSplit(
+    acc: AccountRef | null,
+    f: ExpenseFields,
+    split: { me: number; people: { name: string; phone?: string; share: number }[]; dueDate: Date | null },
+    existing: FinanceTxn | null = null
+  ): Promise<Saved> {
+    const total = round(f.amount);
+    const me = round(split.me);
+    const people = split.people.map(p => ({ name: p.name.trim().slice(0, 60), phone: normalizePhone(p.phone), share: round(p.share) }));
+    const sum = round(me + people.reduce((s, p) => s + p.share, 0));
+    if (!people.length || people.some(p => !p.name || !(p.share > 0))) throw new Error('Every person needs a name and a share above ₹0.');
+    if (Math.abs(sum - total) > 0.009) throw new Error('The shares don’t add up to the total.');
+    const splitId = newId();
+    const title = f.description.trim().slice(0, 80) || 'Split';
+    const undos: (() => Promise<unknown>)[] = [];
+    try {
+      // Your own share first (its key is stored on every record).
+      let ownKey: string | null = null;
+      let reuseForFirst: FinanceTxn | null = null;
+      if (me > 0) {
+        const s = existing ? await this.updateExpense(existing, acc, { ...f, amount: me }) : await this.recordExpense(acc, { ...f, amount: me });
+        ownKey = s.key;
+        undos.push(s.undo);
+      } else if (existing) {
+        reuseForFirst = existing;
+      }
+      for (const [i, p] of people.entries()) {
+        const lf: ExpenseFields = { description: `Lent: ${p.name} · ${title}`.slice(0, 120), amount: p.share, category: 'Lent', date: f.date };
+        const s = i === 0 && reuseForFirst ? await this.updateExpense(reuseForFirst, acc, lf) : await this.recordExpense(acc, lf);
+        undos.push(s.undo);
+        const r = await this.receivables.add({
+          title: p.name,
+          amount: p.share,
+          createdAt: f.date,
+          date: f.date,
+          status: 'PENDING',
+          direction: 'lent',
+          trackInExpenses: true,
+          settledAmount: 0,
+          ...(p.phone ? { phone: p.phone } : {}),
+          ...(split.dueDate ? { dueDate: split.dueDate } : {}),
+          ...(acc ? { accountType: acc.type, accountId: acc.id } : {}),
+          ...lentLink(s.key),
+          splitId,
+          splitTitle: title,
+          splitTotal: total,
+          splitCount: people.length + (me > 0 ? 1 : 0),
+          splitOwnShare: me,
+          ...(ownKey ? { splitOwnKey: ownKey } : {}),
+        });
+        undos.push(() => this.receivables.delete(r.id));
+      }
+    } catch (e) {
+      // Roll back what was written so a failed split leaves nothing half-done.
+      for (const u of undos.reverse()) await u().catch(() => undefined);
+      throw e;
+    }
+    return {
+      key: `split:${splitId}`,
+      undo: async () => {
+        for (const u of [...undos].reverse()) await u();
+      },
+    };
+  }
+
+  // ── helpers for entries referenced by key ('expense:<id>' | 'card:<id>' | 'wallet:<id>') ──
+  deleteEntry(key: string): Promise<unknown> {
+    const [kind, id] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+    switch (kind) {
+      case 'expense': return this.expenses.deleteExpense(id);
+      case 'card': return this.cardTxns.delete(id);
+      case 'wallet': return this.wallets.deleteTxn(id);
+      default: return Promise.resolve();
+    }
+  }
+
+  /** Amount / date / description of a Lent entry before it's re-booked (for undo). */
+  private async entrySnapshot(key: string): Promise<ExpenseFields | null> {
+    const raw = await this.readEntry(key).catch(() => null);
+    if (!raw) return null;
+    const date = toDate(raw.date ?? raw.txnDate) ?? new Date();
+    return { description: raw.description ?? 'Lent', amount: Number(raw.amount) || 0, category: 'Lent', date };
+  }
+
+  private recreate(acc: AccountRef | null, f: ExpenseFields): Promise<Saved> {
+    return this.recordExpense(acc, f);
+  }
+
+  private async readEntry(key: string): Promise<any | null> {
+    const [kind, id] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+    const col = kind === 'expense' ? 'expenses' : kind === 'card' ? 'card_transactions' : kind === 'wallet' ? 'wallet_transactions' : null;
+    if (!col) return null;
+    const snap = await getDoc(doc(this.firestore, col, id));
+    return snap.exists() ? snap.data() : null;
   }
 }
 
+/** Deleting this record also deletes its "Lent" entry (open, tracked, nothing repaid yet). */
+export function removesLentEntry(r: LendingRecord): boolean {
+  return r.status === 'PENDING' && !!r.lentKey && r.settled === 0;
+}
+
+/** Whether a record's amount may still be edited. */
+export function canChangeAmount(r: LendingRecord): boolean {
+  return r.settled === 0 && r.waived === 0 && !r.split && r.status === 'PENDING';
+}
+
+/** Stores the Lent entry's key; bank / no-account entries also keep the older lentExpenseId field. */
+function lentLink(key: string | null): Record<string, string> {
+  if (!key) return {};
+  return key.startsWith('expense:') ? { lentKey: key, lentExpenseId: key.slice(8) } : { lentKey: key };
+}
+
+function newId(): string {
+  const c = globalThis.crypto as Crypto | undefined;
+  return c?.randomUUID ? c.randomUUID().replace(/-/g, '').slice(0, 20) : Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
 function pick(list: readonly string[], v: string): string {
-  if (list.includes(v)) return v;
+  // "Lent" is kept on card / wallet entries too, so lent money is recognisable wherever it was paid from.
+  if (list.includes(v) || v === 'Lent') return v;
   const alias: Record<string, string> = { Transport: 'Travel', Petrol: 'Fuel', Tickets: 'Entertainment', 'Card Bill': 'Card Payment' };
   return list.includes(alias[v]) ? alias[v] : list.includes('Others') ? 'Others' : list[0];
 }

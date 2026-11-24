@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { FinanceService } from '../../services/finance.service';
 import { LedgerService } from '../../services/ledger.service';
@@ -65,6 +66,11 @@ const KIND_LABEL: Record<FinanceTxn['kind'], string> = {
         @if (!t.account && t.kind !== 'transfer') {
           <div class="alert"><app-icon name="info" [size]="16" /><span>Not linked to an account, so it doesn't change any balance. Edit it to choose the account it belongs to.</span></div>
         }
+        @if (linked(); as l) {
+          <div class="alert"><app-icon name="handshake" [size]="16" />
+            <span>{{ l.own ? 'Your share of the split “' + l.title + '”.' : 'Money lent to ' + l.person + (l.title ? ' (split “' + l.title + '”)' : '') + '. Manage it in Lending so the record stays in step.' }}</span>
+          </div>
+        }
         @if (t.system) {
           <div class="alert warn"><app-icon name="lock" [size]="16" /><span>System-generated entries are protected and can't be edited or deleted.</span></div>
         }
@@ -72,9 +78,15 @@ const KIND_LABEL: Record<FinanceTxn['kind'], string> = {
 
       @if (!t.system) {
         <div class="dlg-foot">
-          <button class="btn btn-danger-text btn-ghost" (click)="remove()"><app-icon name="trash2" [size]="16" />Delete</button>
-          <span class="spacer"></span>
-          <button class="btn btn-primary" (click)="edit()"><app-icon name="pencil" [size]="16" />Edit</button>
+          @if (linked() && !linked()!.own) {
+            <span class="spacer"></span>
+            <button class="btn btn-primary" (click)="openLending()"><app-icon name="handshake" [size]="16" />Open in Lending</button>
+          } @else {
+            <button class="btn btn-danger-text btn-ghost" (click)="remove()"><app-icon name="trash2" [size]="16" />Delete</button>
+            <span class="spacer"></span>
+            @if (canSplit()) { <button class="btn" (click)="split()"><app-icon name="split" [size]="16" />Split</button> }
+            <button class="btn btn-primary" (click)="edit()"><app-icon name="pencil" [size]="16" />Edit</button>
+          }
         </div>
       }
     </div>
@@ -100,12 +112,41 @@ export class TxnDetailComponent {
   private quick = inject(QuickActionsService);
   private confirm = inject(ConfirmService);
   private dialog = inject(MatDialog);
+  private router = inject(Router);
   private cards = inject(CardsService);
   private wallets = inject(WalletsService);
 
   readonly kindLabel = KIND_LABEL;
   readonly catIcon = categoryIcon;
   private accounts = toSignal(this.finance.accountMap$);
+  private lending = toSignal(this.finance.lending$);
+
+  /** A "Lent" entry of a lending record, or your own share of a split. */
+  linked = computed(() => {
+    const key = this.data.txn.key;
+    for (const r of this.lending() ?? []) {
+      if (r.lentKey === key) return { own: false, person: r.person, title: r.split?.title ?? '' };
+      if (r.split?.ownKey === key) return { own: true, person: '', title: r.split.title };
+    }
+    return null;
+  });
+  /** Spending you paid for (not a card credit, wallet top-up, bill payment or loan) can be split. */
+  canSplit = computed(() => {
+    const t = this.data.txn;
+    if (t.system || t.flow !== 'out' || this.linked() || this.lending() === undefined) return false;
+    if (t.kind === 'card' && t.raw?.direction !== 'debit') return false;
+    if (t.kind === 'wallet' && t.raw?.type !== 'spend') return false;
+    return (t.kind === 'expense' || t.kind === 'card' || t.kind === 'wallet') && !['Lent', 'Card Bill', 'Wallet Top-up', 'Card Payment'].includes(t.category);
+  });
+
+  split(): void {
+    this.ref.close();
+    this.quick.split(this.data.txn);
+  }
+  openLending(): void {
+    this.ref.close();
+    this.router.navigate(['/lending']);
+  }
 
   sourceLabel = computed(() => {
     const t = this.data.txn;
