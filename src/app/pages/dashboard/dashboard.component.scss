@@ -149,3 +149,5 @@ app-select.acct-select { width: 210px; max-width: 100%; }
 .balances-eye { font-size: 12.5px; font-weight: 600; color: var(--text-3); gap: 6px; padding: 4px 10px; border: 1px solid var(--border);
   &[aria-pressed='true'] { color: var(--accent-strong); border-color: var(--accent); background: var(--accent-soft); } }
 @media (max-width: 520px) { .balances-eye span { display: none; } .balances-eye { padding: 4px 8px; } }
+
+.insight.as-link { text-decoration: none; color: inherit; span { flex: 1; } b { color: var(--text); } }

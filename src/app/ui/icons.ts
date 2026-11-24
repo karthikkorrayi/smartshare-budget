@@ -121,6 +121,10 @@ import {
   Share2,
   NotebookPen,
   Scale,
+  Leaf,
+  Sunrise,
+  Send,
+  Medal,
 } from 'lucide';
 
 export type IconNode = [string, Record<string, string | number>][];
@@ -248,4 +252,9 @@ export const ICONS: Record<string, IconNode> = {
   'share2': Share2 as unknown as IconNode,
   'notebook-pen': NotebookPen as unknown as IconNode,
   'scale': Scale as unknown as IconNode,
+  // Phase 5 — streaks & notifications
+  'leaf': Leaf as unknown as IconNode,
+  'sunrise': Sunrise as unknown as IconNode,
+  'send': Send as unknown as IconNode,
+  'medal': Medal as unknown as IconNode,
 };

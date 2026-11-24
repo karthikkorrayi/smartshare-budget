@@ -24,6 +24,9 @@ import { syncConnection } from './sync';
 import { ownedConnection } from './ownership';
 import { BillLite, CardLite, StatementLite, computeBillReminders, computeDueReminders, digest } from './reminders';
 import { pushToUser } from './push';
+import { RawEntry, buildDays, eveningCheckin, istClock, morningCelebration, weeklyRecap } from './discipline';
+import { istDay } from './reminders';
+import { getAuth } from 'firebase-admin/auth';
 
 initializeApp();
 const db = getFirestore();
@@ -179,52 +182,135 @@ export const gmailScheduledSync = onSchedule(
 );
 
 /**
- * 09:00 IST daily: one push per user who enabled notifications, summarising card payments that are
- * overdue or due within their lead time, and statements generating tomorrow. (The in-app bell already
- * shows these live, so nothing is stored here — this only reaches users who are away from the app.)
+ * Push scheduler — runs every hour (IST) and sends each user what they turned on, at the hours they
+ * chose (users/{uid}.settings):
+ *   morningHour (default 9):  card / bill due digest  +  streak milestone reached yesterday
+ *   eveningHour (default 21): "nothing logged today" check-in  (Sundays: the weekly recap instead)
+ * The name is kept from when it only sent the 09:00 digest, so deploying updates it in place.
+ * Each kind is sent at most once per user per day (users/{uid}.pushLog), even if a run is retried.
  */
 export const dailyDueDigest = onSchedule(
-  { schedule: 'every day 09:00', timeZone: 'Asia/Kolkata', region: REGION, timeoutSeconds: 300, memory: '256MiB', maxInstances: 1 },
+  { schedule: '0 * * * *', timeZone: 'Asia/Kolkata', region: REGION, timeoutSeconds: 540, memory: '256MiB', maxInstances: 1 },
   async () => {
+    const now = new Date();
+    const clock = istClock(now);
     const tokens = await db.collection('fcm_tokens').get();
     const users = [...new Set(tokens.docs.map(d => String(d.get('userId'))))];
-    const now = new Date();
     let sent = 0;
     for (const uid of users) {
       try {
-        const [cardsSnap, stmtSnap, userSnap, billSnap] = await Promise.all([
-          db.collection('cards').where('userId', '==', uid).where('status', '==', 'Active').get(),
-          db.collection('card_statements').where('userId', '==', uid).where('status', 'in', ['Unpaid', 'Partially Paid']).get(),
-          db.doc(`users/${uid}`).get(),
-          db.collection('upcoming_payments').where('userId', '==', uid).get(),
-        ]);
-        const lead = Math.min(10, Math.max(1, Number(userSnap.get('settings.reminderDays')) || 3));
-        const cards = cardsSnap.docs.map(d => ({ id: d.id, ...d.data() }) as CardLite);
-        const statements = stmtSnap.docs.map(d => {
-          const x = d.data();
-          return { id: d.id, ...x, statementDate: x.statementDate.toDate(), dueDate: x.dueDate.toDate() } as StatementLite;
-        });
-        const bills = billSnap.docs.map(d => {
-          const x = d.data();
-          return {
-            id: d.id,
-            userId: uid,
-            description: String(x.description ?? 'Payment'),
-            amount: Number(x.amount) || 0,
-            dueDate: typeof x.dueDate?.toDate === 'function' ? x.dueDate.toDate() : new Date(NaN),
-            paused: !!x.paused,
-            completed: !!x.completed,
-            notify: x.notify !== false,
-            reminderDays: x.reminderDays === undefined || x.reminderDays === null ? undefined : Number(x.reminderDays),
-          } as BillLite;
-        });
-        const msg = digest([...computeDueReminders(cards, statements, now, lead), ...computeBillReminders(bills, now, lead)]);
-        if (!msg) continue;
-        sent += await pushToUser(uid, { ...msg, route: '/notifications', tag: 'daily-due' }, 'dues');
+        const userSnap = await db.doc(`users/${uid}`).get();
+        const st = userSnap.get('settings') ?? {};
+        const on = (k: string) => st?.push?.[k] !== false;
+        const morning = clampHour(st.morningHour, 6, 11, 9);
+        const evening = clampHour(st.eveningHour, 17, 23, 21);
+        const log: Record<string, number> = userSnap.get('pushLog') ?? {};
+        const fresh = (tag: string) => log[tag] !== clock.day;
+        const jobs = {
+          dues: on('dues') && clock.hour === morning && fresh('daily-due'),
+          streak: on('streaks') && clock.hour === morning && fresh('streak'),
+          weekly: on('weekly') && clock.hour === evening && clock.weekday === 0 && fresh('weekly'),
+          checkin: on('checkin') && clock.hour === evening && fresh('checkin'),
+        };
+        if (!jobs.dues && !jobs.streak && !jobs.weekly && !jobs.checkin) continue;
+        const done: Record<string, number> = {};
+
+        if (jobs.dues) {
+          const msg = await dueDigestFor(uid, Math.min(10, Math.max(1, Number(st.reminderDays) || 3)), now);
+          if (msg) sent += await pushToUser(uid, { ...msg, route: '/notifications', tag: 'daily-due' }, 'dues', true);
+          done['daily-due'] = clock.day;
+        }
+        if (jobs.streak || jobs.weekly || jobs.checkin) {
+          const { days, since } = await disciplineDays(uid, userSnap, now);
+          const limit = Math.max(0, Number(st.dailyLimit) || 0);
+          const pushes: [string, ReturnType<typeof eveningCheckin>, 'streaks' | 'weekly' | 'checkin'][] = [];
+          if (jobs.streak) pushes.push(['streak', morningCelebration(days, clock.day, since, limit), 'streaks']);
+          const weekly = jobs.weekly ? weeklyRecap(days, clock.day, since, limit) : null;
+          if (jobs.weekly) pushes.push(['weekly', weekly, 'weekly']);
+          // Sunday's recap replaces the check-in, so it's one evening push.
+          if (jobs.checkin && !weekly) pushes.push(['checkin', eveningCheckin(days, clock.day, since), 'checkin']);
+          for (const [tag, msg, kind] of pushes) {
+            if (msg) sent += await pushToUser(uid, msg, kind, true);
+            done[tag] = clock.day;
+          }
+        }
+        await userSnap.ref.set({ pushLog: done }, { merge: true });
       } catch (e) {
-        logger.warn('digest failed', { uid, err: String(e) });
+        logger.warn('push run failed', { uid, err: String(e) });
       }
     }
-    logger.info('daily digest done', { users: users.length, sent });
+    logger.info('push run done', { hour: clock.hour, users: users.length, sent });
   }
 );
+
+function clampHour(v: unknown, min: number, max: number, def: number): number {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= min && n <= max ? n : def;
+}
+
+/** Card payments due / overdue, statements tomorrow, and bills due — one digest. */
+async function dueDigestFor(uid: string, lead: number, now: Date) {
+  const [cardsSnap, stmtSnap, billSnap] = await Promise.all([
+    db.collection('cards').where('userId', '==', uid).where('status', '==', 'Active').get(),
+    db.collection('card_statements').where('userId', '==', uid).where('status', 'in', ['Unpaid', 'Partially Paid']).get(),
+    db.collection('upcoming_payments').where('userId', '==', uid).get(),
+  ]);
+  const cards = cardsSnap.docs.map(d => ({ id: d.id, ...d.data() }) as CardLite);
+  const statements = stmtSnap.docs.map(d => {
+    const x = d.data();
+    return { id: d.id, ...x, statementDate: x.statementDate.toDate(), dueDate: x.dueDate.toDate() } as StatementLite;
+  });
+  const bills = billSnap.docs.map(d => {
+    const x = d.data();
+    return {
+      id: d.id,
+      userId: uid,
+      description: String(x.description ?? 'Payment'),
+      amount: Number(x.amount) || 0,
+      dueDate: typeof x.dueDate?.toDate === 'function' ? x.dueDate.toDate() : new Date(NaN),
+      paused: !!x.paused,
+      completed: !!x.completed,
+      notify: x.notify !== false,
+      reminderDays: x.reminderDays === undefined || x.reminderDays === null ? undefined : Number(x.reminderDays),
+    } as BillLite;
+  });
+  return digest([...computeDueReminders(cards, statements, now, lead), ...computeBillReminders(bills, now, lead)]);
+}
+
+const DISCIPLINE_DAYS = 370;
+
+/** A year of days (spending + whether anything was logged), same rules as the app. */
+async function disciplineDays(uid: string, userSnap: FirebaseFirestore.DocumentSnapshot, now: Date) {
+  const from = new Date(now.getTime() - DISCIPLINE_DAYS * 86_400_000);
+  const months: string[] = [];
+  for (let i = 0; i < 13; i++) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 15));
+    months.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`);
+  }
+  const [ex, cards, wallets, income, transfers, user] = await Promise.all([
+    db.collection('expenses').where('userId', '==', uid).where('date', '>=', from).get(),
+    db.collection('card_transactions').where('userId', '==', uid).where('txnDate', '>=', from).get(),
+    db.collection('wallet_transactions').where('userId', '==', uid).get(),
+    db.collection('income').where('userId', '==', uid).where('month', 'in', months).get(),
+    db.collection('transfers').where('userId', '==', uid).get(),
+    getAuth().getUser(uid).catch(() => null),
+  ]);
+  const ts = (v: any): Date | null => (v && typeof v.toDate === 'function' ? v.toDate() : v instanceof Date ? v : null);
+  const entries: RawEntry[] = [
+    ...ex.docs.map(d => ({ kind: 'expense' as const, date: ts(d.get('date')), amount: Number(d.get('amount')) || 0, category: d.get('category'), status: d.get('status') })),
+    ...cards.docs.map(d => ({ kind: 'card' as const, date: ts(d.get('txnDate')), amount: Number(d.get('amount')) || 0, category: d.get('category'), direction: d.get('direction') })),
+    ...wallets.docs.map(d => ({ kind: 'wallet' as const, date: ts(d.get('date')), amount: Number(d.get('amount')) || 0, type: d.get('type') })),
+    ...income.docs.map(d => ({ kind: 'income' as const, date: ts(d.get('date')), amount: Number(d.get('amount')) || 0, system: !!d.get('isSystemGenerated') })),
+    ...transfers.docs.map(d => ({ kind: 'transfer' as const, date: ts(d.get('date')), amount: Number(d.get('amount')) || 0 })),
+  ].filter(e => e.date && e.date >= from);
+  const checkins = Object.keys(userSnap.get('checkins') ?? {});
+  const created = user?.metadata.creationTime ? new Date(user.metadata.creationTime) : from;
+  return { days: buildDays(entries, checkins), since: istDay(created) };
+}
+
+/** "Send a test notification" from the app: proves push works on the user's devices. */
+export const sendTestPush = onCall({ region: REGION, timeoutSeconds: 30, memory: '256MiB', maxInstances: 5 }, async req => {
+  const uid = requireUser(req);
+  const sent = await pushToUser(uid, { title: 'Notifications are working ✅', body: 'This is how SmartShare reminders will look on this device.', route: '/streaks', tag: 'test' }, 'test');
+  return { sent };
+});

@@ -20,6 +20,15 @@ export class SettingsService {
     return withDefaults(snap.get('settings'));
   }
 
+  /**
+   * Changes only the given settings (nested maps such as push are merged key by key), so two screens
+   * saving different settings never overwrite each other.
+   */
+  patch(change: Partial<Omit<UserSettings, 'push'>> & { push?: Partial<UserSettings['push']> }): Promise<void> {
+    const uid = this.auth.requireUid();
+    return setDoc(doc(this.firestore, 'users', uid), { uid, settings: change, updatedAt: serverTimestamp() }, { merge: true });
+  }
+
   save(settings: UserSettings): Promise<void> {
     const uid = this.auth.requireUid();
     const clean = withDefaults(settings);

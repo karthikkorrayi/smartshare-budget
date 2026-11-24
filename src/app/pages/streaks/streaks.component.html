@@ -1,0 +1,134 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Streaks</h1>
+      <p>Financial discipline, built only from what you log.</p>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" (click)="quick.addTxn('expense')"><app-icon name="plus" [size]="16" />Add expense</button>
+    </div>
+  </div>
+
+  @if (d(); as d) {
+    <!-- Motivation + today -->
+    <section class="hero" [attr.data-tone]="d.message.tone">
+      <div class="msg">
+        <span class="badge-ico"><app-icon [name]="d.message.icon" [size]="26" /></span>
+        <div>
+          <h2>{{ d.message.title }}</h2>
+          <p>{{ d.message.text }}</p>
+        </div>
+      </div>
+      <div class="today">
+        <span class="k">Today</span>
+        <b class="num">{{ d.today.spend > 0 ? (d.today.spend | money: true) : 'Nothing spent' }}</b>
+        <small>
+          @if (d.today.checkin) { Marked as a no-spend day ✓ }
+          @else if (d.today.logged) { Logged ✓ }
+          @else { Nothing logged yet }
+          @if (d.today.limit) { · limit {{ d.today.limit | money: true }} }
+        </small>
+        <div class="today-actions">
+          @if (d.today.checkin) {
+            <button class="btn btn-sm" (click)="undoCheckIn()" [disabled]="busy()"><app-icon name="undo2" [size]="14" />Undo</button>
+          } @else if (d.today.spend <= 0) {
+            <button class="btn btn-sm btn-primary" (click)="checkIn()" [disabled]="busy()"><app-icon name="leaf" [size]="14" />Nothing spent today</button>
+          }
+          <button class="btn btn-sm" (click)="quick.addTxn('expense')"><app-icon name="plus" [size]="14" />Add expense</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Streak cards -->
+    <div class="streaks">
+      @for (s of d.streaks; track s.kind) {
+        <article class="streak" [attr.data-kind]="s.kind" [attr.data-today]="s.today" [class.off]="!s.available">
+          <header>
+            <span class="icon-tile"><app-icon [name]="s.icon" [size]="18" /></span>
+            <span class="t">{{ s.title }}</span>
+            @if (s.available) { <span class="best" title="Your best">Best {{ s.best }}</span> }
+          </header>
+          @if (s.available) {
+            <div class="count"><b class="num">{{ s.current }}</b><span>day{{ s.current === 1 ? '' : 's' }}</span></div>
+            <p class="today-line">{{ s.todayText }}</p>
+            @if (s.next) {
+              <div class="next">
+                <div class="bar"><i [style.width.%]="s.progress * 100"></i></div>
+                <small>{{ s.toNext }} more to {{ s.next }}</small>
+              </div>
+            }
+          } @else {
+            <p class="today-line">{{ s.todayText }}</p>
+            <a class="btn btn-sm btn-soft" routerLink="/profile" fragment="budget">Set a daily limit<app-icon name="chevron-right" [size]="14" /></a>
+          }
+        </article>
+      }
+    </div>
+
+    <div class="layout">
+      <div class="main">
+        <!-- Calendar -->
+        <section class="panel">
+          <div class="panel-head"><div><h2>Last 12 weeks</h2><p>Each square is a day</p></div></div>
+          <div class="cal-wrap">
+            <div class="cal-days" aria-hidden="true"><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span></div>
+            <div class="cal-scroll">
+              <div class="cal-months" aria-hidden="true">@for (m of monthLabels(); track $index) { <span>{{ m }}</span> }</div>
+              <div class="cal" role="img" aria-label="Spending calendar for the last 12 weeks">
+                @for (w of weeks(); track $index) {
+                  <div class="col">
+                    @for (c of w; track c.date.getTime()) {
+                      <span class="cell" [attr.data-s]="c.state" [class.today]="c.today" [class.logged]="c.logged" [title]="dayTitle(c)"></span>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+          <div class="legend">
+            <span><i data-s="nospend"></i>No spending</span>
+            @if (d.today.limit) { <span><i data-s="within"></i>Within limit</span><span><i data-s="over"></i>Over limit</span> }
+            @else { <span><i data-s="spent"></i>Spent</span> }
+            <span><i class="dot"></i>Logged</span>
+          </div>
+        </section>
+
+        <!-- Badges -->
+        <section class="panel">
+          <div class="panel-head"><div><h2>Badges</h2><p>{{ earnedCount() }} earned — from your best streaks</p></div><span class="icon-tile sm warn"><app-icon name="medal" [size]="16" /></span></div>
+          @for (g of badgeGroups(); track g.kind) {
+            <div class="bgroup">
+              <span class="bk"><app-icon [name]="g.icon" [size]="14" />{{ g.title }}</span>
+              <div class="bl">
+                @for (b of g.badges; track b.days) {
+                  <span class="medal" [class.earned]="b.earned" [title]="b.earned ? 'Earned: ' + b.days + ' days' : 'Locked: reach ' + b.days + ' days'">
+                    <app-icon [name]="b.earned ? 'award' : 'lock'" [size]="14" />{{ b.days }}
+                  </span>
+                }
+              </div>
+            </div>
+          }
+        </section>
+      </div>
+
+      <aside class="side">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Reminders</h2><p>Push notifications on your phone</p></div><span class="icon-tile sm accent"><app-icon name="bell-ring" [size]="16" /></span></div>
+          <app-notification-prefs />
+        </section>
+        <section class="panel how">
+          <div class="panel-head"><div><h2>How streaks work</h2></div></div>
+          <ul>
+            <li><app-icon name="flame" [size]="14" /><span><b>Logging</b> — any entry you add that day, or “Nothing spent today”.</span></li>
+            <li><app-icon name="leaf" [size]="14" /><span><b>No-spend</b> — a day with no spending. Card bill payments, top-ups and money you move don't count as spending.</span></li>
+            <li><app-icon name="target" [size]="14" /><span><b>Within limit</b> — spending at or under your daily limit.</span></li>
+            <li><app-icon name="calendar-check" [size]="14" /><span>A day counts once it's over; today joins as soon as it qualifies. Days before you joined never count.</span></li>
+          </ul>
+        </section>
+      </aside>
+    </div>
+  } @else {
+    <div class="streaks">@for (i of [1, 2, 3]; track i) { <app-skeleton variant="card" /> }</div>
+    <app-skeleton variant="row" [count]="4" />
+  }
+</div>

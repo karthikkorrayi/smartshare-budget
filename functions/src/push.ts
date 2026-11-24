@@ -2,8 +2,11 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { logger } from 'firebase-functions';
 
-/** Which pushes a user wants (users/{uid}.settings.push). Missing = on. */
-export type PushKind = 'reviews' | 'dues';
+/**
+ * Which pushes a user wants (users/{uid}.settings.push). Missing = on.
+ * 'test' is the "Send a test notification" button and is always sent.
+ */
+export type PushKind = 'reviews' | 'dues' | 'checkin' | 'streaks' | 'weekly' | 'test';
 
 export interface PushMessage {
   title: string;
@@ -15,6 +18,7 @@ export interface PushMessage {
 }
 
 export async function wantsPush(uid: string, kind: PushKind): Promise<boolean> {
+  if (kind === 'test') return true;
   const snap = await getFirestore().doc(`users/${uid}`).get();
   const v = snap.get(`settings.push.${kind}`);
   return v !== false;
@@ -24,8 +28,8 @@ export async function wantsPush(uid: string, kind: PushKind): Promise<boolean> {
  * Sends a web push to every device the user enabled (fcm_tokens). Dead tokens are removed.
  * The click opens the app at `route` on the same site the device registered from.
  */
-export async function pushToUser(uid: string, msg: PushMessage, kind: PushKind): Promise<number> {
-  if (!(await wantsPush(uid, kind))) return 0;
+export async function pushToUser(uid: string, msg: PushMessage, kind: PushKind, prefsChecked = false): Promise<number> {
+  if (!prefsChecked && !(await wantsPush(uid, kind))) return 0;
   const db = getFirestore();
   const snap = await db.collection('fcm_tokens').where('userId', '==', uid).get();
   if (snap.empty) return 0;

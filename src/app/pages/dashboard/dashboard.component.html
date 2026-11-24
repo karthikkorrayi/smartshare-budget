@@ -290,7 +290,8 @@
 
       <!-- Discipline -->
       <section class="panel discipline">
-        <div class="panel-head"><div><h2>Financial discipline</h2><p>Built only from what you've logged</p></div><span class="icon-tile sm warn"><app-icon name="flame" [size]="16" /></span></div>
+        <div class="panel-head"><div><h2>Financial discipline</h2><p>Built only from what you've logged</p></div>
+          <a class="btn btn-sm btn-ghost" routerLink="/streaks">Streaks<app-icon name="chevron-right" [size]="15" /></a></div>
         <div class="streaks">
           <div><b class="num">{{ habit().loggingStreak }}</b><span>day logging streak</span></div>
           @if (pulse().limit) { <div><b class="num">{{ pulse().withinLimitStreak }}</b><span>days within limit</span></div> }
@@ -303,7 +304,11 @@
             <span class="cell" [class.today]="$last" [style.--lvl]="c.count ? 0.25 + (c.count / maxCal()) * 0.75 : 0" [title]="(c.date | date: 'd MMM') + ': ' + c.count + ' entr' + (c.count === 1 ? 'y' : 'ies')"></span>
           }
         </div>
-        <p class="insight pos"><app-icon name="sparkles" [size]="15" />{{ encouragement() }}</p>
+        @if (disc(); as dd) {
+          <a class="insight pos as-link" routerLink="/streaks"><app-icon [name]="dd.message.icon" [size]="15" /><span><b>{{ dd.message.title }}</b> {{ dd.message.text }}</span></a>
+        } @else {
+          <p class="insight pos"><app-icon name="sparkles" [size]="15" />{{ encouragement() }}</p>
+        }
       </section>
     </div>
   </div>

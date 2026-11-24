@@ -535,6 +535,23 @@ describe('users/{uid}.settings', () => {
     await assertFails(setDoc(ref, { uid: ALICE, settings: { ...ok, isAdmin: true } }, { merge: true }));
     await assertFails(setDoc(ref, { uid: ALICE, settings: { ...ok, push: { reviews: true, marketing: true } } }, { merge: true }));
   });
+  test('Phase 5: push kinds, notification hours, check-ins and best streaks', async () => {
+    const ref = doc(as(ALICE), `users/${ALICE}`);
+    const p5 = { ...ok, morningHour: 8, eveningHour: 21, push: { reviews: true, dues: true, checkin: false, streaks: true, weekly: true } };
+    await assertSucceeds(setDoc(ref, { uid: ALICE, settings: p5 }, { merge: true }));
+    await assertFails(setDoc(ref, { uid: ALICE, settings: { ...p5, morningHour: 3 } }, { merge: true }));
+    await assertFails(setDoc(ref, { uid: ALICE, settings: { ...p5, eveningHour: 12 } }, { merge: true }));
+    await assertFails(setDoc(ref, { uid: ALICE, settings: { ...p5, push: { ...p5.push, weekly: 'yes' } } }, { merge: true }));
+    await assertSucceeds(setDoc(ref, { uid: ALICE, checkins: { '2026-11-25': true }, disciplineBest: { logging: 12 } }, { merge: true }));
+    await assertFails(setDoc(ref, { uid: ALICE, disciplineBest: { hacks: 1 } }, { merge: true }));
+  });
+  test('Phase 5: pushLog is written by Cloud Functions only', async () => {
+    await seed(`users/${ALICE}`, { uid: ALICE, pushLog: { streak: 20417 } });
+    const ref = doc(as(ALICE), `users/${ALICE}`);
+    await assertSucceeds(setDoc(ref, { uid: ALICE, checkins: { '2026-11-25': true } }, { merge: true }));
+    await assertFails(setDoc(ref, { uid: ALICE, pushLog: { streak: 0 } }, { merge: true }));
+    await assertFails(setDoc(doc(as(BOB), `users/${BOB}`), { uid: BOB, pushLog: { checkin: 1 } }));
+  });
 });
 
 describe('fcm_tokens', () => {

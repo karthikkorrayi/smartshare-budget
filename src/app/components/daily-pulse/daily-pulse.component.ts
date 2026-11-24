@@ -35,7 +35,7 @@ const DISMISS_KEY = 'ssb_pulse_dismissed';
           }
         </div>
 
-        <div class="streaks">
+        <a class="streaks" routerLink="/streaks" aria-label="See your streaks">
           <div class="streak">
             <span class="num">{{ p.noSpendStreak + (p.todayNoSpend ? 1 : 0) }}</span>
             <span class="what">no-spend day{{ p.noSpendStreak + (p.todayNoSpend ? 1 : 0) === 1 ? '' : 's' }} in a row</span>
@@ -46,7 +46,7 @@ const DISMISS_KEY = 'ssb_pulse_dismissed';
               <span class="what">day{{ p.withinLimitStreak === 1 ? '' : 's' }} within limit</span>
             </div>
           }
-        </div>
+        </a>
 
         @if (celebrate() && p.message && !dismissed()) {
           <div class="message">
@@ -72,7 +72,7 @@ const DISMISS_KEY = 'ssb_pulse_dismissed';
     .tone-over .amount { color: var(--neg); }
     .sub { font-size: 13px; color: var(--text-2); }
     .link { color: var(--accent-strong); font-weight: 650; text-decoration: none; }
-    .streaks { display: flex; gap: 10px; align-items: stretch; }
+    .streaks { display: flex; gap: 10px; align-items: stretch; text-decoration: none; color: inherit; border-radius: 14px; }
     .streak { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 10px 12px; border-radius: 14px; background: var(--accent-soft); }
     .num { font-size: 24px; font-weight: 800; color: var(--accent-strong); line-height: 1; }
     .what { font-size: 12px; color: var(--text-2); }

@@ -17,13 +17,14 @@ import { InstallService } from '../../core/install.service';
 import { IconComponent } from '../../ui/icon.component';
 import { SelectComponent } from '../../ui/select.component';
 import { AmountComponent } from '../../ui/amount.component';
+import { NotificationPrefsComponent } from '../../components/notification-prefs/notification-prefs.component';
 
 type Busy = '' | 'name' | 'password' | 'google' | 'unlink-google' | 'unlink-password' | 'reset' | 'verify' | 'settings' | 'push';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [IconComponent, FormsModule, DatePipe, RouterLink, SelectComponent, AmountComponent],
+  imports: [IconComponent, FormsModule, DatePipe, RouterLink, SelectComponent, AmountComponent, NotificationPrefsComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
 })
@@ -93,19 +94,9 @@ export class ProfileComponent implements OnInit {
 
   async saveSettings(): Promise<void> {
     await this.run('settings', 'budget', async () => {
-      await this.settingsService.save(this.form);
+      // Only this form's settings: notification choices are saved by their own panel.
+      await this.settingsService.patch({ dailyLimit: Math.max(0, Number(this.form.dailyLimit) || 0), reminderDays: this.form.reminderDays, celebrate: this.form.celebrate });
       return 'Budget & alert settings saved.';
-    });
-  }
-
-  async togglePush(): Promise<void> {
-    await this.run('push', 'budget', async () => {
-      if (this.push.state() === 'on') {
-        await this.push.disable();
-        return 'Push notifications turned off on this device.';
-      }
-      await this.push.enable();
-      return 'Push notifications are on for this device.';
     });
   }
 

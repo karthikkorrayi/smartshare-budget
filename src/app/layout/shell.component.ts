@@ -72,6 +72,7 @@ export class ShellComponent {
     { path: '/', label: 'Dashboard', icon: 'layout-dashboard', exact: true },
     { path: '/recurring', label: 'Recurring', icon: 'repeat' },
     { path: '/lending', label: 'Lending & splits', icon: 'handshake' },
+    { path: '/streaks', label: 'Streaks', icon: 'flame' },
     { path: '/review', label: 'Review', icon: 'clipboard-list', badge: () => this.pending() },
   ];
   readonly manage: NavItem[] = [

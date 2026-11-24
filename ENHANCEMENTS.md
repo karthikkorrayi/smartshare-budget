@@ -122,3 +122,32 @@ no data migration, existing documents keep working.
   splits, stats), `ledger.lending.spec.ts` (what a split books, card splits, rollback on bad shares,
   partial repayment + forgive, borrowed / note-only never touch the budget, safe deletes).
 - **Deploy**: hosting only.
+
+## Phase 5 — Financial discipline streaks & push notifications
+- **Streaks page** (`#/streaks`, in the menu): three streaks — **logging** (any entry you made that day, or
+  "Nothing spent today"), **no-spend** and **within the daily limit** — each with today's status, the best ever,
+  and progress to the next milestone (3, 7, 14, 21, 30, 50 … 365). A 12-week calendar (no spend / within /
+  over the limit, logged days dotted), badges earned from your best streaks, and one motivational line chosen
+  by situation (milestone, evening "your streak needs today", over-limit "fresh start", close to a milestone,
+  steady run, getting started) — wording rotates daily, never shaming.
+- **"Nothing spent today"** check-in: a quiet day keeps the logging streak (stored on `users/{uid}.checkins`,
+  with Undo). Best streaks are kept on `users/{uid}.disciplineBest` so they survive beyond the loaded history.
+- Same rules as the budget: card-bill payments, wallet top-ups and repaid loans aren't spending; refunds
+  reduce it; days before the account existed never count; a streak broken today shows 0.
+- **Real push notifications, configurable** (Profile → Notifications, and on the Streaks page): this device
+  on/off, **Send a test notification**, and per-kind switches with an example of each:
+  - Morning (choose 6–11 AM, default 9): bills & card dues; streak milestone reached yesterday
+    (spending streaks only while you've logged something in the last 3 days — a day you didn't open the app
+    looks like a no-spend day).
+  - Evening (choose 5–11 PM, default 9 PM): check-in if nothing is logged today (only if you used the app that
+    week); Sundays the weekly recap instead (spent vs last week, no-spend days, limit days, logging streak).
+  - As it happens: new items to review (unchanged).
+- **Cloud Functions**: `dailyDueDigest` now runs every hour (IST) and sends each user's pushes at their
+  chosen hours, at most once per kind per day (`users/{uid}.pushLog`, written by functions only). The name is
+  kept so the deploy updates it in place. New callable `sendTestPush`. Streak maths in
+  `functions/src/discipline.ts` mirrors `src/app/utils/discipline.util.ts` (tests on both sides).
+- **Rules**: settings accept `morningHour` (6–11), `eveningHour` (17–23) and push kinds `checkin`, `streaks`,
+  `weekly`; `checkins` (≤ 400 days) and `disciplineBest`; clients can't write `pushLog`. Rules tests added.
+- Profile's settings form now saves only its own fields (limit, reminder days, streak messages), so it can't
+  overwrite notification choices made elsewhere.
+- **Deploy**: rules + functions, then hosting.

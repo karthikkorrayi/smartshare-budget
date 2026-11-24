@@ -92,16 +92,36 @@ service cloud.firestore {
     function validSettings(d) {
       return !('settings' in d) || (
         d.settings is map
-        && d.settings.keys().hasOnly(['dailyLimit', 'reminderDays', 'celebrate', 'push'])
+        && d.settings.keys().hasOnly(['dailyLimit', 'reminderDays', 'celebrate', 'push', 'morningHour', 'eveningHour'])
         && (!('dailyLimit' in d.settings) || money(d.settings.dailyLimit))
         && (!('reminderDays' in d.settings) || intIn(d.settings.reminderDays, 1, 10))
         && (!('celebrate' in d.settings) || d.settings.celebrate is bool)
-        && (!('push' in d.settings) || (d.settings.push is map && d.settings.push.keys().hasOnly(['reviews', 'dues'])))
+        && (!('morningHour' in d.settings) || intIn(d.settings.morningHour, 6, 11))
+        && (!('eveningHour' in d.settings) || intIn(d.settings.eveningHour, 17, 23))
+        && (!('push' in d.settings) || validPush(d.settings.push))
       );
+    }
+    // Phase 5: which pushes a user wants (missing = on).
+    function validPush(p) {
+      return p is map
+        && p.keys().hasOnly(['reviews', 'dues', 'checkin', 'streaks', 'weekly'])
+        && (!('reviews' in p) || p.reviews is bool)
+        && (!('dues' in p) || p.dues is bool)
+        && (!('checkin' in p) || p.checkin is bool)
+        && (!('streaks' in p) || p.streaks is bool)
+        && (!('weekly' in p) || p.weekly is bool);
+    }
+    // Phase 5: "Nothing spent today" check-ins ({'YYYY-MM-DD': true}) and the best streaks kept.
+    // pushLog (what was sent today) is written by Cloud Functions only.
+    function validDiscipline(d) {
+      return (!('checkins' in d) || (d.checkins is map && d.checkins.size() <= 400))
+        && (!('disciplineBest' in d) || (d.disciplineBest is map && d.disciplineBest.keys().hasOnly(['logging', 'noSpend', 'withinLimit'])))
+        && ((resource == null && !('pushLog' in d)) || (resource != null && d.get('pushLog', null) == resource.data.get('pushLog', null)));
     }
     match /users/{uid} {
       allow get: if isUser(uid);
-      allow create, update: if isUser(uid) && request.resource.data.uid == uid && validSettings(request.resource.data);
+      allow create, update: if isUser(uid) && request.resource.data.uid == uid && validSettings(request.resource.data)
+        && validDiscipline(request.resource.data);
       allow list, delete: if false;
     }
 

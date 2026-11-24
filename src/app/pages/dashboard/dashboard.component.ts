@@ -52,6 +52,7 @@ import { DateFieldComponent } from '../../ui/date-field.component';
 import { OptsPipe } from '../../ui/opts.pipe';
 import { AmountComponent } from '../../ui/amount.component';
 import { PrivacyService } from '../../core/privacy.service';
+import { DisciplineService } from '../../services/discipline.service';
 
 const FILTER_KEY = 'ssb_dash_filter';
 
@@ -232,6 +233,9 @@ export class DashboardComponent implements OnInit {
     const name = this.auth.account()?.displayName?.trim().split(/\s+/)[0] || this.auth.account()?.email?.split('@')[0] || '';
     return name ? `${part}, ${name}` : part;
   });
+
+  /** Streaks + the day's motivation line (same as the Streaks page). */
+  disc = toSignal(inject(DisciplineService).state$, { initialValue: null });
 
   encouragement = computed(() => {
     const h = this.habit();
