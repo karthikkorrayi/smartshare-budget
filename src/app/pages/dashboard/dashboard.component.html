@@ -42,8 +42,11 @@
           [label]="a.type === 'card' ? 'Card outstanding' : 'Account balance'"
           [amount]="a.balance" [privacyKey]="a.key" [amountToggle]="false" [hint]="a.type === 'card' ? 'Unpaid on statements' : a.subtitle" />
       } @else {
-        <app-metric class="m-wealth" [feature]="true" icon="piggy-bank" label="Total wealth" [amount]="wealth()!.total" privacyKey="wealth" [amountToggle]="false"
-          [hint]="wealth()!.accounts ? 'Across ' + wealth()!.accounts + ' account' + (wealth()!.accounts === 1 ? '' : 's') + ' (bank + wallets)' : 'Add an account to see your balance'" />
+        <a class="m-wealth m-link" routerLink="/wealth" aria-label="Net worth — open the breakdown">
+          <app-metric [feature]="true" icon="piggy-bank" label="Net worth" [amount]="netWorth()?.net ?? wealth()!.total" privacyKey="wealth" [amountToggle]="false"
+            [negative]="(netWorth()?.net ?? 0) < 0"
+            [hint]="netWorth() ? 'What you own minus what you owe — cards, loans and borrowed money included. Tap for the breakdown.' : 'Bank + wallets'" />
+        </a>
       }
       <app-metric icon="arrow-down-left" tone="pos" label="Income" [value]="sum().income | money"
         [hint]="'Received · ' + range().label.toLowerCase()" />

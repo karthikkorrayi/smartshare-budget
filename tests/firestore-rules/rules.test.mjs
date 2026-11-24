@@ -887,3 +887,33 @@ describe('transfers', () => {
     await assertFails(addDoc(collection(db, 'transfers'), t({ fromType: 'card', fromId: 'c1' })));
   });
 });
+
+// ════════════════════════════════════════════════════════════════
+// Phase 6: loans
+// ════════════════════════════════════════════════════════════════
+describe('loans', () => {
+  const loan = (uid, o = {}) => ({
+    userId: uid, name: 'Home loan', lender: 'HDFC', kind: 'home', principal: 1000000, rate: 8.5, tenureMonths: 240,
+    firstEmiDate: Timestamp.fromDate(new Date('2026-01-05T06:30:00Z')), emi: 8678.23, paidBefore: 0,
+    accountType: 'bank', accountId: 'b1', recurringId: null, status: 'active', notes: '', ...o,
+  });
+  test('owner can create, update, close and delete a valid loan', async () => {
+    const ref = doc(as(ALICE), 'loans/l1');
+    await assertSucceeds(setDoc(ref, loan(ALICE)));
+    await assertSucceeds(updateDoc(ref, { emi: 9000, recurringId: 'r1' }));
+    await assertSucceeds(updateDoc(ref, { status: 'closed', closedAt: serverTimestamp() }));
+    await assertSucceeds(deleteDoc(ref));
+  });
+  test('rejects invalid loans and other users', async () => {
+    const ref = doc(as(ALICE), 'loans/l2');
+    await assertFails(setDoc(ref, loan(ALICE, { principal: 0 })));
+    await assertFails(setDoc(ref, loan(ALICE, { rate: 99 })));
+    await assertFails(setDoc(ref, loan(ALICE, { tenureMonths: 12.5 })));
+    await assertFails(setDoc(ref, loan(ALICE, { kind: 'yacht' })));
+    await assertFails(setDoc(ref, loan(ALICE, { secret: 1 })));
+    await assertFails(setDoc(doc(as(ALICE), 'loans/l3'), loan(BOB)));
+    await seed('loans/b1', loan(BOB));
+    await assertFails(getDoc(doc(as(ALICE), 'loans/b1')));
+    await assertFails(updateDoc(doc(as(ALICE), 'loans/b1'), { userId: ALICE }));
+  });
+});

@@ -151,3 +151,32 @@ no data migration, existing documents keep working.
 - Profile's settings form now saves only its own fields (limit, reminder days, streak messages), so it can't
   overwrite notification choices made elsewhere.
 - **Deploy**: rules + functions, then hosting.
+
+## Phase 6 — Net worth by category, Loans / EMIs, account analytics
+- **Net worth page** (`#/wealth`, in the menu; the dashboard's first card is now Net worth and opens it):
+  - **What you own:** bank accounts, wallets & cash, money owed to you (lending).
+  - **What you owe:** credit cards (owed now), **loans** (outstanding principal), **other EMIs** (EMI payments
+    without loan details: remaining payments, interest included), borrowed money (lending).
+  - Net worth, assets, liabilities, a composition bar per side and "you owe N % of what you own".
+  - **Cash & bank over 12 months:** month-end balances worked back from today's balances.
+  - One **Show / Hide amounts** eye for the whole page (like the dashboard).
+- **Loans** (`loans` collection, schema-checked by the rules): home, vehicle, personal, education, gold,
+  consumer EMI, other. Amount, rate, tenure, first EMI date, EMIs already paid, paid-from account; the EMI is
+  the standard reducing-balance formula rounded up to the paisa (or the exact EMI from your statement). The form
+  shows the EMI, total interest, total repaid, what's owed today and the end date before saving.
+  - **Monthly EMI payment:** create it (a monthly recurring payment, category EMI, ending after the remaining
+    EMIs — reminders + Mark paid), link one you already track, or none. With a linked payment its paid count
+    and due date drive the loan; without one, EMI dates before today count as paid.
+  - No double counting: a loan counts once, as its principal; its linked EMI payment isn't counted again.
+    Each EMI you mark paid is spending in the budget (as before).
+  - Close (paid off / foreclosed — stops its EMI payment), reopen, delete (with its EMI payment; EMIs already
+    paid stay in your expenses).
+- **Account page analytics** (bank & wallets): opening → closing balance for the period and a **balance over
+  time** chart (worked back from today's balance, hidden while the balance is hidden); for every account:
+  **Where it went** (top payees, average spent a month), **Biggest movements**, and **Coming up** (bills /
+  EMIs paid from this account in the next 30 days). Cards keep their card overview (card dues can't be worked
+  back from transactions because bill payments live on statements).
+- **Tests**: `loan.model.spec.ts` (bank-formula EMI, amortization, no 241st month at any rate, paid counts),
+  `wealth.util.spec.ts` (categories, loan counted once, cash history), `account-insights.util.spec.ts`;
+  rules tests for `loans`.
+- **Deploy**: firestore rules (new `loans` collection), then hosting. No functions change.

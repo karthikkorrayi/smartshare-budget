@@ -177,6 +177,32 @@ service cloud.firestore {
       allow update: if ownerUpdate();
       allow delete: if ownerDelete();
     }
+    // ── Phase 6: loans (EMIs) ──────────────────────────────────────
+    function validLoan(d) {
+      return d.keys().hasOnly(['userId', 'name', 'lender', 'kind', 'principal', 'rate', 'tenureMonths', 'firstEmiDate', 'emi',
+          'paidBefore', 'accountType', 'accountId', 'recurringId', 'status', 'closedAt', 'notes', 'createdAt', 'updatedAt'])
+        && str(d.name, 1, 60)
+        && optStr(d, 'lender', 60)
+        && d.kind in ['home', 'car', 'personal', 'education', 'gold', 'consumer', 'other']
+        && money(d.principal) && d.principal > 0
+        && d.rate is number && d.rate >= 0 && d.rate <= 60
+        && intIn(d.tenureMonths, 1, 600)
+        && d.firstEmiDate is timestamp
+        && money(d.emi) && d.emi > 0
+        && (!('paidBefore' in d) || intIn(d.paidBefore, 0, 600))
+        && d.status in ['active', 'closed']
+        && (!('accountType' in d) || d.accountType == null || d.accountType in ['bank', 'wallet', 'card'])
+        && (!('accountId' in d) || d.accountId == null || str(d.accountId, 1, 128))
+        && (!('recurringId' in d) || d.recurringId == null || str(d.recurringId, 1, 128))
+        && optStr(d, 'notes', 300);
+    }
+    match /loans/{id} {
+      allow read: if ownerRead();
+      allow create: if ownerCreate() && validLoan(request.resource.data);
+      allow update: if ownerUpdate() && validLoan(request.resource.data);
+      allow delete: if ownerDelete();
+    }
+
     match /upcoming_payments/{id} {
       allow read: if ownerRead();
       allow create: if ownerCreate() && importedOk(request.resource.data, 'bill', id);

@@ -28,6 +28,7 @@ export const routes: Routes = [
         data: { title: 'Account' },
         loadComponent: () => import('./pages/account-detail/account-detail.component').then(m => m.AccountDetailComponent),
       },
+      { path: 'wealth', data: { title: 'Net worth' }, loadComponent: () => import('./pages/wealth/wealth.component').then(m => m.WealthComponent) },
       { path: 'streaks', data: { title: 'Streaks' }, loadComponent: () => import('./pages/streaks/streaks.component').then(m => m.StreaksComponent) },
       { path: 'lending', data: { title: 'Lending & splits' }, loadComponent: () => import('./pages/lending/lending.component').then(m => m.LendingComponent) },
       { path: 'recurring', data: { title: 'Recurring payments' }, loadComponent: () => import('./pages/recurring/recurring.component').then(m => m.RecurringComponent) },

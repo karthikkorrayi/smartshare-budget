@@ -1,0 +1,161 @@
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Net worth</h1>
+      <p>What you own minus what you owe.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" (click)="toggleAmounts()" [attr.aria-pressed]="shown()" [attr.aria-label]="shown() ? 'Hide amounts' : 'Show amounts'">
+        <app-icon [name]="shown() ? 'eye-off' : 'eye'" [size]="16" />{{ shown() ? 'Hide' : 'Show' }} amounts</button>
+      <button class="btn btn-primary" (click)="quick.loan()"><app-icon name="plus" [size]="16" />Add loan</button>
+    </div>
+  </div>
+
+  @if (nw(); as n) {
+    <!-- Hero -->
+    <section class="hero">
+      <div class="net">
+        <span class="k">Net worth</span>
+        <b class="num big" [class.neg]="n.net < 0"><app-amount [value]="n.net" [privacyKey]="key" [toggle]="false" label="Net worth" /></b>
+        <span class="ratio">
+          @if (n.debtRatio === null) { Add an account to see your net worth. }
+          @else if (n.liabilities === 0) { Debt-free 🎉 }
+          @else { You owe {{ (n.debtRatio * 100) | number: '1.0-0' }}% of what you own. }
+        </span>
+      </div>
+      <div class="sides">
+        <div class="side a">
+          <span class="lbl"><app-icon name="trending-up" [size]="15" />Assets</span>
+          <b class="num"><app-amount [value]="n.assets" [privacyKey]="key" [toggle]="false" label="Assets" /></b>
+          <div class="stack" aria-hidden="true">@for (g of assets(); track g.id) { @if (g.total > 0) { <i [attr.data-g]="g.id" [style.width.%]="pct(g.total)" [title]="g.label"></i> } }</div>
+        </div>
+        <div class="side l">
+          <span class="lbl"><app-icon name="trending-down" [size]="15" />Liabilities</span>
+          <b class="num"><app-amount [value]="n.liabilities" [privacyKey]="key" [toggle]="false" label="Liabilities" /></b>
+          <div class="stack" aria-hidden="true">@for (g of liabilities(); track g.id) { @if (g.total > 0) { <i [attr.data-g]="g.id" [style.width.%]="pct(g.total)" [title]="g.label"></i> } }</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="cols">
+      @for (side of [{ title: 'What you own', groups: assets(), cls: 'a' }, { title: 'What you owe', groups: liabilities(), cls: 'l' }]; track side.title) {
+        <section class="panel side-panel" [class]="side.cls">
+          <div class="panel-head"><div><h2>{{ side.title }}</h2></div></div>
+          @for (g of side.groups; track g.id) {
+            <div class="grp" [attr.data-g]="g.id" [class.empty]="!g.lines.length">
+              <div class="gh">
+                <span class="dot" [attr.data-g]="g.id"></span>
+                <span class="gt">{{ g.label }}</span>
+                <b class="num"><app-amount [value]="g.total" [privacyKey]="key" [toggle]="false" [label]="g.label" /></b>
+              </div>
+              @if (g.lines.length) {
+                <div class="lines">
+                  @for (l of g.lines; track l.id) {
+                    <a class="ln" [routerLink]="path(l.link)" [fragment]="frag(l.link)">
+                      <app-icon [name]="l.icon" [size]="14" />
+                      <span class="grow"><span class="lt">{{ l.label }}</span>@if (l.sub) { <small>{{ l.sub }}</small> }</span>
+                      <span class="num"><app-amount [value]="l.amount" [privacyKey]="key" [toggle]="false" [label]="l.label" /></span>
+                    </a>
+                  }
+                </div>
+                @if (g.note) { <p class="note">{{ g.note }}</p> }
+              } @else {
+                <p class="none">
+                  @switch (g.id) {
+                    @case ('owed') { Nobody owes you right now. }
+                    @case ('cards') { No card dues. }
+                    @case ('loans') { No loans. <button class="link" (click)="quick.loan()">Add one</button> }
+                    @case ('emis') { No other EMIs. }
+                    @case ('borrowed') { You don't owe anyone. }
+                    @default { None yet. }
+                  }
+                </p>
+              }
+            </div>
+          }
+        </section>
+      }
+    </div>
+
+    <!-- Loans -->
+    <section class="panel" id="loans">
+      <div class="panel-head">
+        <div><h2>Loans &amp; EMIs</h2><p>{{ activeLoans().length ? activeLoans().length + ' active · monthly EMIs ' : 'Track home, vehicle, personal or any EMI loan' }}
+          @if (activeLoans().length) { <app-amount [value]="monthlyEmi()" [privacyKey]="key" [toggle]="false" label="Monthly EMIs" /> }</p></div>
+        <button class="btn btn-sm" (click)="quick.loan()"><app-icon name="plus" [size]="15" />Add loan</button>
+      </div>
+      @if (!loans().length) {
+        <app-empty art="accounts" [compact]="true" title="No loans yet" text="Add a loan to see what you still owe, the interest left and when it ends. Its EMI can remind you every month.">
+          <button class="btn btn-primary btn-sm" (click)="quick.loan()"><app-icon name="plus" [size]="15" />Add loan</button>
+        </app-empty>
+      }
+      <div class="loans">
+        @for (x of activeLoans(); track x.loan.id) {
+          <article class="loan">
+            <header>
+              <span class="icon-tile warn"><app-icon [name]="x.kind.icon" [size]="18" /></span>
+              <div class="grow"><b>{{ x.loan.name }}</b><small>{{ x.loan.lender || x.kind.label }} · {{ x.loan.rate }}% · {{ x.s.total }} months</small></div>
+              <button class="btn btn-sm btn-ghost btn-icon" (click)="edit(x.loan)" [attr.aria-label]="'Edit ' + x.loan.name" title="Edit"><app-icon name="pencil" [size]="15" /></button>
+            </header>
+            <div class="owed">
+              <span>Still owed</span>
+              <b class="num"><app-amount [value]="x.s.outstanding" [privacyKey]="key" [toggle]="false" [label]="x.loan.name + ' outstanding'" /></b>
+            </div>
+            <div class="bar" role="progressbar" [attr.aria-valuenow]="x.s.progress * 100 | number: '1.0-0'" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Principal repaid'"><i [style.width.%]="x.s.progress * 100"></i></div>
+            <small class="prog">{{ x.s.progress * 100 | number: '1.0-0' }}% of the principal repaid · {{ x.s.paid }} of {{ x.s.total }} EMIs</small>
+            @if (x.s.invalid) {
+              <p class="warn-t"><app-icon name="circle-alert" [size]="14" />The EMI doesn't cover the interest — edit the loan.</p>
+            } @else {
+              <dl>
+                <div><dt>EMI</dt><dd class="num"><app-amount [value]="x.loan.emi" [privacyKey]="key" [toggle]="false" label="EMI" /></dd></div>
+                <div><dt>Next</dt><dd>{{ nextDate(x) ? nextDate(x)!.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'All paid' }}</dd></div>
+                <div><dt>Interest left</dt><dd class="num"><app-amount [value]="x.s.interestLeft" [privacyKey]="key" [toggle]="false" label="Interest left" /></dd></div>
+                <div><dt>Ends</dt><dd>{{ x.s.endDate?.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) }}</dd></div>
+              </dl>
+            }
+            @if (!x.plan) { <p class="nolink"><app-icon name="info" [size]="13" />No EMI payment linked — EMI dates before today count as paid.</p> }
+            <footer>
+              @if (x.plan) { <a class="btn btn-sm btn-ghost" routerLink="/recurring"><app-icon name="bell-ring" [size]="14" />Reminders on</a> }
+              @else { <button class="btn btn-sm btn-ghost" (click)="edit(x.loan)"><app-icon name="link-2" [size]="14" />Link EMI</button> }
+              <span class="spacer"></span>
+              <button class="btn btn-sm btn-ghost" (click)="close(x)" title="Paid off or foreclosed"><app-icon name="circle-check" [size]="14" />Close</button>
+              <button class="btn btn-sm btn-ghost btn-icon" (click)="remove(x)" [attr.aria-label]="'Delete ' + x.loan.name" title="Delete"><app-icon name="trash2" [size]="14" /></button>
+            </footer>
+          </article>
+        }
+      </div>
+      @if (closedLoans().length) {
+        <details class="closed">
+          <summary>{{ closedLoans().length }} closed loan{{ closedLoans().length === 1 ? '' : 's' }}</summary>
+          @for (x of closedLoans(); track x.loan.id) {
+            <div class="list-row">
+              <app-icon [name]="x.kind.icon" [size]="15" />
+              <span class="grow">{{ x.loan.name }} <small class="muted">· closed {{ x.loan.closedAt?.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) }}</small></span>
+              <button class="btn btn-sm btn-ghost" (click)="reopen(x)">Reopen</button>
+              <button class="btn btn-sm btn-ghost btn-icon" (click)="remove(x)" [attr.aria-label]="'Delete ' + x.loan.name"><app-icon name="trash2" [size]="14" /></button>
+            </div>
+          }
+        </details>
+      }
+    </section>
+
+    <!-- Cash & bank trend -->
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Cash &amp; bank over 12 months</h2>
+          <p>Month-end balances of your bank accounts and wallets
+            @if (change(); as c) { · <span [class.pos-t]="c.amount >= 0" [class.neg-t]="c.amount < 0">{{ c.amount >= 0 ? 'up' : 'down' }} <app-amount [value]="c.amount < 0 ? -c.amount : c.amount" [privacyKey]="key" [toggle]="false" label="Change" /> since {{ c.from }}</span> }</p></div>
+      </div>
+      @if (history() === null) { <app-skeleton variant="chart" h="220px" /> }
+      @else if (!shown()) {
+        <div class="hidden-chart"><app-icon name="eye-off" [size]="18" /><span>Amounts are hidden.</span><button class="btn btn-sm" (click)="toggleAmounts()">Show amounts</button></div>
+      } @else {
+        <app-chart type="line" [labels]="chartLabels()" [series]="chartSeries()" [height]="220" ariaLabel="Cash and bank balance at each month end" />
+      }
+      <p class="note">Worked back from today's balances using the transactions you've recorded. Cards, loans and lending aren't in this line.</p>
+    </section>
+  } @else {
+    <app-skeleton h="180px" />
+    <div class="cols"><app-skeleton variant="card" /><app-skeleton variant="card" /></div>
+  }
+</div>

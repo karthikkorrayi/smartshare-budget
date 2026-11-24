@@ -53,6 +53,7 @@ import { OptsPipe } from '../../ui/opts.pipe';
 import { AmountComponent } from '../../ui/amount.component';
 import { PrivacyService } from '../../core/privacy.service';
 import { DisciplineService } from '../../services/discipline.service';
+import { WealthService } from '../../services/wealth.service';
 
 const FILTER_KEY = 'ssb_dash_filter';
 
@@ -236,6 +237,8 @@ export class DashboardComponent implements OnInit {
 
   /** Streaks + the day's motivation line (same as the Streaks page). */
   disc = toSignal(inject(DisciplineService).state$, { initialValue: null });
+  /** Assets − liabilities (Net worth page). */
+  netWorth = toSignal(inject(WealthService).netWorth$, { initialValue: null });
 
   encouragement = computed(() => {
     const h = this.habit();

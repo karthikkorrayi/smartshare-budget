@@ -151,3 +151,5 @@ app-select.acct-select { width: 210px; max-width: 100%; }
 @media (max-width: 520px) { .balances-eye span { display: none; } .balances-eye { padding: 4px 8px; } }
 
 .insight.as-link { text-decoration: none; color: inherit; span { flex: 1; } b { color: var(--text); } }
+
+.m-link { display: block; text-decoration: none; color: inherit; border-radius: 20px; app-metric { display: block; height: 100%; } &:hover app-metric { filter: brightness(1.02); } }

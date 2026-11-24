@@ -49,6 +49,12 @@ export class QuickActionsService {
     return this.dialog.open(RecurringFormComponent, { data: { id }, width: 'min(96vw, 560px)', panelClass: 'ss-sheet-pane' });
   }
 
+  /** Add (no id) or edit a loan. */
+  async loan(id: string | null = null) {
+    const { LoanFormComponent } = await import('../dialogs/loan-form/loan-form.component');
+    return this.dialog.open(LoanFormComponent, { data: { id }, width: 'min(96vw, 620px)', panelClass: 'ss-sheet-pane' });
+  }
+
   async lending(direction: 'lent' | 'borrowed' = 'lent', id: string | null = null) {
     const { LendingFormComponent } = await import('../dialogs/lending-form/lending-form.component');
     return this.dialog.open(LendingFormComponent, { data: { direction, id }, width: 'min(96vw, 540px)', panelClass: 'ss-sheet-pane' });

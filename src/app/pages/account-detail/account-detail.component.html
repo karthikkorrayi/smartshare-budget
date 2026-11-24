@@ -55,6 +55,24 @@
       }
     </div>
 
+    @if (hasBalanceHistory()) {
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Balance over time</h2><p>Closing balance each {{ isDaily() ? 'day' : 'month' }} · {{ range().label }}</p></div>
+          @if (opening() !== null && closing() !== null) {
+            <div class="oc">
+              <span><small>Opening</small><b class="num"><app-amount [value]="opening()!" [privacyKey]="a.key" [toggle]="false" label="Opening balance" /></b></span>
+              <app-icon name="arrow-right" [size]="15" />
+              <span><small>Closing</small><b class="num"><app-amount [value]="closing()!" [privacyKey]="a.key" [toggle]="false" label="Closing balance" /></b></span>
+            </div>
+          }
+        </div>
+        @if (txns() === null) { <app-skeleton variant="chart" h="200px" /> }
+        @else if (!privacyShown(a.key)) { <div class="hidden-chart"><app-icon name="eye-off" [size]="18" /><span>Balance hidden — tap the eye above to see it.</span></div> }
+        @else { <app-chart type="line" [labels]="series().labels" [series]="balanceChart() ?? []" [height]="200" ariaLabel="Account balance over time" /> }
+      </section>
+    }
+
     <div class="grid2">
       <section class="panel">
         <div class="panel-head"><div><h2>Money in vs spending</h2><p>Select a bar for the full breakdown.</p></div>
@@ -74,6 +92,32 @@
           <div class="cats">
             @for (c of cats(); track c.name) { <div class="c"><span class="dot" [style.background]="c.color"></span><span class="grow">{{ c.name }}</span><b class="num">{{ c.amount | money }}</b></div> }
           </div>
+        }
+      </section>
+    </div>
+
+    <div class="grid3">
+      <section class="panel">
+        <div class="panel-head"><div><h2>Where it went</h2><p>Average {{ avgMonthlySpend() | money }} spent a month</p></div></div>
+        @if (!payees().length) { <p class="muted small">No spending in this period.</p> }
+        @for (p of payees(); track p.name) {
+          <div class="ins"><span class="grow"><b>{{ p.name }}</b><small>{{ p.category }} · {{ p.count }}×</small></span><b class="num">{{ p.amount | money }}</b></div>
+        }
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2>Biggest movements</h2><p>{{ range().label }}</p></div></div>
+        @if (!biggest().length) { <p class="muted small">Nothing yet.</p> }
+        @for (x of biggest(); track x.t.key) {
+          <div class="ins"><span class="grow"><b>{{ x.t.title }}</b><small>{{ x.t.date | date: 'd MMM' }} · {{ x.t.kind === 'transfer' ? 'Transfer' : x.t.category }}</small></span>
+            <b class="num" [class.pos-t]="x.effect > 0">{{ x.effect > 0 ? '+' : '−' }}{{ (x.effect > 0 ? x.effect : -x.effect) | money }}</b></div>
+        }
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2>Coming up</h2><p>{{ upcoming().length ? 'Next 30 days · ' + (upcomingTotal() | money) : 'Next 30 days' }}</p></div>
+          <a class="btn btn-sm btn-ghost" routerLink="/recurring">All<app-icon name="chevron-right" [size]="15" /></a></div>
+        @if (!upcoming().length) { <p class="muted small">No bills or EMIs set to be paid from this account.</p> }
+        @for (u of upcoming().slice(0, 6); track u.p.id + u.date.getTime()) {
+          <div class="ins"><span class="grow"><b>{{ u.p.description }}</b><small>{{ u.date | date: 'EEE, d MMM' }}{{ u.p.category === 'EMI' ? ' · EMI' : '' }}{{ u.p.autopay ? ' · auto-debit' : '' }}</small></span><b class="num">{{ u.p.amount | money }}</b></div>
         }
       </section>
     </div>

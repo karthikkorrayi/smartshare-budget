@@ -125,6 +125,11 @@ import {
   Sunrise,
   Send,
   Medal,
+  House,
+  Gem,
+  Calculator,
+  Link2,
+  Unlink,
 } from 'lucide';
 
 export type IconNode = [string, Record<string, string | number>][];
@@ -257,4 +262,10 @@ export const ICONS: Record<string, IconNode> = {
   'sunrise': Sunrise as unknown as IconNode,
   'send': Send as unknown as IconNode,
   'medal': Medal as unknown as IconNode,
+  // Phase 6 — loans & net worth
+  'house': House as unknown as IconNode,
+  'gem': Gem as unknown as IconNode,
+  'calculator': Calculator as unknown as IconNode,
+  'link-2': Link2 as unknown as IconNode,
+  'unlink': Unlink as unknown as IconNode,
 };
