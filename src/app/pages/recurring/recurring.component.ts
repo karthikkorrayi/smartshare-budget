@@ -24,12 +24,13 @@ import { MetricCardComponent } from '../../ui/metric-card.component';
 import { MoneyPipe } from '../../ui/money.pipe';
 import { SkeletonComponent } from '../../ui/skeleton.component';
 import { EmptyStateComponent } from '../../ui/empty-state.component';
+import { SelectComponent, SelectOption } from '../../ui/select.component';
 
 type Tab = 'upcoming' | 'today' | 'overdue' | 'paid' | 'all';
 
 @Component({
   standalone: true,
-  imports: [DatePipe, FormsModule, IconComponent, MetricCardComponent, MoneyPipe, SkeletonComponent, EmptyStateComponent],
+  imports: [DatePipe, FormsModule, IconComponent, MetricCardComponent, MoneyPipe, SkeletonComponent, EmptyStateComponent, SelectComponent],
   templateUrl: './recurring.component.html',
   styleUrl: './recurring.component.scss',
 })
@@ -42,6 +43,15 @@ export class RecurringComponent {
   quick = inject(QuickActionsService);
 
   readonly freqLabel = FREQUENCY_LABEL;
+  readonly freqOptions: SelectOption[] = [
+    { value: '', label: 'Any frequency' },
+    ...(['once', 'weekly', 'monthly', 'quarterly', 'yearly', 'daily', 'custom'] as const).map(f => ({ value: f, label: (FREQUENCY_LABEL as any)[f] })),
+  ];
+  readonly sortOptions: SelectOption[] = [
+    { value: 'due', label: 'By due date', icon: 'calendar-days' },
+    { value: 'amount', label: 'By amount', icon: 'coins' },
+    { value: 'name', label: 'By name', icon: 'list-checks' },
+  ];
   readonly catIcon = categoryIcon;
   readonly today = new Date();
   readonly tabs: { id: Tab; label: string }[] = [

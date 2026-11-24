@@ -1,3 +1,4 @@
+import { FormsModule } from '@angular/forms';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe, DecimalPipe } from '@angular/common';
@@ -10,6 +11,8 @@ import { WalletTxnFormComponent, WalletTxnFormData } from '../../../dialogs/wall
 import { monthKey, toDateInput } from '../../../utils/date-input.util';
 import { UndoService } from '../../../services/undo.service';
 import { IconComponent } from '../../../ui/icon.component';
+import { DateFieldComponent } from '../../../ui/date-field.component';
+import { AmountComponent } from '../../../ui/amount.component';
 
 const DIALOG = { width: 'min(94vw, 540px)', maxWidth: '96vw', autoFocus: 'first-tabbable' as const };
 
@@ -22,7 +25,7 @@ interface DayGroup {
 @Component({
   selector: 'app-wallets',
   standalone: true,
-  imports: [IconComponent, DatePipe, DecimalPipe],
+  imports: [FormsModule, IconComponent, DatePipe, DecimalPipe, DateFieldComponent, AmountComponent],
   templateUrl: './wallets.component.html',
   styleUrl: './wallets.component.scss',
 })

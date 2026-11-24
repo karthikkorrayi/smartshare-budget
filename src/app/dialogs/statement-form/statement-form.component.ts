@@ -4,9 +4,11 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Card, cardLabel } from '../../models/card.model';
 import { CardStatement, StatementStatus, statusFromPaid } from '../../models/card-statement.model';
 import { CardStatementsService } from '../../services/card-statements.service';
-import { dayInMonth, fromDateInput, toDateInput } from '../../utils/date-input.util';
+import { checkDay, dayInMonth, dueMoment, toDateInput, todayInput } from '../../utils/date-input.util';
 import { UndoService } from '../../services/undo.service';
 import { IconComponent } from '../../ui/icon.component';
+import { SelectComponent, SelectOption } from '../../ui/select.component';
+import { DateFieldComponent } from '../../ui/date-field.component';
 
 export interface StatementFormData {
   cards: Card[];
@@ -17,7 +19,7 @@ export interface StatementFormData {
 @Component({
   selector: 'app-statement-form',
   standalone: true,
-  imports: [IconComponent, FormsModule],
+  imports: [IconComponent, FormsModule, SelectComponent, DateFieldComponent],
   templateUrl: './statement-form.component.html',
 })
 export class StatementFormComponent {
@@ -27,6 +29,13 @@ export class StatementFormComponent {
   data: StatementFormData = inject(MAT_DIALOG_DATA);
 
   readonly label = cardLabel;
+  readonly today = todayInput();
+  readonly cardOptions: SelectOption[] = this.data.cards.map(c => ({
+    value: c.id,
+    label: cardLabel(c) + (c.status === 'Closed' ? ' (closed)' : ''),
+    icon: 'credit-card',
+    hint: c.bankName,
+  }));
   isEdit = !!this.data.statement;
   saving = signal(false);
   errors = signal<string[]>([]);
@@ -67,12 +76,15 @@ export class StatementFormComponent {
 
   async save(): Promise<void> {
     const f = this.form;
-    const stmt = fromDateInput(f.statementDate);
-    const due = fromDateInput(f.dueDate);
+    const stmtProblem = checkDay(f.statementDate, { label: 'the statement date', notFuture: true });
+    const dueProblem = checkDay(f.dueDate, { label: 'the payment due date' });
+    // Statement and due dates are stored at 12:00 local, so the day reads the same everywhere.
+    const stmt = stmtProblem ? null : dueMoment(f.statementDate);
+    const due = dueProblem ? null : dueMoment(f.dueDate);
     const out: string[] = [];
     if (!f.cardId) out.push('Choose a card.');
-    if (!stmt) out.push('Pick the statement date.');
-    if (!due) out.push('Pick the payment due date.');
+    if (stmtProblem) out.push(stmtProblem);
+    if (dueProblem) out.push(dueProblem);
     if (stmt && due && due < stmt) out.push('Due date cannot be before the statement date.');
     if (!(Number(f.totalDue) >= 0) || f.totalDue === null) out.push('Enter the total amount due.');
     if (!(Number(f.minDue) >= 0) || f.minDue === null) out.push('Enter the minimum amount due.');

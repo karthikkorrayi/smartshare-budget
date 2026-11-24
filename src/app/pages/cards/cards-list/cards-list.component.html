@@ -5,14 +5,14 @@
     <p>Billing cycles, dues and expiry — entered manually or approved from Gmail.</p>
   </div>
   <div class="cc-heading-actions">
-    <button class="cc-btn cc-btn--primary" (click)="addCard()">+ Add card</button>
+    <button class="cc-btn cc-btn--primary" (click)="addCard()"><app-icon name="plus" [size]="16" />Add card</button>
   </div>
 </section>
 
 <section class="cc-stats" aria-label="Summary">
   <div class="cc-stat"><span class="label">Active cards</span><span class="value">{{ summary().active }}</span></div>
   <div class="cc-stat" [class.warn]="summary().outstanding > 0">
-    <span class="label">Outstanding</span><span class="value">₹{{ summary().outstanding | number: '1.0-0' }}</span>
+    <span class="label">Outstanding</span><span class="value"><app-amount [value]="summary().outstanding" privacyKey="cards-total" label="Total card outstanding" /></span>
   </div>
   <div class="cc-stat" [class.alert]="summary().dueSoon > 0">
     <span class="label">Due ≤ 7 days / overdue</span><span class="value">{{ summary().dueSoon }}</span>
@@ -29,7 +29,7 @@
     <div class="icon" aria-hidden="true"><app-icon name="credit-card" [size]="30" /></div>
     <h2>No cards yet</h2>
     <p>Add a card with its statement day and due day. Record transactions and statements manually, or connect Gmail to have them detected for review.</p>
-    <button class="cc-btn cc-btn--primary" (click)="addCard()">+ Add your first card</button>
+    <button class="cc-btn cc-btn--primary" (click)="addCard()"><app-icon name="plus" [size]="16" />Add your first card</button>
   </div>
 } @else {
   @if (closedCount()) {
@@ -88,7 +88,7 @@
             <div class="latest-amounts">
               <div><span>Total due</span><strong>₹{{ s.totalDue | number: '1.0-2' }}</strong></div>
               <div><span>Min due</span><strong>₹{{ s.minDue | number: '1.0-2' }}</strong></div>
-              <div><span>Outstanding</span><strong>₹{{ c.latestDue!.outstanding | number: '1.0-2' }}</strong></div>
+              <div><span>Outstanding</span><strong><app-amount [value]="c.latestDue!.outstanding" [privacyKey]="'card:' + c.id" [decimals]="true" [label]="'Outstanding'" [iconSize]="14" /></strong></div>
             </div>
             @if (s.status !== 'Paid') {
               <button class="cc-btn cc-btn--sm" (click)="markPaid(s)"><app-icon name="check" [size]="14" /> Mark fully paid</button>
@@ -99,8 +99,8 @@
         }
 
         <div class="quick">
-          <button class="cc-btn cc-btn--sm" (click)="addTransaction(c)">+ Transaction</button>
-          <button class="cc-btn cc-btn--sm" (click)="addStatement(c)">+ Statement</button>
+          <button class="cc-btn cc-btn--sm" (click)="addTransaction(c)"><app-icon name="plus" [size]="16" />Transaction</button>
+          <button class="cc-btn cc-btn--sm" (click)="addStatement(c)"><app-icon name="plus" [size]="16" />Statement</button>
           <a class="cc-btn cc-btn--sm" routerLink="/cards/transactions" [queryParams]="{ card: c.id }">History</a>
         </div>
 

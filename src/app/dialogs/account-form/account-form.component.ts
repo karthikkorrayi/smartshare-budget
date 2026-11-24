@@ -7,11 +7,12 @@ import { UndoService } from '../../services/undo.service';
 import { ConfirmService } from '../../ui/confirm.service';
 import { BANK_KINDS, BANK_KIND_LABEL, BankAccount, BankKind } from '../../models/account.model';
 import { IconComponent } from '../../ui/icon.component';
+import { SelectComponent } from '../../ui/select.component';
 
 /** Add / edit / delete a bank account. */
 @Component({
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, IconComponent, SelectComponent],
   template: `
     <div class="dlg" role="dialog" aria-modal="true" [attr.aria-label]="existing() ? 'Edit bank account' : 'Add bank account'">
       <div class="dlg-head">
@@ -29,8 +30,8 @@ import { IconComponent } from '../../ui/icon.component';
             <input type="text" maxlength="40" [(ngModel)]="name" placeholder="e.g. HDFC Savings" /></label>
           <label class="field"><span>Bank</span>
             <input type="text" maxlength="60" [(ngModel)]="institution" placeholder="e.g. HDFC Bank" /></label>
-          <label class="field"><span>Type</span>
-            <select [(ngModel)]="kind">@for (k of kinds; track k) { <option [value]="k">{{ kindLabel[k] }}</option> }</select></label>
+          <div class="field"><span>Type</span>
+            <app-select ariaLabel="Account type" [(ngModel)]="kind" [options]="kindOptions" /></div>
           <label class="field"><span>Last 4 digits (optional)</span>
             <input type="text" inputmode="numeric" maxlength="4" [(ngModel)]="lastFour" placeholder="1234" /></label>
           <label class="field"><span>{{ existing() ? 'Opening balance' : 'Current balance' }}</span>
@@ -64,6 +65,11 @@ export class AccountFormComponent {
 
   readonly kinds = BANK_KINDS;
   readonly kindLabel = BANK_KIND_LABEL;
+  readonly kindOptions = BANK_KINDS.map(k => ({
+    value: k,
+    label: BANK_KIND_LABEL[k],
+    icon: k === 'salary' ? 'briefcase' : k === 'current' ? 'building2' : k === 'savings' ? 'piggy-bank' : 'landmark',
+  }));
   existing = signal<BankAccount | null>(null);
   name = '';
   institution = '';

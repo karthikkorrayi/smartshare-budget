@@ -86,9 +86,7 @@
                 @if (item.kind === 'card_update') {
                   <input [value]="kindInfo['card_update'].module" disabled />
                 } @else {
-                  <select [ngModel]="kindOf(item)" (ngModelChange)="chooseKind(item, $event)" [name]="'kind-' + item.id">
-                    @for (k of switchable; track k) { <option [value]="k">{{ kindInfo[k].label }} · {{ kindInfo[k].module }}</option> }
-                  </select>
+                  <app-select ariaLabel="Goes to" [ngModel]="kindOf(item)" (ngModelChange)="chooseKind(item, $event)" [name]="'kind-' + item.id" [options]="kindOptions" />
                 }
               </label>
               @if (needsCard(item)) {
@@ -96,10 +94,8 @@
                   <span>Card
                     @if (!cardIdOf(item)) { <small class="warn">{{ item.cardHint.lastFourDigits ? 'No card ending ' + item.cardHint.lastFourDigits : 'Choose' }}</small> }
                   </span>
-                  <select [ngModel]="cardIdOf(item)" (ngModelChange)="chooseCard(item, $event)" [name]="'card-' + item.id">
-                    <option value="" disabled>Select card</option>
-                    @for (c of activeCards(); track c.id) { <option [value]="c.id">{{ label(c) }}</option> }
-                  </select>
+                  <app-select ariaLabel="Card" icon="credit-card" placeholder="Select card" [invalid]="!cardIdOf(item)"
+                              [ngModel]="cardIdOf(item)" (ngModelChange)="chooseCard(item, $event)" [name]="'card-' + item.id" [options]="cardOptions()" />
                 </label>
               }
               @if (kindOf(item) === 'wallet') {
@@ -108,10 +104,8 @@
                     <span>Wallet
                       @if (!walletIdOf(item)) { <small class="warn">{{ item.walletHint.provider ? 'No single ' + item.walletHint.provider + ' wallet — choose' : 'Choose' }}</small> }
                     </span>
-                    <select [ngModel]="walletIdOf(item)" (ngModelChange)="chooseWallet(item, $event)" [name]="'wallet-' + item.id">
-                      <option value="" disabled>Select wallet</option>
-                      @for (w of activeWallets(); track w.id) { <option [value]="w.id">{{ walletLabel(w) }}</option> }
-                    </select>
+                    <app-select ariaLabel="Wallet" icon="wallet" placeholder="Select wallet" [invalid]="!walletIdOf(item)"
+                                [ngModel]="walletIdOf(item)" (ngModelChange)="chooseWallet(item, $event)" [name]="'wallet-' + item.id" [options]="walletOptions()" />
                   </label>
                 } @else {
                   <p class="wallet-missing">
@@ -175,8 +169,8 @@
                 @switch (kindOf(item)) {
                   @case ('statement') {
                     <div class="cc-row">
-                      <label class="cc-field"><span>Statement date</span><input type="date" [(ngModel)]="draft.statementDate" name="statementDate" /></label>
-                      <label class="cc-field"><span>Due date</span><input type="date" [(ngModel)]="draft.dueDate" name="dueDate" /></label>
+                      <div class="cc-field"><span>Statement date</span><app-date ariaLabel="Statement date" [max]="today" [(ngModel)]="draft.statementDate" name="statementDate" /></div>
+                      <div class="cc-field"><span>Due date</span><app-date ariaLabel="Due date" [min]="draft.statementDate || null" [(ngModel)]="draft.dueDate" name="dueDate" /></div>
                     </div>
                     <div class="cc-row">
                       <label class="cc-field"><span>Total due (₹)</span><input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="draft.totalDue" name="totalDue" /></label>
@@ -194,31 +188,25 @@
                   }
                   @default {
                     <div class="cc-row">
-                      <label class="cc-field"><span>{{ kindOf(item) === 'bill' ? 'Due date' : 'Date' }}</span><input type="date" [(ngModel)]="draft.date" name="date" /></label>
+                      <div class="cc-field"><span>{{ kindOf(item) === 'bill' ? 'Due date' : 'Date' }}</span><app-date [ariaLabel]="kindOf(item) === 'bill' ? 'Due date' : 'Date'" [max]="kindOf(item) === 'bill' || kindOf(item) === 'income' ? null : today" [(ngModel)]="draft.date" name="date" /></div>
                       <label class="cc-field"><span>Amount (₹)</span><input type="number" inputmode="decimal" min="0.01" step="0.01" [(ngModel)]="draft.amount" name="amount" /></label>
                     </div>
                     <div class="cc-row">
                       @if (kindOf(item) === 'transaction') {
-                        <label class="cc-field"><span>Type</span>
-                          <select [(ngModel)]="draft.direction" name="direction">
-                            <option value="debit">Spend (debit)</option>
-                            <option value="credit">Refund / payment (credit)</option>
-                          </select>
-                        </label>
+                        <div class="cc-field"><span>Type</span>
+                          <app-select ariaLabel="Type" [(ngModel)]="draft.direction" name="direction"
+                                      [options]="[{ value: 'debit', label: 'Spend (debit)', icon: 'arrow-up-right' }, { value: 'credit', label: 'Refund / payment (credit)', icon: 'arrow-down-left' }]" />
+                        </div>
                       }
                       @if (kindOf(item) === 'wallet') {
-                        <label class="cc-field"><span>Entry</span>
-                          <select [(ngModel)]="draft.walletType" name="walletType">
-                            @for (t of walletTypes; track t) { <option [value]="t">{{ walletTypeInfo[t].label }}</option> }
-                          </select>
-                        </label>
+                        <div class="cc-field"><span>Entry</span>
+                          <app-select ariaLabel="Wallet entry type" [(ngModel)]="draft.walletType" name="walletType" [options]="walletTypeOptions" />
+                        </div>
                       }
                       @if (kindOf(item) !== 'wallet' || draft.walletType === 'spend' || draft.walletType === 'refund') {
-                        <label class="cc-field"><span>Category</span>
-                          <select [(ngModel)]="draft.category" name="category">
-                            @for (c of categoriesFor(kindOf(item)); track c) { <option [value]="c">{{ c }}</option> }
-                          </select>
-                        </label>
+                        <div class="cc-field"><span>Category</span>
+                          <app-select ariaLabel="Category" icon="tag" [(ngModel)]="draft.category" name="category" [options]="categoriesFor(kindOf(item)) | opts" />
+                        </div>
                       }
                     </div>
                     <label class="cc-field"><span>Description</span><input maxlength="120" [(ngModel)]="draft.description" name="description" /></label>

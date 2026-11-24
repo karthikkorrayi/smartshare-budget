@@ -17,7 +17,7 @@
         <strong>{{ pending().length }} item{{ pending().length === 1 ? '' : 's' }} waiting for review</strong>
         <small>Extracted from email — approve, edit or reject before they count.</small>
       </span>
-      <span class="go">Review ›</span>
+      <span class="go">Review <app-icon name="chevron-right" [size]="14" /></span>
     </a>
   }
 
@@ -29,7 +29,7 @@
     <section class="cc-panel list">
       @for (r of reminders(); track r.key) {
         <a class="row" [class.unread]="isNew(r.key)" [routerLink]="r.link">
-          <span class="row-icon" [class]="'tone-' + r.tone">{{ icons[r.type] }}</span>
+          <span class="row-icon" [class]="'tone-' + r.tone"><app-icon [name]="icons[r.type]" [size]="18" /></span>
           <span class="row-text">
             <strong>{{ r.title }}</strong>
             <small>{{ r.body }}</small>

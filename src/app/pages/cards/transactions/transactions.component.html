@@ -5,25 +5,20 @@
     <p>Manual entries and approved email transactions, by month.</p>
   </div>
   <div class="cc-heading-actions">
-    <button class="cc-btn cc-btn--primary" (click)="add()" [disabled]="!cards().length">+ Add transaction</button>
+    <button class="cc-btn cc-btn--primary" (click)="add()" [disabled]="!cards().length"><app-icon name="plus" [size]="16" />Add transaction</button>
   </div>
 </section>
 
 <section class="cc-filters">
   <div class="month-nav">
-    <button class="cc-btn cc-btn--sm" (click)="shiftMonth(-1)" aria-label="Previous month">‹</button>
-    <input type="month" [value]="month()" (change)="month.set($any($event.target).value || month())" aria-label="Month" />
-    <button class="cc-btn cc-btn--sm" (click)="shiftMonth(1)" aria-label="Next month">›</button>
+    <button class="btn btn-icon btn-sm" (click)="shiftMonth(-1)" aria-label="Previous month"><app-icon name="chevron-left" [size]="16" /></button>
+    <app-date mode="month" [compact]="true" ariaLabel="Month" [ngModel]="month()" (ngModelChange)="month.set($event || month())" />
+    <button class="btn btn-icon btn-sm" (click)="shiftMonth(1)" aria-label="Next month"><app-icon name="chevron-right" [size]="16" /></button>
   </div>
-  <select class="cc-select" [value]="cardFilter()" (change)="setCard($any($event.target).value)" aria-label="Card">
-    <option value="all">All cards</option>
-    @for (c of cards(); track c.id) { <option [value]="c.id">{{ cardName(c.id) }}</option> }
-  </select>
-  <select class="cc-select" [value]="sourceFilter()" (change)="sourceFilter.set($any($event.target).value)" aria-label="Source">
-    <option value="all">All sources</option>
-    <option value="manual">Manual only</option>
-    <option value="auto">From Gmail only</option>
-  </select>
+  <app-select class="filter-sel" [compact]="true" ariaLabel="Card" icon="credit-card" [value]="cardFilter()" (valueChange)="setCard($event)"
+              [options]="cards() | opts: 'id' : cardName.bind(this) : [{ value: 'all', label: 'All cards', icon: 'layers' }]" />
+  <app-select class="filter-sel" [compact]="true" ariaLabel="Source" icon="filter" [value]="sourceFilter()" (valueChange)="sourceFilter.set($any($event))"
+              [options]="[{ value: 'all', label: 'All sources' }, { value: 'manual', label: 'Manual only', icon: 'pencil' }, { value: 'auto', label: 'From Gmail only', icon: 'mail' }]" />
 </section>
 
 <section class="cc-stats">

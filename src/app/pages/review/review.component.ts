@@ -19,12 +19,15 @@ import {
 } from '../../models/review-item.model';
 import { CARD_FIELD_LABELS, CARD_UPDATABLE_FIELDS, Card, CardUpdateField, cardLabel } from '../../models/card.model';
 import { TXN_CATEGORIES } from '../../models/card-transaction.model';
-import { fromDateInput, toDateInput } from '../../utils/date-input.util';
+import { dueMoment, fromDateInput, toDateInput, todayInput } from '../../utils/date-input.util';
 import { NotificationsService } from '../../services/notifications.service';
 import { WalletsService } from '../../services/wallets.service';
 import { WALLET_CATEGORIES, WALLET_TXN_INFO, WALLET_TXN_TYPES, Wallet, WalletTxnType, walletLabel } from '../../models/wallet.model';
 import { UndoService } from '../../services/undo.service';
 import { IconComponent } from '../../ui/icon.component';
+import { SelectComponent, SelectOption } from '../../ui/select.component';
+import { DateFieldComponent } from '../../ui/date-field.component';
+import { OptsPipe } from '../../ui/opts.pipe';
 
 type GroupFilter = 'all' | 'salary' | 'bank' | 'cards' | 'bills' | 'payments' | 'wallets';
 
@@ -50,7 +53,7 @@ const BULK_CONFIDENCE = 0.85;
 @Component({
   selector: 'app-review-center',
   standalone: true,
-  imports: [IconComponent, DatePipe, DecimalPipe, FormsModule, RouterLink],
+  imports: [IconComponent, DatePipe, DecimalPipe, FormsModule, RouterLink, SelectComponent, DateFieldComponent, OptsPipe],
   templateUrl: './review.component.html',
   styleUrl: './review.component.scss',
 })
@@ -64,6 +67,9 @@ export class ReviewComponent {
   readonly categoryInfo = CATEGORY_INFO;
   readonly kindInfo = KIND_INFO;
   readonly switchable = SWITCHABLE_KINDS;
+  readonly today = todayInput();
+  readonly kindOptions: SelectOption[] = SWITCHABLE_KINDS.map(k => ({ value: k, label: KIND_INFO[k].label, hint: KIND_INFO[k].module }));
+  readonly walletTypeOptions: SelectOption[] = WALLET_TXN_TYPES.map(t => ({ value: t, label: WALLET_TXN_INFO[t].label, hint: WALLET_TXN_INFO[t].counts }));
   readonly cardFields = CARD_UPDATABLE_FIELDS;
   readonly fieldLabels = CARD_FIELD_LABELS;
   readonly label = cardLabel;
@@ -85,6 +91,7 @@ export class ReviewComponent {
   cards = toSignal(this.cardsService.cards$, { initialValue: [] as Card[] });
   wallets = toSignal(this.walletsService.wallets$, { initialValue: [] as Wallet[] });
   activeWallets = computed(() => this.wallets().filter(w => w.status === 'Active'));
+  walletOptions = computed<SelectOption[]>(() => this.activeWallets().map(w => ({ value: w.id, label: w.name, icon: 'wallet', hint: w.provider })));
   private walletMap = computed(() => new Map(this.wallets().map(w => [w.id, w])));
 
   loading = computed(() => this.rawPending() === undefined);
@@ -130,6 +137,7 @@ export class ReviewComponent {
   loadingSamples = signal(false);
 
   activeCards = computed(() => this.cards().filter(c => c.status === 'Active'));
+  cardOptions = computed<SelectOption[]>(() => this.activeCards().map(c => ({ value: c.id, label: cardLabel(c), icon: 'credit-card', hint: c.bankName })));
   private cardMap = computed(() => new Map(this.cards().map(c => [c.id, c])));
 
   /** Final values next to what the email said — changed fields are flagged. */
@@ -380,22 +388,23 @@ export class ReviewComponent {
 
   private valuesFromDraft(kind: ReviewKind): ExtractedValues {
     const d = this.draft;
+    const day = (v: string) => (fromDateInput(v) ? dueMoment(v) : undefined);
     const num = (v: string) => (String(v).trim() === '' ? undefined : Number(v));
     switch (kind) {
       case 'income':
       case 'expense':
-        return { txnDate: fromDateInput(d.date) ?? undefined, amount: num(d.amount), description: d.description.trim(), category: d.category };
+        return { txnDate: day(d.date), amount: num(d.amount), description: d.description.trim(), category: d.category };
       case 'transaction':
-        return { txnDate: fromDateInput(d.date) ?? undefined, amount: num(d.amount), direction: d.direction, description: d.description.trim(), category: d.category };
+        return { txnDate: day(d.date), amount: num(d.amount), direction: d.direction, description: d.description.trim(), category: d.category };
       case 'bill':
-        return { dueDate: fromDateInput(d.date) ?? undefined, amount: num(d.amount), description: d.description.trim(), category: d.category };
+        return { dueDate: day(d.date), amount: num(d.amount), description: d.description.trim(), category: d.category };
       case 'wallet':
         return {
-          txnDate: fromDateInput(d.date) ?? undefined, amount: num(d.amount), walletType: d.walletType, description: d.description.trim(),
+          txnDate: day(d.date), amount: num(d.amount), walletType: d.walletType, description: d.description.trim(),
           category: d.walletType === 'spend' || d.walletType === 'refund' ? d.category : '',
         };
       case 'statement':
-        return { statementDate: fromDateInput(d.statementDate) ?? undefined, dueDate: fromDateInput(d.dueDate) ?? undefined, totalDue: num(d.totalDue), minDue: num(d.minDue) };
+        return { statementDate: day(d.statementDate), dueDate: day(d.dueDate), totalDue: num(d.totalDue), minDue: num(d.minDue) };
       case 'card_update': {
         const out: ExtractedValues = {};
         for (const f of this.cardFields) {

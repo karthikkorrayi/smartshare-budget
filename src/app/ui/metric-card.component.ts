@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { IconComponent } from './icon.component';
+import { AmountComponent } from './amount.component';
 
 /** KPI tile: icon, label, big value, one-line explanation, optional trend chip. */
 @Component({
   selector: 'app-metric',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, AmountComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="m" [class.feature]="feature()">
@@ -18,7 +19,11 @@ import { IconComponent } from './icon.component';
         }
       </div>
       <div class="label">{{ label() }}</div>
-      <div class="value num" [class.neg]="negative()">{{ value() }}</div>
+      @if (privacyKey()) {
+        <div class="value num" [class.neg]="negative()"><app-amount [value]="amount()" [privacyKey]="privacyKey()!" [label]="label()" [iconSize]="feature() ? 18 : 16" /></div>
+      } @else {
+        <div class="value num" [class.neg]="negative()">{{ value() }}</div>
+      }
       @if (hint()) { <div class="hint">{{ hint() }}</div> }
       <ng-content />
     </div>
@@ -30,6 +35,7 @@ import { IconComponent } from './icon.component';
     .m:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
     .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
     .label { font-size: 12.5px; font-weight: 600; color: var(--text-3); }
+    .value app-amount { max-width: 100%; }
     .value { margin-top: 4px; font-size: 24px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .value.neg { color: var(--neg); }
     .hint { margin-top: 4px; font-size: 12px; color: var(--text-3); }
@@ -44,7 +50,10 @@ import { IconComponent } from './icon.component';
 })
 export class MetricCardComponent {
   readonly label = input.required<string>();
-  readonly value = input.required<string>();
+  readonly value = input<string>('');
+  /** A balance: shown hidden ("₹ ******") with an eye toggle, keyed by privacyKey. Use instead of [value]. */
+  readonly amount = input<number | null | undefined>(null);
+  readonly privacyKey = input<string | null>(null);
   readonly hint = input<string>('');
   readonly icon = input<string>('circle-dollar-sign');
   readonly tone = input<'accent' | 'pos' | 'neg' | 'warn' | 'info' | ''>('accent');

@@ -12,21 +12,24 @@ import { DEFAULT_SETTINGS, UserSettings } from '../../models/settings.model';
 import { FinanceService } from '../../services/finance.service';
 import { FinanceTxn, habits } from '../../utils/analytics.util';
 import { addDays } from '../../utils/spending.util';
-import { MoneyPipe } from '../../ui/money.pipe';
 import { ThemeService } from '../../core/theme.service';
 import { InstallService } from '../../core/install.service';
 import { IconComponent } from '../../ui/icon.component';
+import { SelectComponent } from '../../ui/select.component';
+import { AmountComponent } from '../../ui/amount.component';
 
 type Busy = '' | 'name' | 'password' | 'google' | 'unlink-google' | 'unlink-password' | 'reset' | 'verify' | 'settings' | 'push';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [IconComponent, MoneyPipe, FormsModule, DatePipe, RouterLink],
+  imports: [IconComponent, FormsModule, DatePipe, RouterLink, SelectComponent, AmountComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
 })
 export class ProfileComponent implements OnInit {
+  readonly reminderOptions = [1, 2, 3, 5, 7, 10].map(d => ({ value: d, label: `${d} day${d === 1 ? '' : 's'} before` }));
+
   auth = inject(AuthService);
   private gmail = inject(GmailService);
   private settingsService = inject(SettingsService);

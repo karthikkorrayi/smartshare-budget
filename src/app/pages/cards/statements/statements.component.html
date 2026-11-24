@@ -5,7 +5,7 @@
     <p>What's due, by when, and what's already paid.</p>
   </div>
   <div class="cc-heading-actions">
-    <button class="cc-btn cc-btn--primary" (click)="add()" [disabled]="!cards().length">+ Add statement</button>
+    <button class="cc-btn cc-btn--primary" (click)="add()" [disabled]="!cards().length"><app-icon name="plus" [size]="16" />Add statement</button>
   </div>
 </section>
 
@@ -21,10 +21,8 @@
       All <span class="cc-count">{{ counts().all }}</span>
     </button>
   </div>
-  <select class="cc-select" [value]="cardFilter()" (change)="cardFilter.set($any($event.target).value)" aria-label="Card">
-    <option value="all">All cards</option>
-    @for (c of cards(); track c.id) { <option [value]="c.id">{{ cardName(c.id) }}</option> }
-  </select>
+  <app-select class="filter-sel" [compact]="true" ariaLabel="Card" icon="credit-card" [value]="cardFilter()" (valueChange)="cardFilter.set($event)"
+              [options]="cards() | opts: 'id' : cardName.bind(this) : [{ value: 'all', label: 'All cards', icon: 'layers' }]" />
 </section>
 
 @if (actionError()) { <p class="cc-error" role="alert">{{ actionError() }}</p> }

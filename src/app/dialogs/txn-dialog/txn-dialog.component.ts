@@ -9,10 +9,12 @@ import { QuickActionsService, TxnMode } from '../../core/quick-actions.service';
 import { AccountRef, AccountSummary, parseRef, refKey } from '../../models/account.model';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../models/review-item.model';
 import { FinanceTxn, categoryIcon, inr } from '../../utils/analytics.util';
-import { fromDateInput, toDateInput } from '../../utils/date-input.util';
+import { toDateInput, entryMoment, checkDay } from '../../utils/date-input.util';
 import { IconComponent } from '../../ui/icon.component';
-import { MoneyPipe } from '../../ui/money.pipe';
 import { EmptyStateComponent } from '../../ui/empty-state.component';
+import { DateFieldComponent } from '../../ui/date-field.component';
+import { AmountComponent } from '../../ui/amount.component';
+import { PrivateMoneyPipe } from '../../ui/money.pipe';
 
 export interface TxnDialogData {
   mode?: TxnMode;
@@ -32,7 +34,7 @@ const INCOME_CATS = [...INCOME_CATEGORIES, 'Business', 'Gift', 'Repayment'];
  */
 @Component({
   standalone: true,
-  imports: [FormsModule, IconComponent, MoneyPipe, EmptyStateComponent],
+  imports: [FormsModule, IconComponent, EmptyStateComponent, DateFieldComponent, AmountComponent, PrivateMoneyPipe],
   templateUrl: './txn-dialog.component.html',
   styleUrl: './txn-dialog.component.scss',
 })
@@ -104,6 +106,11 @@ export class TxnDialogComponent {
     return !!p && this.mode() !== 'income' && p.after < 0 && p.before >= 0 - 0.001;
   });
 
+  /** Expenses and transfers can't be dated in the future; income can (e.g. salary credited tomorrow). */
+  readonly dateError = computed(() =>
+    checkDay(this.dateInput(), { label: 'the date', notFuture: this.mode() !== 'income' })
+  );
+
   readonly titleLabel = computed(() => (this.mode() === 'income' ? 'Source' : this.mode() === 'transfer' ? 'Note' : 'Description'));
   readonly heading = computed(() => {
     const verb = this.editing ? 'Edit' : 'Add';
@@ -141,9 +148,8 @@ export class TxnDialogComponent {
     if (!(amt > 0)) out.push('Enter an amount greater than 0.');
     if (amt >= 1e9) out.push('That amount is too large.');
     if (m !== 'transfer' && !this.title().trim()) out.push(m === 'income' ? 'Add where the money came from.' : 'Add a short description.');
-    const day = fromDateInput(this.dateInput());
-    if (!day) out.push('Pick a valid date.');
-    else if (m !== 'income' && day > new Date()) out.push('The date can’t be in the future.');
+    const dateProblem = this.dateError();
+    if (dateProblem) out.push(dateProblem);
     if (this.overdraw() && !this.allowOverdraw()) out.push(`This takes ${this.selected()!.name} below zero. Tick “Record anyway” if the balance shown is out of date.`);
     if (this.editing?.system) out.push('System-generated entries can’t be edited.');
     return out;
@@ -156,9 +162,8 @@ export class TxnDialogComponent {
     if (problems.length) return;
 
     const acc = parseRef(this.accountKey());
-    const day = fromDateInput(this.dateInput())!;
-    const now = new Date();
-    const date = toDateInput(day) === toDateInput(now) ? now : new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12);
+    // Editing keeps the entry's original time when its day didn't change.
+    const date = entryMoment(this.dateInput(), this.editing?.date ?? null);
     const amount = Number(this.amount());
     const title = this.title().trim();
     const m = this.mode();

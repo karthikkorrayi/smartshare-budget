@@ -32,12 +32,16 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
 import { EmptyStateComponent } from '../../ui/empty-state.component';
 import { TxnTableComponent } from '../../components/txn-table/txn-table.component';
 import { BreakdownComponent } from '../../components/breakdown/breakdown.component';
+import { SelectComponent } from '../../ui/select.component';
+import { DateFieldComponent } from '../../ui/date-field.component';
+import { OptsPipe } from '../../ui/opts.pipe';
+import { AmountComponent } from '../../ui/amount.component';
 
 type Section = 'all' | 'expenses' | 'income' | 'transfers' | 'lending' | 'categories' | 'accounts';
 
 @Component({
   standalone: true,
-  imports: [DatePipe, FormsModule, RouterLink, IconComponent, MetricCardComponent, MoneyPipe, SkeletonComponent, EmptyStateComponent, TxnTableComponent],
+  imports: [DatePipe, FormsModule, RouterLink, IconComponent, MetricCardComponent, MoneyPipe, SkeletonComponent, EmptyStateComponent, TxnTableComponent, SelectComponent, DateFieldComponent, OptsPipe, AmountComponent],
   templateUrl: './activity.component.html',
   styleUrl: './activity.component.scss',
 })

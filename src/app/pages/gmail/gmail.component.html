@@ -9,7 +9,7 @@
       @if (pendingCount().length) {
         <a class="cc-btn" routerLink="/review"><app-icon name="inbox" [size]="16" /> Review {{ pendingCount().length }}</a>
       }
-      <button class="cc-btn cc-btn--primary" (click)="showConnect.set(!showConnect())" [disabled]="!configured">+ Connect Gmail</button>
+      <button class="cc-btn cc-btn--primary" (click)="showConnect.set(!showConnect())" [disabled]="!configured"><app-icon name="plus" [size]="16" />Connect Gmail</button>
     </div>
   </section>
 

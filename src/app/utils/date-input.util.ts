@@ -10,8 +10,11 @@ export function toDateInput(date: Date | null | undefined): string {
 export function fromDateInput(value: string | null | undefined): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '');
   if (!m) return null;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return isNaN(d.getTime()) ? null : d;
+  const [y, mo, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(y, mo - 1, day);
+  // Reject impossible days instead of letting them roll over (2026-02-31 → 3 Mar, 2026-13-01 → Jan 2027).
+  if (isNaN(d.getTime()) || d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== day) return null;
+  return d;
 }
 
 export function startOfDay(d: Date): Date {
@@ -53,4 +56,68 @@ export function relativeDays(days: number): string {
   if (days === 1) return 'tomorrow';
   if (days === -1) return 'yesterday';
   return days > 0 ? `in ${days} days` : `${-days} days ago`;
+}
+
+// ── One rule for turning a picked calendar day into the moment we store ───────
+// Stored moments are local times. Midnight is avoided: in IST, local midnight is 18:30 UTC of the
+// previous day, so anything reading the date in UTC (Cloud Functions, exports) would see the day before.
+
+const sameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+/**
+ * Moment to store for an entry (expense, income, transaction, repayment…) picked as `day`:
+ *  - editing and the day didn't change → the original moment (an edit never moves an entry's time);
+ *  - the day is today → now (keeps today's list in the order things happened);
+ *  - any other day → 12:00 local.
+ */
+export function entryMoment(day: Date | string, original?: Date | null, now = new Date()): Date {
+  const d = typeof day === 'string' ? fromDateInput(day) : day;
+  if (!d) throw new Error('entryMoment: invalid day');
+  if (original && sameDay(original, d)) return original;
+  if (sameDay(d, now)) return now;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+}
+
+/** Moment to store for a due / statement / schedule date: always 12:00 local on that day. */
+export function dueMoment(day: Date | string): Date {
+  const d = typeof day === 'string' ? fromDateInput(day) : day;
+  if (!d) throw new Error('dueMoment: invalid day');
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+}
+
+/** Today as 'YYYY-MM-DD' (for [max] on pickers of things that already happened). */
+export function todayInput(now = new Date()): string {
+  return toDateInput(now);
+}
+
+/**
+ * Validates a picked day. Returns an error sentence or null.
+ *   checkDay(v, { label: 'the expense date', notFuture: true })
+ * `maxYearsBack` stops typos like 2062 / 1926 (default 10 years either way).
+ */
+export function checkDay(
+  value: string | null | undefined,
+  opts: { label: string; required?: boolean; notFuture?: boolean; notPast?: boolean; min?: string; max?: string; maxYears?: number } = { label: 'the date' },
+  now = new Date()
+): string | null {
+  const required = opts.required ?? true;
+  if (!value) return required ? `Pick ${opts.label}.` : null;
+  const d = fromDateInput(value);
+  if (!d) return `${cap(opts.label)} isn't a valid date.`;
+  const today = toDateInput(now);
+  if (opts.notFuture && value > today) return `${cap(opts.label)} can't be in the future.`;
+  if (opts.notPast && value < today) return `${cap(opts.label)} can't be in the past.`;
+  if (opts.min && value < opts.min) return `${cap(opts.label)} must be on or after ${fmtDay(opts.min)}.`;
+  if (opts.max && value > opts.max) return `${cap(opts.label)} must be on or before ${fmtDay(opts.max)}.`;
+  const years = opts.maxYears ?? 10;
+  if (Math.abs(d.getFullYear() - now.getFullYear()) > years) return `${cap(opts.label)} looks wrong (${d.getFullYear()}).`;
+  return null;
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function fmtDay(v: string): string {
+  return fromDateInput(v)?.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) ?? v;
 }

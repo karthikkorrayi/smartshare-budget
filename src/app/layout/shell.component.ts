@@ -12,6 +12,7 @@ import { QuickActionsService } from '../core/quick-actions.service';
 import { IconComponent } from '../ui/icon.component';
 import { LogoComponent } from './logo.component';
 import { NOTIFICATION_ICONS } from '../models/app-notification.model';
+import { PrivacyService } from '../core/privacy.service';
 
 interface NavItem {
   path: string;
@@ -37,6 +38,7 @@ const COLLAPSE_KEY = 'ssb_sidebar_collapsed';
 export class ShellComponent {
   auth = inject(AuthService);
   theme = inject(ThemeService);
+  readonly privacy = inject(PrivacyService);
   install = inject(InstallService);
   private quick = inject(QuickActionsService);
   private notifications = inject(NotificationsService);

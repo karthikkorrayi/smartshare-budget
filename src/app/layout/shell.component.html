@@ -77,6 +77,11 @@
         </div>
 
         <!-- Theme (compact, mobile + tablet) -->
+        @if (privacy.anyVisible()) {
+          <button class="btn btn-ghost btn-icon" (click)="privacy.hideAll()" aria-label="Hide all balances" title="Hide all balances">
+            <app-icon name="eye-off" />
+          </button>
+        }
         <button class="btn btn-ghost btn-icon theme-btn" (click)="theme.cycle()"
                 [attr.aria-label]="'Theme: ' + theme.pref() + '. Change theme'" [title]="'Theme: ' + theme.pref()">
           <app-icon [name]="theme.pref() === 'system' ? 'monitor' : theme.resolved() === 'dark' ? 'moon' : 'sun'" />

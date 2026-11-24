@@ -47,6 +47,10 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
 import { EmptyStateComponent } from '../../ui/empty-state.component';
 import { MoneyPipe, MoneyShortPipe } from '../../ui/money.pipe';
 import { BreakdownComponent } from '../../components/breakdown/breakdown.component';
+import { SelectComponent } from '../../ui/select.component';
+import { DateFieldComponent } from '../../ui/date-field.component';
+import { OptsPipe } from '../../ui/opts.pipe';
+import { AmountComponent } from '../../ui/amount.component';
 
 const FILTER_KEY = 'ssb_dash_filter';
 
@@ -57,10 +61,7 @@ const FILTER_KEY = 'ssb_dash_filter';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [
-    DatePipe, FormsModule, RouterLink, IconComponent, MetricCardComponent, ChartComponent, SkeletonComponent,
-    EmptyStateComponent, MoneyPipe, MoneyShortPipe, BudgetHeroComponent,
-  ],
+  imports: [DatePipe, FormsModule, RouterLink, IconComponent, MetricCardComponent, ChartComponent, SkeletonComponent, EmptyStateComponent, MoneyPipe, MoneyShortPipe, BudgetHeroComponent, SelectComponent, DateFieldComponent, OptsPipe, AmountComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })

@@ -29,11 +29,12 @@ import { EmptyStateComponent } from '../../ui/empty-state.component';
 import { MoneyPipe, MoneyShortPipe } from '../../ui/money.pipe';
 import { TxnTableComponent } from '../../components/txn-table/txn-table.component';
 import { BreakdownComponent } from '../../components/breakdown/breakdown.component';
+import { AmountComponent } from '../../ui/amount.component';
 
 /** One account's analytics: balance, money in vs out over time, category split, and its transactions. */
 @Component({
   standalone: true,
-  imports: [RouterLink, IconComponent, MetricCardComponent, ChartComponent, SkeletonComponent, EmptyStateComponent, MoneyPipe, MoneyShortPipe, TxnTableComponent],
+  imports: [RouterLink, IconComponent, MetricCardComponent, ChartComponent, SkeletonComponent, EmptyStateComponent, MoneyPipe, MoneyShortPipe, TxnTableComponent, AmountComponent],
   templateUrl: './account-detail.component.html',
   styleUrl: './account-detail.component.scss',
 })

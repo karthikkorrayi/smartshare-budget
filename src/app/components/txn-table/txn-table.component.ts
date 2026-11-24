@@ -8,6 +8,8 @@ import { IconComponent } from '../../ui/icon.component';
 import { MoneyPipe } from '../../ui/money.pipe';
 import { EmptyStateComponent } from '../../ui/empty-state.component';
 import { SkeletonComponent } from '../../ui/skeleton.component';
+import { SelectComponent, SelectOption } from '../../ui/select.component';
+import { OptsPipe } from '../../ui/opts.pipe';
 
 type SortKey = 'date' | 'amount' | 'title';
 const PAGE = 30;
@@ -19,7 +21,7 @@ const PAGE = 30;
 @Component({
   selector: 'app-txn-table',
   standalone: true,
-  imports: [DatePipe, FormsModule, IconComponent, MoneyPipe, EmptyStateComponent, SkeletonComponent],
+  imports: [DatePipe, FormsModule, IconComponent, MoneyPipe, EmptyStateComponent, SkeletonComponent, SelectComponent, OptsPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="toolbar">
@@ -32,24 +34,13 @@ const PAGE = 30;
           @for (f of flows; track f.id) { <button role="radio" [attr.aria-checked]="flow() === f.id" [class.on]="flow() === f.id" (click)="flow.set(f.id)">{{ f.label }}</button> }
         </div>
       }
-      <select class="input sel" [ngModel]="cat()" (ngModelChange)="cat.set($event)" aria-label="Category">
-        <option value="">All categories</option>
-        @for (c of categoryOptions(); track c) { <option [value]="c">{{ c }}</option> }
-      </select>
+      <app-select class="sel" [compact]="true" ariaLabel="Category" icon="tag" [ngModel]="cat()" (ngModelChange)="cat.set($event)"
+                  [options]="categoryOptions() | opts : undefined : undefined : [{ value: '', label: 'All categories' }]" />
       @if (showAccount()) {
-        <select class="input sel" [ngModel]="acct()" (ngModelChange)="acct.set($event)" aria-label="Account">
-          <option value="">All accounts</option>
-          <option value="none">Not linked</option>
-          @for (a of accountList(); track a.key) { <option [value]="a.key">{{ a.name }}</option> }
-        </select>
+        <app-select class="sel" [compact]="true" ariaLabel="Account" [ngModel]="acct()" (ngModelChange)="acct.set($event)"
+                    [options]="accountList() | opts: 'key' : 'name' : [{ value: '', label: 'All accounts', icon: 'layers' }, { value: 'none', label: 'Not linked', icon: 'link' }] : 'icon'" />
       }
-      <select class="input sel" [ngModel]="sortSel()" (ngModelChange)="setSort($event)" aria-label="Sort">
-        <option value="date:desc">Newest first</option>
-        <option value="date:asc">Oldest first</option>
-        <option value="amount:desc">Largest amount</option>
-        <option value="amount:asc">Smallest amount</option>
-        <option value="title:asc">Name A–Z</option>
-      </select>
+      <app-select class="sel" [compact]="true" ariaLabel="Sort" icon="arrow-up-down" [ngModel]="sortSel()" (ngModelChange)="setSort($event)" [options]="sortOptions" />
     </div>
 
     @if (txns() === null) {
@@ -110,7 +101,7 @@ const PAGE = 30;
     .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; }
     .search { flex: 1 1 240px; min-width: 0; }
     .search input { min-height: 38px; }
-    .sel { width: auto; min-height: 38px; padding: 6px 10px; font-size: 13px; max-width: 200px; }
+    app-select.sel { width: 180px; max-width: 200px; }
     .summary { margin: 0 0 8px; b { color: var(--text-2); } .amt-in { color: var(--pos); } }
     .desc { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 360px; }
     .acct { max-width: 180px; }
@@ -119,11 +110,19 @@ const PAGE = 30;
     .more { display: flex; justify-content: center; padding: 12px 0 2px; }
     @media (max-width: 760px) {
       .desk { display: none; } .mob { display: flex; }
-      .sel { flex: 1 1 140px; max-width: none; }
+      app-select.sel { flex: 1 1 140px; width: auto; max-width: none; }
     }
   `],
 })
 export class TxnTableComponent {
+  readonly sortOptions: SelectOption[] = [
+    { value: 'date:desc', label: 'Newest first' },
+    { value: 'date:asc', label: 'Oldest first' },
+    { value: 'amount:desc', label: 'Largest amount' },
+    { value: 'amount:asc', label: 'Smallest amount' },
+    { value: 'title:asc', label: 'Name A–Z' },
+  ];
+
   private quick = inject(QuickActionsService);
   readonly txns = input<FinanceTxn[] | null>(null);
   readonly accounts = input<Map<string, AccountSummary>>(new Map());

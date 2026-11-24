@@ -10,13 +10,15 @@ import { StatementFormComponent, StatementFormData } from '../../../dialogs/stat
 import { UndoService } from '../../../services/undo.service';
 import { VisiblePipe } from '../../../pipes/visible.pipe';
 import { IconComponent } from '../../../ui/icon.component';
+import { SelectComponent } from '../../../ui/select.component';
+import { OptsPipe } from '../../../ui/opts.pipe';
 
 type StatusFilter = 'open' | 'all' | 'Paid';
 
 @Component({
   selector: 'app-card-statements',
   standalone: true,
-  imports: [IconComponent, DatePipe, DecimalPipe, VisiblePipe],
+  imports: [IconComponent, DatePipe, DecimalPipe, VisiblePipe, SelectComponent, OptsPipe],
   templateUrl: './statements.component.html',
   styleUrl: './statements.component.scss',
 })

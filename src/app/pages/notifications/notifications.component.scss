@@ -13,7 +13,7 @@
   .text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;
     strong { color: var(--warn); }
     small { color: var(--text-3); } }
-  .go { font-weight: 700; color: var(--warn); white-space: nowrap; }
+  .go { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; color: var(--warn); white-space: nowrap; }
 }
 
 .section {

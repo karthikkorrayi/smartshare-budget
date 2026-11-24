@@ -38,7 +38,7 @@
       <h2>Your activity</h2>
       <p class="sub">A snapshot built from what you've recorded.</p>
       <div class="snap">
-        <div><span class="sub">Total wealth</span><b class="num">{{ (wealth()?.total ?? 0) | money }}</b><small class="sub">{{ wealth()?.accounts ?? 0 }} active account{{ wealth()?.accounts === 1 ? '' : 's' }}</small></div>
+        <div><span class="sub">Total wealth</span><b class="num"><app-amount [value]="wealth()?.total ?? 0" privacyKey="wealth" label="Total wealth" /></b><small class="sub">{{ wealth()?.accounts ?? 0 }} active account{{ wealth()?.accounts === 1 ? '' : 's' }}</small></div>
         <div><span class="sub">Logged (90 days)</span><b class="num">{{ activityCount() }}</b><small class="sub">entries</small></div>
         <div><span class="sub">Logging streak</span><b class="num">{{ habit().loggingStreak }}</b><small class="sub">day{{ habit().loggingStreak === 1 ? '' : 's' }} in a row</small></div>
         <div><span class="sub">Recurring payments</span><b class="num">{{ recurringCount() }}</b><small class="sub">tracked</small></div>
@@ -161,12 +161,10 @@
             <span>Daily spending limit (₹) <small>0 = none</small></span>
             <input type="number" min="0" step="50" inputmode="numeric" name="dailyLimit" [(ngModel)]="form.dailyLimit" />
           </label>
-          <label class="cc-field">
+          <div class="cc-field">
             <span>Remind me before card due dates</span>
-            <select name="reminderDays" [(ngModel)]="form.reminderDays">
-              @for (d of [1, 2, 3, 5, 7, 10]; track d) { <option [ngValue]="d">{{ d }} day{{ d === 1 ? '' : 's' }} before</option> }
-            </select>
-          </label>
+            <app-select name="reminderDays" ariaLabel="Reminder" icon="bell" [(ngModel)]="form.reminderDays" [options]="reminderOptions" />
+          </div>
         </div>
         <p class="sub small">The limit covers expenses and card spends together. Each card can also have its own limit (edit the card). You'll get a warning the moment a save takes you over.</p>
 

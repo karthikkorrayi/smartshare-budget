@@ -14,20 +14,13 @@
           </button>
         }
       </div>
-      <label class="acct-select">
-        <app-icon name="layers" [size]="16" />
-        <span class="sr-only">Account</span>
-        <select [ngModel]="accountKey()" (ngModelChange)="accountKey.set($event)" aria-label="Account filter">
-          <option value="">All accounts</option>
-          @for (a of activeAccounts(); track a.key) { <option [value]="a.key">{{ a.name }}</option> }
-        </select>
-        <app-icon name="chevron-down" [size]="15" />
-      </label>
+      <app-select class="acct-select" [compact]="true" ariaLabel="Account filter" [ngModel]="accountKey()" (ngModelChange)="accountKey.set($event)"
+                  [options]="activeAccounts() | opts: 'key' : 'name' : [{ value: '', label: 'All accounts', icon: 'layers' }] : 'icon' : 'subtitle'" />
     </div>
     @if (preset() === 'custom') {
       <div class="custom-range">
-        <label class="field"><span>From</span><input type="date" [max]="customEnd()" [ngModel]="customStart()" (ngModelChange)="customStart.set($event)" /></label>
-        <label class="field"><span>To</span><input type="date" [min]="customStart()" [ngModel]="customEnd()" (ngModelChange)="customEnd.set($event)" /></label>
+        <div class="field"><span>From</span><app-date ariaLabel="From" [max]="customEnd()" [quick]="['today', 'yesterday']" [ngModel]="customStart()" (ngModelChange)="customStart.set($event)" /></div>
+        <div class="field"><span>To</span><app-date ariaLabel="To" [min]="customStart()" [quick]="['today']" [ngModel]="customEnd()" (ngModelChange)="customEnd.set($event)" /></div>
         <span class="muted tiny">Up to 24 months.</span>
       </div>
     }
@@ -41,9 +34,9 @@
       @if (selectedAccount(); as a) {
         <app-metric class="m-wealth" [feature]="true" icon="wallet"
           [label]="a.type === 'card' ? 'Card outstanding' : 'Account balance'"
-          [value]="a.balance | money" [hint]="a.type === 'card' ? 'Unpaid on statements' : a.subtitle" />
+          [amount]="a.balance" [privacyKey]="a.key" [hint]="a.type === 'card' ? 'Unpaid on statements' : a.subtitle" />
       } @else {
-        <app-metric class="m-wealth" [feature]="true" icon="piggy-bank" label="Total wealth" [value]="wealth()!.total | money"
+        <app-metric class="m-wealth" [feature]="true" icon="piggy-bank" label="Total wealth" [amount]="wealth()!.total" privacyKey="wealth"
           [hint]="wealth()!.accounts ? 'Across ' + wealth()!.accounts + ' account' + (wealth()!.accounts === 1 ? '' : 's') + ' (bank + wallets)' : 'Add an account to see your balance'" />
       }
       <app-metric icon="arrow-down-left" tone="pos" label="Income" [value]="sum().income | money"
@@ -52,7 +45,7 @@
         [hint]="sum().refunds ? 'After ' + (sum().refunds | money) + ' in refunds' : 'Your spending · ' + range().label.toLowerCase()" />
       <app-metric icon="activity" [tone]="sum().net >= 0 ? 'pos' : 'neg'" label="Net cash flow" [value]="sum().net | money" [negative]="sum().net < 0"
         [hint]="sum().net >= 0 ? 'You kept more than you spent' : 'Spending is ahead of income'" />
-      <app-metric icon="handshake" tone="warn" label="Money owed to you" [value]="lendSummary().owedToMe | money"
+      <app-metric icon="handshake" tone="warn" label="Money owed to you" [amount]="lendSummary().owedToMe" privacyKey="owed-to-me"
         [hint]="lendSummary().iOwe ? 'You owe ' + (lendSummary().iOwe | money) : 'Currently lent out'" />
       <app-metric icon="calendar-clock" tone="neg" label="Upcoming (30 days)" [value]="(commitments()?.total ?? 0) | money"
         [hint]="commitments()?.overdue ? commitments()!.overdue + ' overdue · ' + commitments()!.count + ' total' : (commitments()?.count ?? 0) + ' bills & card dues'" />
@@ -81,8 +74,10 @@
     } @else {
       <div class="acct-row" role="list">
         @for (a of activeAccounts(); track a.key) {
-          <button class="acct-card" role="listitem" [attr.data-art]="a.art" [class.selected]="accountKey() === a.key" (click)="openAccount(a)"
-                  [attr.aria-label]="a.name + ', ' + (a.type === 'card' ? 'outstanding ' : 'balance ') + (a.balance | money)">
+          <!-- A div, not a button: it holds the balance's own eye button (buttons can't be nested). -->
+          <div class="acct-card" role="listitem" tabindex="0" [attr.data-art]="a.art" [class.selected]="accountKey() === a.key"
+               (click)="openAccount(a)" (keydown.enter)="openAccount(a)" (keydown.space)="$event.preventDefault(); openAccount(a)"
+               [attr.aria-label]="'Open ' + a.name">
             <span class="shine" aria-hidden="true"></span>
             <span class="acct-top">
               <span class="acct-ico"><app-icon [name]="a.icon" [size]="17" /></span>
@@ -91,9 +86,9 @@
             </span>
             <span class="acct-name">{{ a.name }}</span>
             <span class="acct-sub">{{ a.subtitle }}</span>
-            <span class="acct-bal num">{{ a.balance | money }}</span>
+            <span class="acct-bal num"><app-amount [value]="a.balance" [privacyKey]="a.key" [label]="a.name + (a.type === 'card' ? ' outstanding' : ' balance')" [iconSize]="16" /></span>
             <span class="acct-foot">{{ a.type === 'card' ? 'Outstanding' : 'Balance' }}@if (a.lastActivity) { · last activity {{ a.lastActivity | date: 'd MMM' }} }</span>
-          </button>
+          </div>
         }
         <button class="acct-add" (click)="quick.addAccount('bank')"><app-icon name="plus" [size]="20" /><span>Add account</span></button>
       </div>

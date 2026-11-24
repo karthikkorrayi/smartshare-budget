@@ -12,20 +12,16 @@
   </div>
 
   <form class="cc-dialog-body" (ngSubmit)="save()" novalidate>
-    <label class="cc-field">
+    <div class="cc-field">
       <span>Card</span>
-      <select name="cardId" [(ngModel)]="form.cardId">
-        @for (c of data.cards; track c.id) {
-          <option [value]="c.id">{{ label(c) }}{{ c.status === 'Closed' ? ' (closed)' : '' }}</option>
-        }
-      </select>
-    </label>
+      <app-select name="cardId" ariaLabel="Card" icon="credit-card" [(ngModel)]="form.cardId" [options]="cardOptions" />
+    </div>
 
     <div class="cc-row">
-      <label class="cc-field">
+      <div class="cc-field">
         <span>Date</span>
-        <input name="txnDate" type="date" [(ngModel)]="form.txnDate" />
-      </label>
+        <app-date name="txnDate" ariaLabel="Transaction date" [max]="today" [quick]="['today', 'yesterday']" [(ngModel)]="form.txnDate" />
+      </div>
       <label class="cc-field">
         <span>Amount (₹)</span>
         <input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" [(ngModel)]="form.amount" />
@@ -33,19 +29,15 @@
     </div>
 
     <div class="cc-row">
-      <label class="cc-field">
+      <div class="cc-field">
         <span>Type</span>
-        <select name="direction" [(ngModel)]="form.direction">
-          <option value="debit">Spend (debit)</option>
-          <option value="credit">Refund / payment (credit)</option>
-        </select>
-      </label>
-      <label class="cc-field">
+        <app-select name="direction" ariaLabel="Type" [(ngModel)]="form.direction"
+                    [options]="[{ value: 'debit', label: 'Spend (debit)', icon: 'arrow-up-right' }, { value: 'credit', label: 'Refund / payment (credit)', icon: 'arrow-down-left' }]" />
+      </div>
+      <div class="cc-field">
         <span>Category</span>
-        <select name="category" [(ngModel)]="form.category">
-          @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
-        </select>
-      </label>
+        <app-select name="category" ariaLabel="Category" icon="tag" [(ngModel)]="form.category" [options]="categories | opts" />
+      </div>
     </div>
 
     <label class="cc-field">

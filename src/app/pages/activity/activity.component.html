@@ -23,13 +23,11 @@
     <div class="seg seg-scroll" role="radiogroup" aria-label="Date range">
       @for (p of presets; track p.id) { <button role="radio" [attr.aria-checked]="preset() === p.id" [class.on]="preset() === p.id" (click)="preset.set(p.id)">{{ p.label }}</button> }
     </div>
-    <select class="input sel" [ngModel]="accountKey()" (ngModelChange)="accountKey.set($event)" aria-label="Account">
-      <option value="">All accounts</option>
-      @for (a of accounts(); track a.key) { <option [value]="a.key">{{ a.name }}</option> }
-    </select>
+    <app-select class="sel" [compact]="true" ariaLabel="Account" [ngModel]="accountKey()" (ngModelChange)="accountKey.set($event)"
+                [options]="accounts() | opts: 'key' : 'name' : [{ value: '', label: 'All accounts', icon: 'layers' }] : 'icon' : 'subtitle'" />
     @if (preset() === 'custom') {
-      <input class="input sel" type="date" [max]="customEnd()" [ngModel]="customStart()" (ngModelChange)="customStart.set($event)" aria-label="From" />
-      <input class="input sel" type="date" [min]="customStart()" [ngModel]="customEnd()" (ngModelChange)="customEnd.set($event)" aria-label="To" />
+      <app-date class="sel" [compact]="true" ariaLabel="From" [max]="customEnd()" [ngModel]="customStart()" (ngModelChange)="customStart.set($event)" />
+      <app-date class="sel" [compact]="true" ariaLabel="To" [min]="customStart()" [ngModel]="customEnd()" (ngModelChange)="customEnd.set($event)" />
     }
   </div>
 
@@ -154,7 +152,7 @@
                       <td class="r num">{{ x.out | money }}</td>
                       <td class="r num" [class.amt-neg]="x.net < 0">{{ x.net | money }}</td>
                       <td class="r num">{{ x.count }}</td>
-                      <td class="r num"><b>{{ x.a.balance | money }}</b>@if (x.a.type === 'card') { <small class="muted"> due</small> }</td>
+                      <td class="r num" (click)="$event.stopPropagation()"><b><app-amount [value]="x.a.balance" [privacyKey]="x.a.key" [label]="x.a.name + ' balance'" [iconSize]="14" /></b>@if (x.a.type === 'card') { <small class="muted"> due</small> }</td>
                     </tr>
                   }
                 </tbody>

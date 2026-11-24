@@ -31,13 +31,8 @@
           }
         </div>
         <label class="input-icon search"><app-icon name="search" [size]="16" /><input class="input" type="search" placeholder="Search payments" [ngModel]="q()" (ngModelChange)="q.set($event)" aria-label="Search payments" /></label>
-        <select class="input sel" [ngModel]="freqFilter()" (ngModelChange)="freqFilter.set($event)" aria-label="Frequency">
-          <option value="">Any frequency</option>
-          @for (f of ['once', 'weekly', 'monthly', 'quarterly', 'yearly', 'daily', 'custom']; track f) { <option [value]="f">{{ $any(freqLabel)[f] }}</option> }
-        </select>
-        <select class="input sel" [ngModel]="sort()" (ngModelChange)="sort.set($event)" aria-label="Sort">
-          <option value="due">By due date</option><option value="amount">By amount</option><option value="name">By name</option>
-        </select>
+        <app-select class="sel" [compact]="true" ariaLabel="Frequency" icon="repeat" [ngModel]="freqFilter()" (ngModelChange)="freqFilter.set($event)" [options]="freqOptions" />
+        <app-select class="sel" [compact]="true" ariaLabel="Sort" icon="arrow-up-down" [ngModel]="sort()" (ngModelChange)="sort.set($event)" [options]="sortOptions" />
       </div>
 
       @if (loading()) { <app-skeleton variant="row" [count]="5" /> }

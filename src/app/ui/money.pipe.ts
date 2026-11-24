@@ -1,4 +1,5 @@
-import { Pipe, PipeTransform } from '@angular/core';
+import { Pipe, PipeTransform, inject } from '@angular/core';
+import { PrivacyService } from '../core/privacy.service';
 import { inr } from '../utils/analytics.util';
 
 /** {{ 12345.5 | money }} → ₹12,346 ; {{ x | money:true }} keeps paise. Negative → −₹… */
@@ -26,3 +27,15 @@ export function moneyShort(n: number): string {
   return `${s}₹${Math.round(a)}`;
 }
 const trim = (x: number) => (x >= 100 ? Math.round(x).toString() : x.toFixed(1).replace(/\.0$/, ''));
+
+/**
+ * Text-only form of a private balance (for places that can't hold a button, e.g. inside an option):
+ *   {{ a.balance | privateMoney: a.key }}  → "₹ ******" until that key is revealed by its eye button.
+ */
+@Pipe({ name: 'privateMoney', standalone: true, pure: false })
+export class PrivateMoneyPipe implements PipeTransform {
+  private privacy = inject(PrivacyService);
+  transform(v: number | null | undefined, key: string, decimals = false): string {
+    return this.privacy.text(key, inr(Number(v) || 0, decimals));
+  }
+}

@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { BudgetSummary } from '../../utils/budget.util';
+import { AmountComponent } from '../../ui/amount.component';
 
 /**
  * Overview's first card: how much of this month's money is used, and what's safe to spend.
@@ -10,7 +11,7 @@ import { BudgetSummary } from '../../utils/budget.util';
 @Component({
   selector: 'app-budget-hero',
   standalone: true,
-  imports: [DecimalPipe, RouterLink],
+  imports: [DecimalPipe, RouterLink, AmountComponent],
   template: `
     @if (s; as s) {
       <section class="hero" [class]="'pace-' + s.pace" aria-label="Budget this month">
@@ -25,7 +26,7 @@ import { BudgetSummary } from '../../utils/budget.util';
           </div>
           <div class="balance" [class.neg]="s.balance < 0">
             <span class="label">{{ s.balance < 0 ? 'Overspent' : 'Left' }}</span>
-            <span class="mid">₹{{ (s.balance < 0 ? -s.balance : s.balance) | number: '1.0-0' }}</span>
+            <span class="mid"><app-amount [value]="s.balance < 0 ? -s.balance : s.balance" privacyKey="budget-left" [label]="s.balance < 0 ? 'Overspent' : 'Left this month'" /></span>
           </div>
         </div>
 

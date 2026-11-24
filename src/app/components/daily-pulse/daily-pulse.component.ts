@@ -31,7 +31,7 @@ const DISMISS_KEY = 'ssb_pulse_dismissed';
               @else { ₹{{ p.remaining | number: '1.0-0' }} left of ₹{{ p.limit | number: '1.0-0' }} }
             </span>
           } @else {
-            <a class="sub link" routerLink="/profile" fragment="budget">Set a daily limit ›</a>
+            <a class="sub link" routerLink="/profile" fragment="budget">Set a daily limit <app-icon name="chevron-right" [size]="13" /></a>
           }
         </div>
 

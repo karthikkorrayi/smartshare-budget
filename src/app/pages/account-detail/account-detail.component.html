@@ -19,7 +19,7 @@
       </div>
       <div class="hero-bal">
         <span>{{ a.type === 'card' ? 'Outstanding on statements' : 'Current balance' }}</span>
-        <b class="num">{{ a.balance | money: true }}</b>
+        <b class="num"><app-amount [value]="a.balance" [privacyKey]="a.key" [decimals]="true" [label]="a.name + ' balance'" [iconSize]="18" /></b>
       </div>
       <div class="hero-actions">
         <button class="btn btn-sm glass" (click)="quick.addTxn('expense', a.ref)"><app-icon name="arrow-up-right" [size]="15" />Expense</button>

@@ -6,7 +6,8 @@
   &:hover { box-shadow: 0 0 0 3px var(--accent-ring); }
 }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
-.sel { width: auto; min-height: 38px; padding: 6px 10px; font-size: 13px; }
+app-select.sel, app-date.sel { width: 200px; max-width: 100%; }
+@media (max-width: 600px) { app-select.sel, app-date.sel { flex: 1 1 140px; width: auto; } }
 .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
 .layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 18px; align-items: start; }
 .sections { position: sticky; top: calc(var(--topbar-h) + 16px); display: flex; flex-direction: column; gap: 2px;

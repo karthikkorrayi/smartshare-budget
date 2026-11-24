@@ -1,6 +1,9 @@
-// Shared UI for the Cards module, Notifications and their dialogs.
+// Shared UI for the Cards / Wallets / Statements / Gmail / Review / Notifications pages and their dialogs.
 // Global (not component-scoped) because MatDialog content renders in the overlay container.
-
+//
+// These `cc-*` classes predate the redesign. They now use the same sizes, radii, type scale and
+// tokens as the design system in _ui.scss (.btn, .panel, .field, .badge…), so the older pages look
+// and behave like the new ones without rewriting their markup.
 
 .cc-page {
   display: block;
@@ -12,47 +15,56 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
 
-  .eyebrow { margin: 0 0 6px; font-size: 12px; font-weight: 750; letter-spacing: 2px; color: var(--accent); }
-  h1 { margin: 0; font-size: 26px; letter-spacing: -0.7px; color: var(--text); }
-  p { margin: 6px 0 0; color: var(--text-3); }
-  .cc-heading-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .eyebrow { margin: 0 0 4px; font-size: 11px; font-weight: 650; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-strong); }
+  h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; color: var(--text); }
+  p { margin: 4px 0 0; color: var(--text-3); font-size: 14px; }
+  .cc-heading-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 }
 
-// ── Buttons ───────────────────────────────────────────────
+// ── Buttons (same as .btn) ────────────────────────────────
 .cc-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 8px 16px;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text-2);
   font: inherit;
-  font-weight: 650;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
   cursor: pointer;
   text-decoration: none;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.08s;
 
-  &:hover:not(:disabled) { background: var(--surface-2); border-color: var(--border-strong); }
-  &:disabled { opacity: 0.55; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: var(--surface-2); border-color: var(--border-strong); color: var(--text); }
+  &:active:not(:disabled) { transform: translateY(1px); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  app-icon { flex-shrink: 0; }
 
   &--primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent);
-    &:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); } }
-  &--danger { border-color: var(--neg); background: var(--neg); color: var(--on-accent);
-    &:hover:not(:disabled) { background: var(--neg); border-color: var(--neg); } }
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 4px 12px -4px var(--accent-ring);
+    &:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--on-accent); } }
+  &--danger { border-color: var(--neg); background: var(--neg); color: #fff;
+    &:hover:not(:disabled) { background: var(--neg); border-color: var(--neg); color: #fff; filter: brightness(0.92); } }
   &--danger-text { color: var(--neg); }
-  &--sm { min-height: 36px; padding: 5px 12px; font-size: 14px; border-radius: 10px; }
+  &--sm { min-height: 32px; padding: 6px 10px; font-size: 12.5px; border-radius: 9px; }
 }
 
 // ── Chips / tabs ──────────────────────────────────────────
 .cc-chips {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -63,20 +75,24 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 38px;
-  padding: 6px 14px;
+  min-height: 34px;
+  padding: 5px 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
   color: var(--text-2);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
   cursor: pointer;
   text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 
-  .cc-count { min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); font-size: 12px; color: var(--text-3); text-align: center; }
+  &:hover:not(.active) { border-color: var(--border-strong); color: var(--text); }
+  &:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .cc-count { min-width: 20px; padding: 2px 7px; border-radius: 999px; background: var(--surface-2); font-size: 11.5px; color: var(--text-3); text-align: center; }
   .cc-count--alert { background: var(--neg-soft); color: var(--neg); }
 
   &.active { border-color: var(--accent); background: var(--accent); color: var(--on-accent);
@@ -88,27 +104,20 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
-.cc-select, .cc-filters input[type='month'] {
-  min-height: 40px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: 16px;
-}
+// Themed filter controls (app-select / app-date)
+.cc-filters app-select.filter-sel { width: 190px; max-width: 100%; }
+.cc-filters .month-nav { display: inline-flex; align-items: center; gap: 6px; app-date { width: 150px; } }
 
-// ── Panels, stats, badges ─────────────────────────────────
+// ── Panels, stats, badges (same as .panel / .badge) ───────
 .cc-panel {
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-sm);
 }
 
 .cc-stats {
@@ -122,13 +131,16 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
   padding: 14px 16px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   background: var(--surface);
+  box-shadow: var(--shadow-xs);
 
-  .label { font-size: 13px; color: var(--text-3); }
-  .value { font-size: 22px; font-weight: 750; letter-spacing: -0.4px; color: var(--text); }
+  .label { font-size: 12.5px; font-weight: 600; color: var(--text-3); }
+  .value { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); font-variant-numeric: tabular-nums;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   &.warn { border-color: var(--warn); background: var(--warn-soft); .value { color: var(--warn); } }
   &.alert { border-color: var(--neg); background: var(--neg-soft); .value { color: var(--neg); } }
 }
@@ -137,10 +149,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 9px;
+  height: 22px;
+  padding: 0 8px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11.5px;
+  font-weight: 600;
   white-space: nowrap;
   background: var(--surface-2);
   color: var(--text-2);
@@ -160,14 +173,15 @@
   gap: 10px;
   padding: 44px 20px;
   border: 1px dashed var(--border-strong);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
   text-align: center;
   color: var(--text-3);
 
-  .icon { font-size: 38px; }
-  h2 { margin: 0; color: var(--text); font-size: 19px; }
-  p { margin: 0; max-width: 380px; line-height: 1.6; }
+  // Icon slot: an icon tile, whether it holds <app-icon> or (older markup) text.
+  .icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; background: var(--accent-soft); color: var(--accent-strong); font-size: 24px; }
+  h2 { margin: 0; color: var(--text); font-size: 18px; font-weight: 700; }
+  p { margin: 0; max-width: 380px; line-height: 1.6; font-size: 14px; }
 }
 
 .cc-spinner {
@@ -180,46 +194,46 @@
 }
 @keyframes cc-spin { to { transform: rotate(360deg); } }
 
-.cc-error { margin: 0 0 14px; padding: 12px 16px; border-radius: 12px; background: var(--neg-soft); color: var(--neg); }
+.cc-error { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 14px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--neg-soft); color: var(--neg); font-size: 13px; line-height: 1.45; }
 .cc-amount-debit { color: var(--text); }
 .cc-amount-credit { color: var(--pos); }
 
-// ── Dialog forms ──────────────────────────────────────────
+// ── Dialog forms (same rhythm as .dlg) ────────────────────
 .cc-dialog {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-height: 88dvh;
+  max-height: 92dvh;
   overflow-y: auto;
   background: var(--surface);
-  border-radius: 24px;
+  color: var(--text);
 }
 
 .cc-dialog-head {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 20px 24px;
-  background: var(--accent-soft);
-  border-bottom: 1px solid var(--accent-soft);
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 22px 14px;
 
-  .icon { font-size: 30px; line-height: 1; }
-  h2 { margin: 0; font-size: 20px; font-weight: 700; color: var(--accent-strong); }
-  p { margin: 4px 0 0; font-size: 13px; color: var(--text-2); }
+  // Icon slot → accent icon tile.
+  .icon { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border-radius: 13px;
+    background: var(--accent-soft); color: var(--accent-strong); font-size: 20px; line-height: 1; }
+  h2 { margin: 0; font-size: 18px; font-weight: 700; color: var(--text); }
+  p { margin: 2px 0 0; font-size: 13px; color: var(--text-3); line-height: 1.45; }
 }
 
 .cc-dialog-body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 18px 24px 0;
+  padding: 4px 22px 0;
 }
 
 .cc-section-title {
   margin: 6px 0 -4px;
-  font-size: 12px;
-  font-weight: 750;
-  letter-spacing: 1.2px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-3);
 }
@@ -227,56 +241,61 @@
 .cc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .cc-row-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 
+// Same as .field
 .cc-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-width: 0;
 
-  > span { font-size: 13px; font-weight: 600; color: var(--text-2); }
-  small { font-weight: 400; color: var(--text-4); margin-left: 4px; }
+  > span { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+  small { font-weight: 400; color: var(--text-3); margin-left: 4px; font-size: 12px; }
+  small.warn { color: var(--warn); font-weight: 600; }
 
-  input, select, textarea {
+  input, textarea {
     width: 100%;
-    min-height: 46px;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--surface-2);
+    min-height: 42px;
+    padding: 9px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
     color: var(--text);
-    font-size: 16px; // ≥16px stops mobile browsers zooming on focus
+    font-size: 14px;
     font-family: inherit;
     box-sizing: border-box;
+    transition: border-color 0.15s, box-shadow 0.15s;
 
-    &:focus { outline: none; background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    &:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+    &::placeholder { color: var(--text-4); }
+    &:disabled { background: var(--surface-2); color: var(--text-3); }
   }
-  textarea { resize: vertical; min-height: 64px; }
+  textarea { resize: vertical; min-height: 72px; }
 
-  &.changed input, &.changed select { border-color: var(--warn); background: var(--warn-soft); }
+  &.changed input { border-color: var(--warn); background: var(--warn-soft); }
 }
 
 .cc-toggle {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px;
+  padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--surface);
   cursor: pointer;
 
-  input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
-  strong { display: block; font-size: 15px; color: var(--text); }
-  span { font-size: 13px; color: var(--text-3); line-height: 1.5; }
+  input { width: 20px; height: 20px; margin-top: 1px; accent-color: var(--accent); flex-shrink: 0; }
+  strong { display: block; font-size: 14px; font-weight: 650; color: var(--text); }
+  span { font-size: 12.5px; color: var(--text-3); line-height: 1.5; }
 }
 
 .cc-errors {
   margin: 0;
-  padding: 12px 16px 12px 32px;
-  border-radius: 12px;
+  padding: 10px 12px 10px 28px;
+  border-radius: var(--radius-sm);
   background: var(--neg-soft);
   color: var(--neg);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -284,14 +303,15 @@
   position: sticky;
   bottom: 0;
   display: flex;
-  gap: 12px;
-  margin: 6px -24px 0;
-  padding: 14px 24px;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 6px -22px 0;
+  padding: 14px 22px 18px;
   background: var(--surface);
   border-top: 1px solid var(--border);
-
-  .cc-btn { flex: 1; min-height: 48px; }
 }
+
+.cc-hint { margin: 4px 0 0; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--info-soft); color: var(--info); font-size: 13px; line-height: 1.5; }
 
 // ── Mobile ────────────────────────────────────────────────
 @media (max-width: 900px) {
@@ -305,9 +325,11 @@
     .cc-heading-actions .cc-btn { flex: 1; } }
   .cc-stat { padding: 12px; .value { font-size: 19px; } }
   .cc-row, .cc-row-3 { grid-template-columns: 1fr; }
-  .cc-dialog-head { padding: 16px 20px; }
-  .cc-dialog-body { padding: 14px 20px 0; }
-  .cc-dialog-actions { margin: 6px -20px 0; padding: 12px 20px; }
+  .cc-dialog-head { padding: 16px 18px 12px; }
+  .cc-dialog-body { padding: 4px 18px 0; }
+  .cc-dialog-actions { margin: 6px -18px 0; padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+    .cc-btn { flex: 1; min-height: 44px; } }
+  .cc-filters app-select.filter-sel { flex: 1 1 140px; width: auto; }
+  // ≥16px stops mobile browsers zooming into a focused field
+  .cc-field input, .cc-field textarea, .field input, .field textarea { font-size: 16px; }
 }
-
-.cc-hint { margin: 4px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--info-soft); color: var(--info); font-size: 13px; line-height: 1.5; }

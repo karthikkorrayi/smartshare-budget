@@ -44,7 +44,7 @@
                   <span class="acc-art" [attr.data-art]="a.art"><app-icon [name]="a.icon" [size]="16" /></span>
                   <span class="acc-text">
                     <span class="acc-name">{{ a.name }}</span>
-                    <span class="acc-bal num">{{ a.type === 'card' ? (a.balance ? (a.balance | money) + ' due' : 'Credit card') : (a.balance | money) }}</span>
+                    <span class="acc-bal num">{{ a.type === 'card' ? (a.balance ? (a.balance | privateMoney: a.key) + ' due' : 'Credit card') : (a.balance | privateMoney: a.key) }}</span>
                   </span>
                   @if (accountKey() === a.key) { <app-icon class="tick" name="circle-check" [size]="18" /> }
                 </button>
@@ -63,7 +63,7 @@
               @if (a.key !== accountKey()) {
                 <button type="button" class="acc" role="radio" [attr.aria-checked]="toKey() === a.key" [class.on]="toKey() === a.key" (click)="toKey.set(a.key)">
                   <span class="acc-art" [attr.data-art]="a.art"><app-icon [name]="a.icon" [size]="16" /></span>
-                  <span class="acc-text"><span class="acc-name">{{ a.name }}</span><span class="acc-bal num">{{ a.balance | money }}</span></span>
+                  <span class="acc-text"><span class="acc-name">{{ a.name }}</span><span class="acc-bal num">{{ a.balance | privateMoney: a.key }}</span></span>
                   @if (toKey() === a.key) { <app-icon class="tick" name="circle-check" [size]="18" /> }
                 </button>
               }
@@ -85,7 +85,8 @@
         @if (projected(); as p) {
           <div class="balance-line" [class.neg]="p.after < 0">
             <app-icon name="wallet" [size]="15" />
-            <span>{{ selected()!.name }}: <b class="num">{{ p.before | money }}</b> → <b class="num">{{ p.after | money }}</b></span>
+            <span>{{ selected()!.name }}: <b class="num">{{ p.before | privateMoney: selected()!.key }}</b> → <b class="num">{{ p.after | privateMoney: selected()!.key }}</b>
+              <app-amount class="peek" [value]="p.after" [privacyKey]="selected()!.key" [label]="selected()!.name + ' balance'" [iconSize]="14" /></span>
           </div>
         }
         @if (overdraw()) {
@@ -118,10 +119,12 @@
             </div>
           }
 
-          <label class="field">
+          <div class="field">
             <span>Date</span>
-            <input type="date" [max]="mode() === 'income' ? null : todayInput" [ngModel]="dateInput()" (ngModelChange)="dateInput.set($event)" />
-          </label>
+            <app-date ariaLabel="Date" [max]="mode() === 'income' ? null : todayInput" [quick]="['today', 'yesterday']" [invalid]="touched() && !!dateError()"
+                      [ngModel]="dateInput()" (ngModelChange)="dateInput.set($event)" />
+            @if (touched() && dateError(); as e) { <small class="field-err">{{ e }}</small> }
+          </div>
 
           @if (notesAllowed()) {
             <label class="field span-2">

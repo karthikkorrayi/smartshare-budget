@@ -1,3 +1,4 @@
+import { FormsModule } from '@angular/forms';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe, DecimalPipe } from '@angular/common';
@@ -13,6 +14,9 @@ import { monthKey, toDateInput } from '../../../utils/date-input.util';
 import { UndoService } from '../../../services/undo.service';
 import { VisiblePipe } from '../../../pipes/visible.pipe';
 import { IconComponent } from '../../../ui/icon.component';
+import { SelectComponent } from '../../../ui/select.component';
+import { DateFieldComponent } from '../../../ui/date-field.component';
+import { OptsPipe } from '../../../ui/opts.pipe';
 
 interface DayGroup {
   key: string;
@@ -24,7 +28,7 @@ interface DayGroup {
 @Component({
   selector: 'app-card-transactions',
   standalone: true,
-  imports: [IconComponent, DatePipe, DecimalPipe, VisiblePipe],
+  imports: [FormsModule, IconComponent, DatePipe, DecimalPipe, VisiblePipe, SelectComponent, DateFieldComponent, OptsPipe],
   templateUrl: './transactions.component.html',
   styleUrl: './transactions.component.scss',
 })

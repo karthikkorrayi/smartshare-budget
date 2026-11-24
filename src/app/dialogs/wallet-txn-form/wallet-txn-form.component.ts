@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import {
   WALLET_CATEGORIES,
+  WALLET_KIND_INFO,
   WALLET_TXN_INFO,
   WALLET_TXN_TYPES,
   Wallet,
@@ -13,8 +14,10 @@ import {
 } from '../../models/wallet.model';
 import { WalletsService } from '../../services/wallets.service';
 import { UndoService } from '../../services/undo.service';
-import { fromDateInput, toDateInput } from '../../utils/date-input.util';
+import { checkDay, entryMoment, toDateInput, todayInput } from '../../utils/date-input.util';
 import { IconComponent } from '../../ui/icon.component';
+import { SelectComponent, SelectOption } from '../../ui/select.component';
+import { DateFieldComponent } from '../../ui/date-field.component';
 
 export interface WalletTxnFormData {
   wallets: Wallet[];
@@ -26,7 +29,7 @@ export interface WalletTxnFormData {
 @Component({
   selector: 'app-wallet-txn-form',
   standalone: true,
-  imports: [IconComponent, FormsModule],
+  imports: [IconComponent, FormsModule, SelectComponent, DateFieldComponent],
   template: `
     <div class="cc-dialog">
       <div class="cc-dialog-head">
@@ -46,20 +49,16 @@ export interface WalletTxnFormData {
           }
         </div>
 
-        <label class="cc-field">
+        <div class="cc-field">
           <span>Wallet</span>
-          <select name="walletId" [(ngModel)]="form.walletId">
-            @for (w of data.wallets; track w.id) {
-              <option [value]="w.id">{{ label(w) }}{{ w.status === 'Closed' ? ' (closed)' : '' }}</option>
-            }
-          </select>
-        </label>
+          <app-select name="walletId" ariaLabel="Wallet" icon="wallet" [(ngModel)]="form.walletId" [options]="walletOptions" />
+        </div>
 
         <div class="cc-row">
-          <label class="cc-field">
+          <div class="cc-field">
             <span>Date</span>
-            <input name="date" type="date" [(ngModel)]="form.date" />
-          </label>
+            <app-date name="date" ariaLabel="Date" [max]="today" [quick]="['today', 'yesterday']" [(ngModel)]="form.date" />
+          </div>
           <label class="cc-field">
             <span>Amount (₹)</span>
             <input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" [(ngModel)]="form.amount" />
@@ -72,12 +71,10 @@ export interface WalletTxnFormData {
             <input name="description" maxlength="120" [placeholder]="placeholder()" [(ngModel)]="form.description" />
           </label>
           @if (form.type === 'spend' || form.type === 'refund') {
-            <label class="cc-field">
+            <div class="cc-field">
               <span>Category</span>
-              <select name="category" [(ngModel)]="form.category">
-                @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
-              </select>
-            </label>
+              <app-select name="category" ariaLabel="Category" icon="tag" [(ngModel)]="form.category" [options]="categoryOptions" />
+            </div>
           }
         </div>
 
@@ -108,6 +105,14 @@ export class WalletTxnFormComponent {
   readonly info = WALLET_TXN_INFO;
   readonly categories = WALLET_CATEGORIES;
   readonly label = walletLabel;
+  readonly today = todayInput();
+  readonly walletOptions: SelectOption[] = this.data.wallets.map(w => ({
+    value: w.id,
+    label: w.name + (w.status === 'Closed' ? ' (closed)' : ''),
+    icon: WALLET_KIND_INFO[w.kind]?.icon ?? 'wallet',
+    hint: w.provider || WALLET_KIND_INFO[w.kind]?.label,
+  }));
+  readonly categoryOptions: SelectOption[] = WALLET_CATEGORIES.map(c => ({ value: c, label: c }));
   isEdit = !!this.data.txn;
   saving = signal(false);
   errors = signal<string[]>([]);
@@ -138,8 +143,8 @@ export class WalletTxnFormComponent {
     const f = this.form;
     const out: string[] = [];
     if (!f.walletId) out.push('Choose a wallet.');
-    const date = fromDateInput(f.date);
-    if (!date) out.push('Pick the date.');
+    const dateProblem = checkDay(f.date, { label: 'the date', notFuture: true });
+    if (dateProblem) out.push(dateProblem);
     if (!(Number(f.amount) > 0)) out.push('Amount must be more than 0.');
     this.errors.set(out);
     if (out.length) return;
@@ -148,7 +153,8 @@ export class WalletTxnFormComponent {
       walletId: f.walletId,
       type: f.type,
       amount: Number(f.amount),
-      date: date!,
+      // Editing keeps the original time when the day is unchanged.
+      date: entryMoment(f.date, this.data.txn?.date ?? null),
       description: f.description.trim() || this.info[f.type].label,
       category: f.category,
     };

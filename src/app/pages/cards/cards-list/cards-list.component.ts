@@ -14,6 +14,7 @@ import { daysBetween, relativeDays } from '../../../utils/date-input.util';
 import { UndoService } from '../../../services/undo.service';
 import { VisiblePipe } from '../../../pipes/visible.pipe';
 import { IconComponent } from '../../../ui/icon.component';
+import { AmountComponent } from '../../../ui/amount.component';
 
 interface CardView extends Card {
   expiry: ReturnType<typeof expiryInfo>;
@@ -30,7 +31,7 @@ const DIALOG = { width: 'min(94vw, 560px)', maxWidth: '96vw', autoFocus: 'first-
 @Component({
   selector: 'app-cards-list',
   standalone: true,
-  imports: [IconComponent, DatePipe, DecimalPipe, RouterLink, VisiblePipe],
+  imports: [IconComponent, DatePipe, DecimalPipe, RouterLink, VisiblePipe, AmountComponent],
   templateUrl: './cards-list.component.html',
   styleUrl: './cards-list.component.scss',
 })

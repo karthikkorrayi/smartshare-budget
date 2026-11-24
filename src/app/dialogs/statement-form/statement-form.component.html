@@ -8,24 +8,20 @@
   </div>
 
   <form class="cc-dialog-body" (ngSubmit)="save()" novalidate>
-    <label class="cc-field">
+    <div class="cc-field">
       <span>Card</span>
-      <select name="cardId" [(ngModel)]="form.cardId" (ngModelChange)="!isEdit && prefillDates()">
-        @for (c of data.cards; track c.id) {
-          <option [value]="c.id">{{ label(c) }}{{ c.status === 'Closed' ? ' (closed)' : '' }}</option>
-        }
-      </select>
-    </label>
+      <app-select name="cardId" ariaLabel="Card" icon="credit-card" [(ngModel)]="form.cardId" (ngModelChange)="!isEdit && prefillDates()" [options]="cardOptions" />
+    </div>
 
     <div class="cc-row">
-      <label class="cc-field">
+      <div class="cc-field">
         <span>Statement date</span>
-        <input name="statementDate" type="date" [(ngModel)]="form.statementDate" />
-      </label>
-      <label class="cc-field">
+        <app-date name="statementDate" ariaLabel="Statement date" [max]="today" [(ngModel)]="form.statementDate" />
+      </div>
+      <div class="cc-field">
         <span>Payment due date</span>
-        <input name="dueDate" type="date" [(ngModel)]="form.dueDate" />
-      </label>
+        <app-date name="dueDate" ariaLabel="Payment due date" [min]="form.statementDate || null" [quick]="['in7', 'in30']" [(ngModel)]="form.dueDate" />
+      </div>
     </div>
 
     <div class="cc-row-3">

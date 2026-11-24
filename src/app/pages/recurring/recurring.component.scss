@@ -4,7 +4,8 @@
 .layout.has-detail { grid-template-columns: minmax(0, 1fr) 360px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
 .search { flex: 1 1 200px; input { min-height: 36px; } }
-.sel { width: auto; min-height: 36px; padding: 6px 10px; font-size: 13px; }
+app-select.sel { width: 170px; max-width: 100%; }
+@media (max-width: 600px) { app-select.sel { flex: 1 1 140px; width: auto; } }
 
 .pay-list { display: flex; flex-direction: column; gap: 8px; }
 .pay { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface);

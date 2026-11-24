@@ -4,9 +4,12 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Card, cardLabel } from '../../models/card.model';
 import { CardTransaction, TXN_CATEGORIES, TxnDirection } from '../../models/card-transaction.model';
 import { CardTransactionsService } from '../../services/card-transactions.service';
-import { fromDateInput, toDateInput } from '../../utils/date-input.util';
+import { checkDay, entryMoment, toDateInput, todayInput } from '../../utils/date-input.util';
 import { UndoService } from '../../services/undo.service';
 import { IconComponent } from '../../ui/icon.component';
+import { SelectComponent, SelectOption } from '../../ui/select.component';
+import { DateFieldComponent } from '../../ui/date-field.component';
+import { OptsPipe } from '../../ui/opts.pipe';
 
 export interface TransactionFormData {
   cards: Card[];
@@ -17,7 +20,7 @@ export interface TransactionFormData {
 @Component({
   selector: 'app-transaction-form',
   standalone: true,
-  imports: [IconComponent, FormsModule],
+  imports: [IconComponent, FormsModule, SelectComponent, DateFieldComponent, OptsPipe],
   templateUrl: './transaction-form.component.html',
 })
 export class TransactionFormComponent {
@@ -28,6 +31,13 @@ export class TransactionFormComponent {
 
   readonly categories = TXN_CATEGORIES;
   readonly label = cardLabel;
+  readonly today = todayInput();
+  readonly cardOptions: SelectOption[] = this.data.cards.map(c => ({
+    value: c.id,
+    label: cardLabel(c) + (c.status === 'Closed' ? ' (closed)' : ''),
+    icon: 'credit-card',
+    hint: c.bankName,
+  }));
   isEdit = !!this.data.txn;
   saving = signal(false);
   errors = signal<string[]>([]);
@@ -49,7 +59,8 @@ export class TransactionFormComponent {
     const f = this.form;
     const out: string[] = [];
     if (!f.cardId) out.push('Choose a card.');
-    if (!fromDateInput(f.txnDate)) out.push('Pick the transaction date.');
+    const dateProblem = checkDay(f.txnDate, { label: 'the transaction date', notFuture: true });
+    if (dateProblem) out.push(dateProblem);
     if (!(Number(f.amount) > 0)) out.push('Amount must be more than 0.');
     if (!f.description.trim()) out.push('Add a description (merchant or purpose).');
     this.errors.set(out);
@@ -57,7 +68,7 @@ export class TransactionFormComponent {
 
     const input = {
       cardId: f.cardId,
-      txnDate: fromDateInput(f.txnDate)!,
+      txnDate: entryMoment(f.txnDate, this.data.txn?.txnDate ?? null),
       amount: Number(f.amount),
       direction: f.direction,
       description: f.description,
