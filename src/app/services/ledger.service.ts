@@ -13,7 +13,7 @@ import { WALLET_CATEGORIES } from '../models/wallet.model';
 import { RecurringPayment, nextOccurrence } from '../models/recurring.model';
 import { LendDirection, LendingRecord } from '../models/lending.model';
 import { FinanceTxn } from '../utils/analytics.util';
-import { monthKey } from '../utils/date-input.util';
+import { monthKey, startOfDay } from '../utils/date-input.util';
 
 export interface ExpenseFields {
   description: string;
@@ -211,11 +211,12 @@ export class LedgerService {
   }
 
   /**
-   * Pays the current cycle: books the expense against the payment's account, then either removes
-   * a one-time payment (same as before) or moves a recurring one to its next due date.
+   * Pays the current cycle: books the expense against the chosen account (default: the payment's own),
+   * then either removes a one-time payment (same as before) or moves a recurring one to its next due
+   * date. Fixed-term plans count the installment and are marked completed after the last one.
    */
-  async payRecurring(p: RecurringPayment, amount = p.amount, date = new Date()): Promise<void> {
-    const saved = await this.recordExpense(p.account, {
+  async payRecurring(p: RecurringPayment, amount = p.amount, date = new Date(), account: AccountRef | null = p.account): Promise<void> {
+    const saved = await this.recordExpense(account, {
       description: p.description,
       amount,
       category: p.category || 'Bills',
@@ -229,7 +230,7 @@ export class LedgerService {
     await this.advance(p, { date, amount: round(amount), ref: saved.key });
   }
 
-  /** Recurring only: move to the next due date without booking anything. */
+  /** Recurring only: move to the next due date without booking anything (an installment isn't counted). */
   skipRecurring(p: RecurringPayment): Promise<void> {
     return this.advance(p, { date: new Date(), amount: 0, ref: null, skipped: true });
   }
@@ -239,14 +240,19 @@ export class LedgerService {
   }
 
   private async advance(p: RecurringPayment, entry: { date: Date; amount: number; ref: string | null; skipped?: boolean }) {
-    const anchor = (p.raw?.anchorDay as number) || p.dueDate.getDate();
+    const anchor = p.anchorDay;
     const next = nextOccurrence(p.dueDate, p.frequency, p.intervalDays, anchor);
     const history = [entry, ...p.history].slice(0, 24).map(h => ({ date: h.date, amount: h.amount, ref: h.ref, ...(h.skipped ? { skipped: true } : {}) }));
+    const paid = p.installmentsPaid + (entry.skipped ? 0 : 1);
+    const done =
+      (p.endType === 'count' && p.installmentsTotal > 0 && paid >= p.installmentsTotal) ||
+      (p.endType === 'date' && !!p.endDate && startOfDay(next) > startOfDay(p.endDate));
     await this.upcoming.update(p.id, {
-      dueDate: next,
-      month: monthKey(next),
+      // A finished plan keeps its last due date (for history) and is never due again.
+      ...(done ? { completed: true } : { dueDate: next, month: monthKey(next) }),
       anchorDay: anchor,
       history,
+      ...(p.endType === 'count' ? { installmentsPaid: paid } : {}),
       ...(entry.skipped ? {} : { lastPaidAt: entry.date }),
     });
   }

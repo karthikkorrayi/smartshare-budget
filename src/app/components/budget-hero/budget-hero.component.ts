@@ -26,7 +26,7 @@ import { AmountComponent } from '../../ui/amount.component';
           </div>
           <div class="balance" [class.neg]="s.balance < 0">
             <span class="label">{{ s.balance < 0 ? 'Overspent' : 'Left' }}</span>
-            <span class="mid"><app-amount [value]="s.balance < 0 ? -s.balance : s.balance" privacyKey="budget-left" [label]="s.balance < 0 ? 'Overspent' : 'Left this month'" /></span>
+            <span class="mid"><app-amount [value]="s.balance < 0 ? -s.balance : s.balance" privacyKey="budget-left" [toggle]="amountToggle" [label]="s.balance < 0 ? 'Overspent' : 'Left this month'" /></span>
           </div>
         </div>
 
@@ -114,4 +114,6 @@ import { AmountComponent } from '../../ui/amount.component';
 export class BudgetHeroComponent {
   @Input() s: BudgetSummary | null = null;
   @Input() monthLabel = '';
+  /** false on the dashboard: its single eye controls the "Left" amount. */
+  @Input() amountToggle = true;
 }

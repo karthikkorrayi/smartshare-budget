@@ -54,3 +54,35 @@ no data migration, existing documents keep working.
 - **Tests**: `card.model.spec.ts` (billing cycle incl. month-end clamping, billed/unbilled, refunds vs bill
   payments, opening outstanding, limits, interest, waiver, rewards); rules tests for the new card fields.
 - **Deploy**: `firestore:rules` (new card fields are rejected until the new rules are live), then hosting.
+
+## Phase 3 — Bills & recurring payments, single dashboard eye
+- **Dashboard: one eye for all balances.** A "Show / Hide balances" button next to the greeting reveals or hides
+  total wealth (or the selected account), money owed to you, the month's budget "Left" and every account tile
+  together; those amounts no longer have their own eyes. Transactions and income / expense totals are not
+  affected. Other pages keep their per-amount eyes (`AmountComponent [toggle]`, `MetricCard [amountToggle]`,
+  `PrivacyService.setMany / allVisible`).
+- **Plan details** (`models/recurring.model.ts`, all optional so existing bills keep working): fixed or
+  variable amount, end condition (never / after N payments for EMIs / on a date), installments paid,
+  completed, reminders on/off, auto-debit, notes. Count plans count paid installments (skips don't count) and
+  are marked **Completed** instead of advancing past the last one; they stay in a Completed tab for history.
+- **Month-end dates are kept.** The schedule keeps the day the bill was set to (31 Jan → 28 Feb → 31 Mar)
+  through edits, previews and payments. Before, an edit reset it and bills on the 31st drifted to the 28th.
+- **Transparent calculations.** The form shows a live "How this plan works" panel: plain-words schedule,
+  monthly average, yearly cost, due this month, remaining payments / total and the last date, EMI progress
+  and the next six due dates — computed with the same functions the app pays with (`planSummary`).
+- **Confirm before important updates.** Editing shows "Confirm changes" (what changes, incl. the monthly
+  effect of an amount change, and the plan after saving) before anything is written; Undo restores the
+  previous values exactly (fields the edit added are removed).
+- **Mark paid** opens a dialog: actual amount (for variable bills), paid-on date (not in the future),
+  paid-from account, and "What happens" — the expense, the account balance before → after, and the next due
+  date or that the plan completes.
+- **Totals count every due date.** "Due in 30 days" counts each weekly / daily occurrence (it counted one),
+  plus overdue; new "Left to pay this month" metric. Dashboard commitments use the same logic and skip
+  completed plans.
+- **Reminder preferences**: on the day / 1 / 3 / 7 days before, or Off — respected by the bell and by the
+  09:00 IST push digest (`functions/src/reminders.ts`), which also skips completed plans.
+- **Custom controls** throughout the form (frequency tiles, segments, themed date and select pickers).
+- **Tests**: `recurring.model.spec.ts` (anchor day, end conditions, occurrences in a window, plan summary,
+  change list), privacy group spec, functions test for muted / completed bills.
+- **Deploy**: functions (reminder digest), then hosting. No rules change (`upcoming_payments` already accepts
+  the new optional fields).

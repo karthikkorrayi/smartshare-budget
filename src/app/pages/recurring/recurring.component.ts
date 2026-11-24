@@ -13,10 +13,14 @@ import {
   FREQUENCY_LABEL,
   RecurringPayment,
   monthlyEquivalent,
+  occurrencesBetween,
   paidInMonth,
+  planSummary,
   schedule,
   statusOf,
 } from '../../models/recurring.model';
+import { MatDialog } from '@angular/material/dialog';
+import { PayBillComponent, PayBillResult } from '../../dialogs/pay-bill/pay-bill.component';
 import { categoryIcon, inr } from '../../utils/analytics.util';
 import { monthKey } from '../../utils/date-input.util';
 import { IconComponent } from '../../ui/icon.component';
@@ -26,7 +30,7 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
 import { EmptyStateComponent } from '../../ui/empty-state.component';
 import { SelectComponent, SelectOption } from '../../ui/select.component';
 
-type Tab = 'upcoming' | 'today' | 'overdue' | 'paid' | 'all';
+type Tab = 'upcoming' | 'today' | 'overdue' | 'paid' | 'completed' | 'all';
 
 @Component({
   standalone: true,
@@ -41,6 +45,7 @@ export class RecurringComponent {
   private confirm = inject(ConfirmService);
   private upcoming = inject(UpcomingPaymentService);
   quick = inject(QuickActionsService);
+  private dialog = inject(MatDialog);
 
   readonly freqLabel = FREQUENCY_LABEL;
   readonly freqOptions: SelectOption[] = [
@@ -59,6 +64,7 @@ export class RecurringComponent {
     { id: 'today', label: 'Due today' },
     { id: 'overdue', label: 'Overdue' },
     { id: 'paid', label: 'Paid this month' },
+    { id: 'completed', label: 'Completed' },
     { id: 'all', label: 'All' },
   ];
 
@@ -78,12 +84,19 @@ export class RecurringComponent {
   selectedId = signal<string | null>(null);
 
   stats = computed(() => {
-    const live = this.items().filter(x => !x.p.paused);
-    const within30 = live.filter(x => x.s.days <= 30);
+    const live = this.items().filter(x => !x.p.paused && !x.p.completed);
+    // Every due date in the window counts (a weekly bill is due ~4 times in 30 days); overdue ones once.
+    const in30 = new Date(this.today.getFullYear(), this.today.getMonth(), this.today.getDate() + 30);
+    const occ30 = live.map(x => occurrencesBetween(x.p, this.today, in30, true).length * x.p.amount);
+    const mStart = new Date(this.today.getFullYear(), this.today.getMonth(), 1);
+    const mEnd = new Date(this.today.getFullYear(), this.today.getMonth() + 1, 0);
+    const leftThisMonth = live.reduce((s, x) => s + occurrencesBetween(x.p, this.today, mEnd, true).length * x.p.amount, 0);
     return {
       active: live.length,
-      due30: within30.reduce((s, x) => s + x.p.amount, 0),
-      due30Count: within30.length,
+      due30: occ30.reduce((s, v) => s + v, 0),
+      due30Count: live.reduce((s, x) => s + occurrencesBetween(x.p, this.today, in30, true).length, 0),
+      leftThisMonth,
+      monthStart: mStart,
       week: live.filter(x => x.s.days >= 0 && x.s.days <= 7).length,
       weekAmount: live.filter(x => x.s.days >= 0 && x.s.days <= 7).reduce((s, x) => s + x.p.amount, 0),
       overdue: live.filter(x => x.s.status === 'overdue').length,
@@ -96,6 +109,7 @@ export class RecurringComponent {
 
   counts = computed(() => ({
     upcoming: this.items().filter(x => !x.p.paused && (x.s.status === 'soon' || x.s.status === 'upcoming')).length,
+    completed: this.items().filter(x => x.p.completed).length,
     today: this.items().filter(x => x.s.status === 'today').length,
     overdue: this.items().filter(x => x.s.status === 'overdue').length,
     paid: this.items().filter(x => x.paid.length).length,
@@ -110,6 +124,7 @@ export class RecurringComponent {
       if (t === 'today' && x.s.status !== 'today') return false;
       if (t === 'overdue' && x.s.status !== 'overdue') return false;
       if (t === 'paid' && !x.paid.length) return false;
+      if (t === 'completed' && !x.p.completed) return false;
       if (this.freqFilter() && x.p.frequency !== this.freqFilter()) return false;
       if (q && ![x.p.description, x.p.category, this.accountName(x.p)].some(v => v.toLowerCase().includes(q))) return false;
       return true;
@@ -122,6 +137,11 @@ export class RecurringComponent {
 
   selected = computed(() => this.items().find(x => x.p.id === this.selectedId()) ?? null);
   selectedSchedule = computed(() => (this.selected() ? schedule(this.selected()!.p, 6) : []));
+  selectedPlan = computed(() => (this.selected() ? planSummary(this.selected()!.p, this.today) : null));
+
+  emiPct(p: RecurringPayment): number {
+    return p.installmentsTotal ? Math.min(100, Math.round((p.installmentsPaid / p.installmentsTotal) * 100)) : 0;
+  }
 
   accountName(p: RecurringPayment): string {
     return p.account ? this.accountMap().get(refKey(p.account))?.name ?? 'Deleted account' : 'Not linked';
@@ -131,12 +151,24 @@ export class RecurringComponent {
     this.selectedId.set(this.selectedId() === p.id ? null : p.id);
   }
 
+  /** Confirm amount / date / account first; the payment is then booked after 5 s (Undo cancels). */
   pay(p: RecurringPayment): void {
-    this.undo.defer(
-      `Paid "${p.description}" · ${inr(p.amount)}${p.account ? ' from ' + this.accountName(p) : ''}`,
-      p.frequency === 'once' ? [p.id] : [],
-      () => this.ledger.payRecurring(p)
-    );
+    this.dialog
+      .open<PayBillComponent, { payment: RecurringPayment }, PayBillResult>(PayBillComponent, {
+        data: { payment: p },
+        width: 'min(96vw, 520px)',
+        panelClass: 'ss-sheet-pane',
+      })
+      .afterClosed()
+      .subscribe(r => {
+        if (!r) return;
+        const from = r.account ? this.accountMap().get(refKey(r.account))?.name : null;
+        this.undo.defer(
+          `Paid "${p.description}" · ${inr(r.amount)}${from ? ' from ' + from : ''}`,
+          p.frequency === 'once' ? [p.id] : [],
+          () => this.ledger.payRecurring(p, r.amount, r.date, r.account)
+        );
+      });
   }
 
   skip(p: RecurringPayment): void {

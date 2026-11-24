@@ -1,8 +1,14 @@
 <div class="page dash">
   <!-- ── Welcome + filters ────────────────────────────────────── -->
   <section class="hello">
-    <div>
-      <h2 class="greet">{{ greeting() }}</h2>
+    <div class="hello-text">
+      <h2 class="greet">{{ greeting() }}
+        <!-- One eye for every balance on this page (transactions and income/expense totals stay visible). -->
+        <button type="button" class="btn btn-ghost btn-sm balances-eye" (click)="toggleBalances()" [attr.aria-pressed]="balancesShown()"
+                [attr.aria-label]="balancesShown() ? 'Hide balances' : 'Show balances'" [title]="balancesShown() ? 'Hide balances' : 'Show balances'">
+          <app-icon [name]="balancesShown() ? 'eye-off' : 'eye'" [size]="17" /><span>{{ balancesShown() ? 'Hide' : 'Show' }} balances</span>
+        </button>
+      </h2>
       <p class="muted">Here's your financial overview · <span class="range-label">{{ range().label }}</span>
         @if (selectedAccount(); as a) { · <b>{{ a.name }}</b> }</p>
     </div>
@@ -34,9 +40,9 @@
       @if (selectedAccount(); as a) {
         <app-metric class="m-wealth" [feature]="true" icon="wallet"
           [label]="a.type === 'card' ? 'Card outstanding' : 'Account balance'"
-          [amount]="a.balance" [privacyKey]="a.key" [hint]="a.type === 'card' ? 'Unpaid on statements' : a.subtitle" />
+          [amount]="a.balance" [privacyKey]="a.key" [amountToggle]="false" [hint]="a.type === 'card' ? 'Unpaid on statements' : a.subtitle" />
       } @else {
-        <app-metric class="m-wealth" [feature]="true" icon="piggy-bank" label="Total wealth" [amount]="wealth()!.total" privacyKey="wealth"
+        <app-metric class="m-wealth" [feature]="true" icon="piggy-bank" label="Total wealth" [amount]="wealth()!.total" privacyKey="wealth" [amountToggle]="false"
           [hint]="wealth()!.accounts ? 'Across ' + wealth()!.accounts + ' account' + (wealth()!.accounts === 1 ? '' : 's') + ' (bank + wallets)' : 'Add an account to see your balance'" />
       }
       <app-metric icon="arrow-down-left" tone="pos" label="Income" [value]="sum().income | money"
@@ -45,7 +51,7 @@
         [hint]="sum().refunds ? 'After ' + (sum().refunds | money) + ' in refunds' : 'Your spending · ' + range().label.toLowerCase()" />
       <app-metric icon="activity" [tone]="sum().net >= 0 ? 'pos' : 'neg'" label="Net cash flow" [value]="sum().net | money" [negative]="sum().net < 0"
         [hint]="sum().net >= 0 ? 'You kept more than you spent' : 'Spending is ahead of income'" />
-      <app-metric icon="handshake" tone="warn" label="Money owed to you" [amount]="lendSummary().owedToMe" privacyKey="owed-to-me"
+      <app-metric icon="handshake" tone="warn" label="Money owed to you" [amount]="lendSummary().owedToMe" privacyKey="owed-to-me" [amountToggle]="false"
         [hint]="lendSummary().iOwe ? 'You owe ' + (lendSummary().iOwe | money) : 'Currently lent out'" />
       <app-metric icon="calendar-clock" tone="neg" label="Upcoming (30 days)" [value]="(commitments()?.total ?? 0) | money"
         [hint]="commitments()?.overdue ? commitments()!.overdue + ' overdue · ' + commitments()!.count + ' total' : (commitments()?.count ?? 0) + ' bills & card dues'" />
@@ -87,7 +93,7 @@
             </span>
             <span class="acct-name">{{ a.name }}</span>
             <span class="acct-sub">{{ a.subtitle }}</span>
-            <span class="acct-bal num"><app-amount [value]="a.balance" [privacyKey]="a.key" [label]="a.name + (a.type === 'card' ? ' outstanding' : ' balance')" [iconSize]="16" /></span>
+            <span class="acct-bal num"><app-amount [value]="a.balance" [privacyKey]="a.key" [toggle]="false" [label]="a.name + (a.type === 'card' ? ' outstanding' : ' balance')" /></span>
             @if (a.credit; as cr) {
               <span class="acct-util" [attr.aria-label]="cr.usedPct + '% of limit used'"><i [style.width.%]="cr.usedPct > 100 ? 100 : cr.usedPct"></i></span>
               <span class="acct-foot">Owed · {{ cr.usedPct }}% of limit used</span>
@@ -166,7 +172,7 @@
     </div>
 
     <div class="col-side">
-      @if (budget(); as b) { <app-budget-hero [s]="b" [monthLabel]="budgetLabel()" /> }
+      @if (budget(); as b) { <app-budget-hero [s]="b" [monthLabel]="budgetLabel()" [amountToggle]="false" /> }
       <!-- Categories -->
       <section class="panel">
         <div class="panel-head"><div><h2>Where your money goes</h2><p>Spending by category</p></div></div>

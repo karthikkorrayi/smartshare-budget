@@ -144,3 +144,8 @@ app-select.acct-select { width: 210px; max-width: 100%; }
 .acct-card.cardart { background: var(--cf); }
 .acct-util { display: block; width: 100%; height: 4px; margin-top: 8px; border-radius: 4px; background: rgba(255,255,255,.22); overflow: hidden;
   i { display: block; height: 100%; border-radius: 4px; background: #fff; transition: width .5s var(--ease); } }
+
+.greet { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.balances-eye { font-size: 12.5px; font-weight: 600; color: var(--text-3); gap: 6px; padding: 4px 10px; border: 1px solid var(--border);
+  &[aria-pressed='true'] { color: var(--accent-strong); border-color: var(--accent); background: var(--accent-soft); } }
+@media (max-width: 520px) { .balances-eye span { display: none; } .balances-eye { padding: 4px 8px; } }

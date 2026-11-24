@@ -1,5 +1,5 @@
 :host { display: block; }
-.metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
 .layout.has-detail { grid-template-columns: minmax(0, 1fr) 360px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
@@ -41,3 +41,15 @@ app-select.sel { width: 170px; max-width: 100%; }
   .pay-btn span { display: none; }
   .pay-main { gap: 10px; padding: 6px; }
 }
+
+.mini { display: inline-flex; vertical-align: middle; margin-left: 4px; color: var(--text-3); }
+.emi-bar { display: block; height: 4px; margin-top: 6px; border-radius: 4px; background: var(--surface-3); overflow: hidden;
+  i { display: block; height: 100%; background: var(--accent); border-radius: 4px; transition: width .4s var(--ease); } }
+.pay[data-status='completed'] { opacity: .75; }
+.plan { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 14px; padding: 12px; border-radius: 12px; background: var(--accent-soft);
+  .k { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-strong); }
+  > b { font-size: 14px; }
+  .nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px;
+    div { display: flex; flex-direction: column; } span { font-size: 11.5px; color: var(--text-3); } b { font-size: 14px; font-variant-numeric: tabular-nums; } small { font-size: 11px; color: var(--text-3); } }
+  .emi { display: flex; flex-direction: column; gap: 2px; .emi-bar { margin-top: 0; height: 6px; background: color-mix(in srgb, var(--accent) 18%, transparent); } small { font-size: 12px; } } }
+.notes { display: flex; gap: 6px; margin: 10px 0 0; font-size: 13px; color: var(--text-2); line-height: 1.5; app-icon { margin-top: 2px; color: var(--text-3); } }

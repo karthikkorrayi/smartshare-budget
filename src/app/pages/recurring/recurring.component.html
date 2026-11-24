@@ -10,10 +10,11 @@
   </div>
 
   <div class="metrics">
-    @if (loading()) { @for (i of [1, 2, 3, 4, 5]; track i) { <app-skeleton variant="card" /> } }
+    @if (loading()) { @for (i of [1, 2, 3, 4, 5, 6]; track i) { <app-skeleton variant="card" /> } }
     @else {
-      <app-metric icon="calendar-clock" tone="accent" label="Upcoming payments" [value]="'' + stats().active" [hint]="(stats().monthly | money) + ' a month in commitments'" />
-      <app-metric icon="receipt" tone="info" label="Due in 30 days" [value]="stats().due30 | money" [hint]="stats().due30Count + ' payment' + (stats().due30Count === 1 ? '' : 's')" />
+      <app-metric icon="calendar-clock" tone="accent" label="Active payments" [value]="'' + stats().active" [hint]="'≈ ' + (stats().monthly | money) + ' a month on average'" />
+      <app-metric icon="calendar" tone="info" label="Left to pay this month" [value]="stats().leftThisMonth | money" hint="Every due date until month end, overdue included" />
+      <app-metric icon="receipt" tone="info" label="Due in 30 days" [value]="stats().due30 | money" [hint]="stats().due30Count + ' due date' + (stats().due30Count === 1 ? '' : 's') + ' (weekly bills count each time)'" />
       <app-metric icon="calendar-days" tone="warn" label="Due this week" [value]="'' + stats().week" [hint]="(stats().weekAmount | money) + ' in total'" />
       <app-metric icon="alert-triangle" tone="neg" label="Overdue" [value]="'' + stats().overdue" [hint]="stats().overdue ? (stats().overdueAmount | money) + ' waiting' : 'Nothing overdue'" />
       <app-metric icon="circle-check" tone="pos" label="Paid this month" [value]="'' + stats().paidCount" [hint]="(stats().paidAmount | money) + ' paid'" />
@@ -41,7 +42,8 @@
           <button class="btn btn-primary btn-sm" (click)="quick.recurring()"><app-icon name="plus" [size]="15" />Add your first payment</button>
         </app-empty>
       } @else if (!shown().length) {
-        <app-empty art="bills" [compact]="true" [title]="tab() === 'overdue' ? 'Nothing overdue' : tab() === 'today' ? 'Nothing due today' : 'No payments here'" text="You're on top of things." />
+        <app-empty art="bills" [compact]="true" [title]="tab() === 'overdue' ? 'Nothing overdue' : tab() === 'today' ? 'Nothing due today' : tab() === 'completed' ? 'No completed plans yet' : 'No payments here'"
+          [text]="tab() === 'completed' ? 'EMIs and fixed-term plans move here after their last payment.' : 'You\'re on top of things.'" />
       } @else {
         <div class="pay-list">
           @for (x of shown(); track x.p.id) {
@@ -49,18 +51,23 @@
               <button class="pay-main" (click)="select(x.p)" [attr.aria-expanded]="selectedId() === x.p.id">
                 <span class="date-chip"><b>{{ x.p.dueDate | date: 'd' }}</b><span>{{ x.p.dueDate | date: 'MMM' }}</span></span>
                 <span class="grow">
-                  <span class="title">{{ x.p.description }}</span>
+                  <span class="title">{{ x.p.description }}
+                    @if (x.p.autopay) { <span class="mini" title="Auto-debit"><app-icon name="zap" [size]="12" /></span> }
+                    @if (!x.p.notify) { <span class="mini" title="Reminders off"><app-icon name="bell-off" [size]="12" /></span> }
+                  </span>
                   <span class="sub">
                     <app-icon [name]="catIcon(x.p.category)" [size]="13" /> {{ x.p.category }} · {{ freqLabel[x.p.frequency] }} · {{ accountName(x.p) }}
-                    @if (x.p.reminderDays && !x.p.paused) { · <app-icon name="bell" [size]="12" /> {{ x.p.reminderDays }}d }
+                    @if (x.p.reminderDays && !x.p.paused && x.p.notify) { · <app-icon name="bell" [size]="12" /> {{ x.p.reminderDays }}d }
+                    @if (x.p.endType === 'count' && x.p.installmentsTotal) { · {{ x.p.installmentsPaid }}/{{ x.p.installmentsTotal }} paid }
                   </span>
+                  @if (x.p.endType === 'count' && x.p.installmentsTotal) { <span class="emi-bar"><i [style.width.%]="emiPct(x.p)"></i></span> }
                 </span>
                 <span class="right">
-                  <b class="num">{{ x.p.amount | money }}</b>
+                  <b class="num">{{ x.p.amountType === 'variable' ? '~' : '' }}{{ x.p.amount | money }}</b>
                   <span class="status">{{ tab() === 'paid' && x.paid.length ? 'Paid ' + (x.paid[0].date | date: 'd MMM') : x.s.text }}</span>
                 </span>
               </button>
-              @if (!x.p.paused) {
+              @if (!x.p.paused && !x.p.completed) {
                 <button class="btn btn-sm btn-soft pay-btn" (click)="pay(x.p)" [attr.aria-label]="'Mark ' + x.p.description + ' paid'"><app-icon name="check" [size]="15" /><span>Paid</span></button>
               }
             </div>
@@ -75,24 +82,38 @@
           <div><h2>{{ x.p.description }}</h2><p>{{ freqLabel[x.p.frequency] }} · {{ x.p.category }}</p></div>
           <button class="btn btn-ghost btn-icon btn-sm" (click)="selectedId.set(null)" aria-label="Close details"><app-icon name="x" /></button>
         </div>
-        <div class="big"><b class="num">{{ x.p.amount | money }}</b><span class="badge" [class.neg]="x.s.status === 'overdue'" [class.warn]="x.s.status === 'today' || x.s.status === 'soon'">{{ x.s.text }}</span></div>
+        <div class="big"><b class="num">{{ x.p.amountType === 'variable' ? '~' : '' }}{{ x.p.amount | money }}</b><span class="badge" [class.neg]="x.s.status === 'overdue'" [class.warn]="x.s.status === 'today' || x.s.status === 'soon'">{{ x.s.text }}</span></div>
+        @if (selectedPlan(); as pl) {
+          <div class="plan">
+            <span class="k"><app-icon name="sparkles" [size]="13" />The plan</span>
+            <b>{{ pl.sentence }}</b>
+            <div class="nums">
+              @if (x.p.frequency !== 'once') { <div><span>A month</span><b>{{ pl.monthly | money }}</b></div><div><span>A year</span><b>{{ pl.yearly | money }}</b></div> }
+              @if (pl.left !== null && x.p.frequency !== 'once') { <div><span>Remaining</span><b>{{ pl.remainingTotal | money }}</b><small>{{ pl.left }} left@if (pl.lastDate) { · ends {{ pl.lastDate | date: 'MMM y' }} }</small></div> }
+            </div>
+            @if (x.p.endType === 'count' && x.p.installmentsTotal) { <div class="emi"><span class="emi-bar"><i [style.width.%]="emiPct(x.p)"></i></span><small>{{ x.p.installmentsPaid }} of {{ x.p.installmentsTotal }} paid</small></div> }
+          </div>
+        }
         <dl class="kv">
           <dt>Next due</dt><dd>{{ x.p.dueDate | date: 'EEE, d MMM y' }}</dd>
           <dt>Paid from</dt><dd>{{ accountName(x.p) }}</dd>
-          <dt>Reminder</dt><dd>{{ x.p.paused ? 'Paused' : x.p.reminderDays ? x.p.reminderDays + ' days before' : 'On the due date' }}</dd>
+          <dt>Reminder</dt><dd>{{ !x.p.notify ? 'Off' : x.p.paused ? 'Paused' : x.p.reminderDays ? x.p.reminderDays + ' days before' : 'On the due date' }}</dd>
+          @if (x.p.autopay) { <dt>Auto-debit</dt><dd>Yes — mark paid when the bank debits it</dd> }
+          @if (x.p.amountType === 'variable') { <dt>Amount</dt><dd>Varies — you confirm it each time</dd> }
           @if (x.p.lastPaidAt) { <dt>Last paid</dt><dd>{{ x.p.lastPaidAt | date: 'd MMM y' }}</dd> }
           @if (x.p.source === 'email') { <dt>Source</dt><dd>From Gmail</dd> }
         </dl>
 
         <div class="actions-row">
-          @if (!x.p.paused) { <button class="btn btn-primary btn-sm" (click)="pay(x.p)"><app-icon name="check" [size]="15" />Mark paid</button> }
-          @if (x.p.frequency !== 'once' && !x.p.paused) { <button class="btn btn-sm" (click)="skip(x.p)"><app-icon name="chevron-right" [size]="15" />Skip cycle</button> }
-          @if (x.p.frequency !== 'once') { <button class="btn btn-sm" (click)="togglePause(x.p)"><app-icon [name]="x.p.paused ? 'play' : 'pause'" [size]="15" />{{ x.p.paused ? 'Resume' : 'Pause' }}</button> }
+          @if (!x.p.paused && !x.p.completed) { <button class="btn btn-primary btn-sm" (click)="pay(x.p)"><app-icon name="check" [size]="15" />Mark paid</button> }
+          @if (x.p.frequency !== 'once' && !x.p.paused && !x.p.completed) { <button class="btn btn-sm" (click)="skip(x.p)"><app-icon name="chevron-right" [size]="15" />Skip cycle</button> }
+          @if (x.p.frequency !== 'once' && !x.p.completed) { <button class="btn btn-sm" (click)="togglePause(x.p)"><app-icon [name]="x.p.paused ? 'play' : 'pause'" [size]="15" />{{ x.p.paused ? 'Resume' : 'Pause' }}</button> }
           <button class="btn btn-sm" (click)="quick.recurring(x.p.id)"><app-icon name="pencil" [size]="15" />Edit</button>
           <button class="btn btn-sm btn-ghost btn-danger-text" (click)="remove(x.p)"><app-icon name="trash2" [size]="15" />Delete</button>
         </div>
 
-        @if (x.p.frequency !== 'once') {
+        @if (x.p.notes) { <p class="notes"><app-icon name="file-text" [size]="14" />{{ x.p.notes }}</p> }
+        @if (x.p.frequency !== 'once' && selectedSchedule().length) {
           <h3 class="h">Upcoming schedule</h3>
           <div class="sched">@for (d of selectedSchedule(); track $index) { <span class="badge" [class.accent]="$index === 0">{{ d | date: 'd MMM yy' }}</span> }</div>
         }

@@ -17,11 +17,13 @@ import { moneyShort } from './money.pipe';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <span class="amt num" [class.masked]="!visible()" [class.neg]="visible() && negative()" [attr.aria-live]="'polite'">{{ shown() }}{{ visible() && suffix() ? ' ' + suffix() : '' }}</span>
-    <button type="button" class="eye" (click)="toggle($event)" (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()"
+    @if (toggle()) {
+    <button type="button" class="eye" (click)="flip($event)" (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()"
             [attr.aria-label]="(visible() ? 'Hide ' : 'Show ') + (label() || 'amount')" [attr.aria-pressed]="visible()"
             [title]="visible() ? 'Hide' : 'Show'">
       <app-icon [name]="visible() ? 'eye-off' : 'eye'" [size]="iconSize()" />
     </button>
+    }
   `,
   styles: [`
     :host { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; vertical-align: middle; }
@@ -51,6 +53,8 @@ export class AmountComponent {
   /** Show negatives in red. */
   readonly signed = input(false);
   readonly iconSize = input(15);
+  /** false = no eye of its own (a page-level eye controls it, e.g. the dashboard). */
+  readonly toggle = input(true);
 
   readonly visible = computed(() => this.privacy.isVisible(this.privacyKey()));
   readonly negative = computed(() => this.signed() && (Number(this.value()) || 0) < 0);
@@ -60,7 +64,7 @@ export class AmountComponent {
     return this.short() ? moneyShort(v) : inr(v, this.decimals());
   });
 
-  toggle(e: Event): void {
+  flip(e: Event): void {
     e.stopPropagation();
     e.preventDefault();
     this.privacy.toggle(this.privacyKey());

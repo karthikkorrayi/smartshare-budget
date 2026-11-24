@@ -213,6 +213,8 @@ export const dailyDueDigest = onSchedule(
             amount: Number(x.amount) || 0,
             dueDate: typeof x.dueDate?.toDate === 'function' ? x.dueDate.toDate() : new Date(NaN),
             paused: !!x.paused,
+            completed: !!x.completed,
+            notify: x.notify !== false,
             reminderDays: x.reminderDays === undefined || x.reminderDays === null ? undefined : Number(x.reminderDays),
           } as BillLite;
         });

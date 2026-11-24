@@ -49,6 +49,21 @@ describe('<app-amount>', () => {
   });
 });
 
+describe('PrivacyService groups (dashboard single eye)', () => {
+  it('shows and hides a whole group; allVisible needs every key', () => {
+    const p = new PrivacyService();
+    const keys = ['wealth', 'bank:a', 'card:b'];
+    expect(p.allVisible(keys)).toBeFalse();
+    p.toggle('bank:a');
+    expect(p.allVisible(keys)).toBeFalse();
+    p.setMany(keys, true);
+    expect(p.allVisible(keys)).toBeTrue();
+    p.setMany(keys, false);
+    expect(keys.some(k => p.isVisible(k))).toBeFalse();
+    expect(p.allVisible([])).toBeFalse();
+  });
+});
+
 describe('opts pipe', () => {
   it('maps strings and objects, with lead options', () => {
     const p = new OptsPipe();

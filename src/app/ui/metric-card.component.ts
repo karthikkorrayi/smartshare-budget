@@ -20,7 +20,7 @@ import { AmountComponent } from './amount.component';
       </div>
       <div class="label">{{ label() }}</div>
       @if (privacyKey()) {
-        <div class="value num" [class.neg]="negative()"><app-amount [value]="amount()" [privacyKey]="privacyKey()!" [label]="label()" [iconSize]="feature() ? 18 : 16" /></div>
+        <div class="value num" [class.neg]="negative()"><app-amount [value]="amount()" [privacyKey]="privacyKey()!" [label]="label()" [iconSize]="feature() ? 18 : 16" [toggle]="amountToggle()" /></div>
       } @else {
         <div class="value num" [class.neg]="negative()">{{ value() }}</div>
       }
@@ -54,6 +54,8 @@ export class MetricCardComponent {
   /** A balance: shown hidden ("₹ ******") with an eye toggle, keyed by privacyKey. Use instead of [value]. */
   readonly amount = input<number | null | undefined>(null);
   readonly privacyKey = input<string | null>(null);
+  /** false = the amount has no eye of its own (controlled by a page-level eye). */
+  readonly amountToggle = input(true);
   readonly hint = input<string>('');
   readonly icon = input<string>('circle-dollar-sign');
   readonly tone = input<'accent' | 'pos' | 'neg' | 'warn' | 'info' | ''>('accent');

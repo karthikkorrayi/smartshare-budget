@@ -229,7 +229,7 @@ export class NotificationsService {
     const out: Reminder[] = [];
     for (const d of docs) {
       const p = recurringFrom(d);
-      if (p.paused) continue;
+      if (p.paused || p.completed || !p.notify) continue;
       const days = daysBetween(today, p.dueDate);
       if (days > p.reminderDays) continue;
       const overdue = days < 0;

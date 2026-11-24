@@ -29,6 +29,21 @@ export class PrivacyService {
     });
   }
 
+  /** True when every key in the list is showing. */
+  allVisible(keys: readonly string[]): boolean {
+    const r = this.revealed();
+    return keys.length > 0 && keys.every(k => r.has(k));
+  }
+
+  /** Show or hide a whole group at once (the dashboard's single eye). */
+  setMany(keys: readonly string[], visible: boolean): void {
+    this.revealed.update(s => {
+      const next = new Set(s);
+      for (const k of keys) visible ? next.add(k) : next.delete(k);
+      return next;
+    });
+  }
+
   hideAll(): void {
     this.revealed.set(new Set());
   }

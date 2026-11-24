@@ -51,6 +51,7 @@ import { SelectComponent } from '../../ui/select.component';
 import { DateFieldComponent } from '../../ui/date-field.component';
 import { OptsPipe } from '../../ui/opts.pipe';
 import { AmountComponent } from '../../ui/amount.component';
+import { PrivacyService } from '../../core/privacy.service';
 
 const FILTER_KEY = 'ssb_dash_filter';
 
@@ -190,9 +191,18 @@ export class DashboardComponent implements OnInit {
   });
   budgetLabel = computed(() => this.range().label);
 
+  // ── Single eye for every balance on the dashboard ─────────────────
+  private privacy = inject(PrivacyService);
+  /** Keys of the balances this page shows: wealth, money owed to you, the month's "Left", every account. */
+  readonly balanceKeys = computed(() => ['wealth', 'owed-to-me', 'budget-left', ...(this.accounts() ?? []).map(a => a.key)]);
+  readonly balancesShown = computed(() => this.privacy.allVisible(this.balanceKeys()));
+  toggleBalances(): void {
+    this.privacy.setMany(this.balanceKeys(), !this.balancesShown());
+  }
+
   bills = computed(() =>
     this.recurring()
-      .filter(p => !p.paused)
+      .filter(p => !p.paused && !p.completed)
       .map(p => ({ p, s: statusOf(p, this.today) }))
       .filter(x => x.s.days <= 30)
       .slice(0, 5)

@@ -94,3 +94,10 @@ test('cards and bills are merged into one digest, overdue first', () => {
   assert.match(d.title, /1 payment overdue/);
   assert.match(d.body.split('\n')[0], /Electricity/);
 });
+
+test('bill reminders: completed plans and payments with reminders off are never included', () => {
+  const now = ist(2026, 11, 14);
+  assert.equal(computeBillReminders([bill({ completed: true })], now, 3).length, 0);
+  assert.equal(computeBillReminders([bill({ notify: false })], now, 3).length, 0);
+  assert.equal(computeBillReminders([bill({ notify: true })], now, 3).length, 1);
+});

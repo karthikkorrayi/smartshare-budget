@@ -36,6 +36,10 @@ export interface BillLite {
   amount: number;
   dueDate: Date;
   paused?: boolean;
+  /** Plan finished (last installment paid) — never reminded again. */
+  completed?: boolean;
+  /** false = the user turned reminders off for this payment. */
+  notify?: boolean;
   /** Days before the due date to start reminding (default: the user's lead time). */
   reminderDays?: number;
 }
@@ -105,7 +109,7 @@ export function computeBillReminders(bills: BillLite[], now: Date, leadDays = 3)
   const today = istDay(now);
   const out: DueReminder[] = [];
   for (const b of bills) {
-    if (b.paused || !(b.dueDate instanceof Date) || isNaN(b.dueDate.getTime())) continue;
+    if (b.paused || b.completed || b.notify === false || !(b.dueDate instanceof Date) || isNaN(b.dueDate.getTime())) continue;
     const lead = Number.isFinite(b.reminderDays as number) ? Math.min(30, Math.max(0, Number(b.reminderDays))) : leadDays;
     const days = istDay(b.dueDate) - today;
     const name = (b.description || 'Payment').slice(0, 60);

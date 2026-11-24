@@ -15,7 +15,7 @@ import { AccountRef, AccountSummary, BANK_KIND_LABEL, refKey } from '../models/a
 import { WALLET_KIND_INFO } from '../models/wallet.model';
 import { cardLabel } from '../models/card.model';
 import { dueInfo } from '../models/card-statement.model';
-import { RecurringPayment, recurringFrom } from '../models/recurring.model';
+import { RecurringPayment, recurringFrom, occurrencesBetween } from '../models/recurring.model';
 import { LendingRecord, lendingFrom } from '../models/lending.model';
 import {
   FinanceTxn,
@@ -192,10 +192,13 @@ export class FinanceService {
       map(([rec, stmts, cards]) => {
         const today = new Date();
         const items: { title: string; date: Date; amount: number; overdue: boolean }[] = [];
+        const until = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
         for (const p of rec) {
-          if (p.paused) continue;
-          const d = daysBetween(today, p.dueDate);
-          if (d <= days) items.push({ title: p.description, date: p.dueDate, amount: p.amount, overdue: d < 0 });
+          if (p.paused || p.completed) continue;
+          // Every due date in the window (a weekly bill is due ~4 times in 30 days); an unpaid past one counts once.
+          for (const date of occurrencesBetween(p, today, until, true)) {
+            items.push({ title: p.description, date, amount: p.amount, overdue: daysBetween(today, date) < 0 });
+          }
         }
         const cardMap = new Map(cards.map(c => [c.id, c]));
         for (const s of stmts) {
