@@ -20,6 +20,7 @@ import { AuthService } from './auth.service';
 import { CardsService } from './cards.service';
 import { CardStatementsService } from './card-statements.service';
 import { WalletsService, WalletView } from './wallets.service';
+import { CardInsightsService, CardWithPosition } from './card-insights.service';
 import { UpcomingPaymentService } from './upcoming-payment.service';
 import { ReceivableService } from './receivable.service';
 import { recurringFrom } from '../models/recurring.model';
@@ -41,6 +42,7 @@ export class NotificationsService {
   private cards = inject(CardsService);
   private statements = inject(CardStatementsService);
   private wallets = inject(WalletsService);
+  private cardInsights = inject(CardInsightsService);
   private upcoming = inject(UpcomingPaymentService);
   private receivables = inject(ReceivableService);
   private col = collection(this.firestore, 'notifications');
@@ -63,9 +65,11 @@ export class NotificationsService {
     this.wallets.views$,
     this.upcoming.getAll(),
     this.receivables.getAll(),
+    this.cardInsights.positions$,
   ]).pipe(
-    map(([cards, statements, wallets, bills, loans]) => [
+    map(([cards, statements, wallets, bills, loans, positions]) => [
       ...NotificationsService.computeReminders(cards, statements),
+      ...NotificationsService.cardUsageReminders(positions),
       ...NotificationsService.billReminders(bills),
       ...NotificationsService.lendingReminders(loans),
       ...NotificationsService.walletReminders(wallets),
@@ -267,6 +271,27 @@ export class NotificationsService {
   }
 
   /** Wallets below their warning amount. The key holds the threshold, so changing it can alert again. */
+  /**
+   * A card's usage has crossed its alert level (set in the card's Settings step). The key holds the
+   * alert level and a 10% band, so it alerts once when crossed and again only if usage keeps climbing.
+   */
+  static cardUsageReminders(positions: CardWithPosition[]): Reminder[] {
+    return positions
+      .filter(({ card, pos }) => card.status === 'Active' && card.utilAlertPct > 0 && pos.usedPct !== null && pos.usedPct >= card.utilAlertPct)
+      .map(({ card, pos }) => ({
+        key: `usage-${card.id}-${card.utilAlertPct}-${Math.floor(pos.usedPct! / 10)}`,
+        type: 'card_usage' as const,
+        tone: pos.overLimit ? ('overdue' as const) : ('soon' as const),
+        title: `${pos.overLimit ? 'Over the limit' : `${pos.usedPct}% of the limit used`} · ${cardLabel(card)}`,
+        body: pos.overLimit
+          ? `You owe more than the ₹${pos.limit.toLocaleString('en-IN')} limit. Pay part of it to avoid over-limit fees.`
+          : `Above your ${card.utilAlertPct}% alert. ₹${Math.max(0, pos.available ?? 0).toLocaleString('en-IN')} left to spend before the limit.`,
+        date: new Date(),
+        cardId: card.id,
+        link: `/account/card/${card.id}`,
+      }));
+  }
+
   static walletReminders(wallets: WalletView[]): Reminder[] {
     return wallets
       .filter(w => w.low)

@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import {
   Firestore,
+  Timestamp,
   addDoc,
   collection,
   collectionData,
@@ -14,7 +15,7 @@ import {
 } from '@angular/fire/firestore';
 import { Observable, map, shareReplay } from 'rxjs';
 import { AuthService } from './auth.service';
-import { Card, CardInput } from '../models/card.model';
+import { AUTOPAY_MODES, CARD_ARTS, CARD_DEFAULTS, CARD_NETWORKS, CARD_TIERS, Card, CardInput, REWARD_TYPES } from '../models/card.model';
 import { chunk, toDate } from '../utils/firestore.util';
 
 @Injectable({ providedIn: 'root' })
@@ -86,7 +87,8 @@ export class CardsService {
 
   /** Normalises input to exactly the fields the security rules allow. */
   private clean(input: CardInput) {
-    return {
+    const num = (v: unknown, max = 1e9) => Math.min(max, Math.max(0, Math.round((Number(v) || 0) * 100) / 100));
+    const out: Record<string, unknown> = {
       cardholderName: input.cardholderName.trim(),
       bankName: input.bankName.trim(),
       nickname: (input.nickname ?? '').trim(),
@@ -96,11 +98,43 @@ export class CardsService {
       statementDay: Math.trunc(Number(input.statementDay)),
       dueDay: Math.trunc(Number(input.dueDay)),
       status: input.status,
-      dailySpendingLimit: Math.max(0, Number(input.dailySpendingLimit) || 0),
+      dailySpendingLimit: num(input.dailySpendingLimit),
+      // Phase 2
+      network: input.network ?? null,
+      tier: input.tier ?? null,
+      art: input.art ?? 'indigo',
+      creditLimit: num(input.creditLimit),
+      cashLimit: num(input.cashLimit),
+      openingOutstanding: num(input.openingOutstanding),
+      openingAsOf: input.openingAsOf ? Timestamp.fromDate(input.openingAsOf) : null,
+      interestMonthly: num(input.interestMonthly, 10),
+      annualFee: num(input.annualFee),
+      feeWaiverSpend: num(input.feeWaiverSpend),
+      lateFee: num(input.lateFee),
+      cashAdvanceFeePct: num(input.cashAdvanceFeePct, 10),
+      forexMarkupPct: num(input.forexMarkupPct, 10),
+      rewardType: input.rewardType ?? 'none',
+      rewardRate: num(input.rewardRate, 1000),
+      rewardBalance: Math.trunc(num(input.rewardBalance)),
+      rewardValue: num(input.rewardValue, 100),
+      rewardsAsOf: input.rewardsAsOf ? Timestamp.fromDate(input.rewardsAsOf) : null,
+      benefits: [...new Set((input.benefits ?? []).map(b => String(b).trim().slice(0, 40)).filter(Boolean))].slice(0, 20),
+      notes: (input.notes ?? '').trim().slice(0, 300),
+      autopay: input.autopay ?? 'none',
+      utilAlertPct: Math.trunc(num(input.utilAlertPct, 100)),
     };
+    return out;
+  }
+
+  /** A card's editable fields (for Undo and edit forms). */
+  static inputOf(c: Card): CardInput {
+    const { id, userId, createdAt, lastUpdated, lastUpdateSource, ...rest } = c;
+    return rest;
   }
 
   private fromFirestore(d: any): Card {
+    const n = (v: unknown) => Number(v) || 0;
+    const oneOf = <T extends string>(v: unknown, list: readonly T[], fallback: T): T => (list.includes(v as T) ? (v as T) : fallback);
     return {
       id: d.id,
       userId: d.userId,
@@ -113,10 +147,32 @@ export class CardsService {
       statementDay: Number(d.statementDay) || 1,
       dueDay: Number(d.dueDay) || 1,
       status: d.status === 'Closed' ? 'Closed' : 'Active',
-      dailySpendingLimit: Number(d.dailySpendingLimit) || 0,
+      dailySpendingLimit: n(d.dailySpendingLimit),
       createdAt: toDate(d.createdAt),
       lastUpdated: toDate(d.lastUpdated),
       lastUpdateSource: d.lastUpdateSource === 'review' ? 'review' : 'manual',
+      network: CARD_NETWORKS.includes(d.network) ? d.network : null,
+      tier: CARD_TIERS.includes(d.tier) ? d.tier : null,
+      art: oneOf(d.art, CARD_ARTS, CARD_DEFAULTS.art),
+      creditLimit: n(d.creditLimit),
+      cashLimit: n(d.cashLimit),
+      openingOutstanding: n(d.openingOutstanding),
+      openingAsOf: toDate(d.openingAsOf),
+      interestMonthly: n(d.interestMonthly),
+      annualFee: n(d.annualFee),
+      feeWaiverSpend: n(d.feeWaiverSpend),
+      lateFee: n(d.lateFee),
+      cashAdvanceFeePct: n(d.cashAdvanceFeePct),
+      forexMarkupPct: n(d.forexMarkupPct),
+      rewardType: oneOf(d.rewardType, REWARD_TYPES, 'none'),
+      rewardRate: n(d.rewardRate),
+      rewardBalance: n(d.rewardBalance),
+      rewardValue: n(d.rewardValue),
+      rewardsAsOf: toDate(d.rewardsAsOf),
+      benefits: Array.isArray(d.benefits) ? d.benefits.filter((x: unknown) => typeof x === 'string') : [],
+      notes: d.notes ?? '',
+      autopay: oneOf(d.autopay, AUTOPAY_MODES, 'none'),
+      utilAlertPct: n(d.utilAlertPct),
     };
   }
 }

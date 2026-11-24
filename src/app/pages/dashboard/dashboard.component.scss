@@ -139,3 +139,8 @@ app-select.acct-select { width: 210px; max-width: 100%; }
 
 .acct-card { cursor: pointer; text-align: left; &:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; } }
 .acct-bal app-amount { max-width: 100%; }
+
+// Credit cards use their chosen face colour (Phase 2); --cf comes from [data-cardart] in _ui.scss.
+.acct-card.cardart { background: var(--cf); }
+.acct-util { display: block; width: 100%; height: 4px; margin-top: 8px; border-radius: 4px; background: rgba(255,255,255,.22); overflow: hidden;
+  i { display: block; height: 100%; border-radius: 4px; background: #fff; transition: width .5s var(--ease); } }

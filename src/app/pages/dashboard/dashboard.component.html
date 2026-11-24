@@ -76,6 +76,7 @@
         @for (a of activeAccounts(); track a.key) {
           <!-- A div, not a button: it holds the balance's own eye button (buttons can't be nested). -->
           <div class="acct-card" role="listitem" tabindex="0" [attr.data-art]="a.art" [class.selected]="accountKey() === a.key"
+               [class.cardart]="!!a.cardArt" [attr.data-cardart]="a.cardArt || null"
                (click)="openAccount(a)" (keydown.enter)="openAccount(a)" (keydown.space)="$event.preventDefault(); openAccount(a)"
                [attr.aria-label]="'Open ' + a.name">
             <span class="shine" aria-hidden="true"></span>
@@ -87,7 +88,12 @@
             <span class="acct-name">{{ a.name }}</span>
             <span class="acct-sub">{{ a.subtitle }}</span>
             <span class="acct-bal num"><app-amount [value]="a.balance" [privacyKey]="a.key" [label]="a.name + (a.type === 'card' ? ' outstanding' : ' balance')" [iconSize]="16" /></span>
-            <span class="acct-foot">{{ a.type === 'card' ? 'Outstanding' : 'Balance' }}@if (a.lastActivity) { · last activity {{ a.lastActivity | date: 'd MMM' }} }</span>
+            @if (a.credit; as cr) {
+              <span class="acct-util" [attr.aria-label]="cr.usedPct + '% of limit used'"><i [style.width.%]="cr.usedPct > 100 ? 100 : cr.usedPct"></i></span>
+              <span class="acct-foot">Owed · {{ cr.usedPct }}% of limit used</span>
+            } @else {
+              <span class="acct-foot">{{ a.type === 'card' ? 'Owed now' : 'Balance' }}@if (a.lastActivity) { · last activity {{ a.lastActivity | date: 'd MMM' }} }</span>
+            }
           </div>
         }
         <button class="acct-add" (click)="quick.addAccount('bank')"><app-icon name="plus" [size]="20" /><span>Add account</span></button>

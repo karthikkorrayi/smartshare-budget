@@ -80,6 +80,10 @@ export interface AccountSummary {
   art: 'bank' | 'card' | 'wallet' | 'cash';
   lastActivity: Date | null;
   low?: boolean;
+  /** Credit cards with a limit: limit, available (limit − owed) and % used. */
+  credit?: { limit: number; available: number; usedPct: number; unbilled: number; billed: number };
+  /** Credit card face colour (Phase 2). */
+  cardArt?: string;
 }
 
 export const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = { bank: 'Bank account', wallet: 'Wallet', card: 'Credit card' };

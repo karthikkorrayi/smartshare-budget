@@ -6,6 +6,8 @@ import { firstValueFrom, map, switchMap } from 'rxjs';
 import { FinanceService } from '../../services/finance.service';
 import { WalletsService } from '../../services/wallets.service';
 import { CardsService } from '../../services/cards.service';
+import { CardInsightsService } from '../../services/card-insights.service';
+import { CardOverviewComponent } from '../../components/card-overview/card-overview.component';
 import { QuickActionsService } from '../../core/quick-actions.service';
 import { AccountRef, AccountSummary, AccountType, refKey } from '../../models/account.model';
 import {
@@ -34,7 +36,7 @@ import { AmountComponent } from '../../ui/amount.component';
 /** One account's analytics: balance, money in vs out over time, category split, and its transactions. */
 @Component({
   standalone: true,
-  imports: [RouterLink, IconComponent, MetricCardComponent, ChartComponent, SkeletonComponent, EmptyStateComponent, MoneyPipe, MoneyShortPipe, TxnTableComponent, AmountComponent],
+  imports: [CardOverviewComponent, RouterLink, IconComponent, MetricCardComponent, ChartComponent, SkeletonComponent, EmptyStateComponent, MoneyPipe, MoneyShortPipe, TxnTableComponent, AmountComponent],
   templateUrl: './account-detail.component.html',
   styleUrl: './account-detail.component.scss',
 })
@@ -45,6 +47,13 @@ export class AccountDetailComponent {
   private dialog = inject(MatDialog);
   private walletsService = inject(WalletsService);
   private cardsService = inject(CardsService);
+  private cardInsights = inject(CardInsightsService);
+  private cardMap = toSignal(this.cardInsights.byId$);
+  /** Credit card overview data (limit, cycle, costs, rewards) when this account is a card. */
+  cardData = computed(() => {
+    const r = this.ref();
+    return r?.type === 'card' ? this.cardMap()?.get(r.id) ?? null : null;
+  });
   quick = inject(QuickActionsService);
 
   readonly presets = RANGE_PRESETS.filter(p => p.id !== 'custom' && p.id !== 'today');
@@ -127,9 +136,16 @@ export class AccountDetailComponent {
       this.dialog.open(WalletFormComponent, { data: { wallet: w }, width: 'min(96vw, 520px)' });
       return;
     }
+    await this.editCard(0);
+  }
+
+  /** Opens the card form at a step (0 card, 1 limits & billing, 2 costs & rewards, 3 settings). */
+  async editCard(step: number): Promise<void> {
+    const a = this.account();
+    if (!a || a.type !== 'card') return;
     const c = (await firstValueFrom(this.cardsService.cards$)).find(x => x.id === a.ref.id);
     const { CardFormComponent } = await import('../../dialogs/card-form/card-form.component');
-    this.dialog.open(CardFormComponent, { data: { card: c }, width: 'min(96vw, 560px)' });
+    this.dialog.open(CardFormComponent, { data: { card: c, step }, width: 'min(96vw, 600px)', panelClass: 'ss-sheet-pane' });
   }
 
   back(): void {

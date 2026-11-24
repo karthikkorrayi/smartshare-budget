@@ -25,3 +25,32 @@ no data migration, existing documents keep working.
 - **Tests**: `date-input.util.spec.ts`, `privacy.service.spec.ts` (privacy, `<app-amount>`, opts pipe),
   `select.component.spec.ts` (select + date picker). `angular.json` test target now loads zone.js, which
   TestBed needs. Run: `npx ng test --watch=false`.
+
+## Phase 2 — Complete card management
+- **Card details** (`models/card.model.ts`, all optional so older cards keep working): network, tier, card
+  colour, credit and cash limits, outstanding-as-of (for cards added mid-cycle), interest per month, annual
+  fee + waiver spend, late fee, cash-withdrawal fee, forex markup, reward type / rate / balance / point value,
+  benefit tags (preset + your own), notes, autopay, usage alert. Validated in `firestore.rules`
+  (`isValidCardDetails`); never a card number.
+- **One definition of what a card owes** (`cardPosition`, shared through `CardInsightsService`):
+  - with a statement: unpaid statements + spends − refunds dated after the latest statement
+    (bill payments are tracked on statements, so they're not subtracted twice);
+  - before the first statement: the outstanding you entered + spends − every credit since its date;
+  - available = limit − used (negative = over limit), % used, spend this cycle / last 12 months.
+  The dashboard card tiles, Cards page, card page and usage reminders all use it. A card's balance on the
+  dashboard is now "owed now" (billed + unbilled) instead of unpaid statements only.
+- **Add / edit card** is a 4-step flow (Card · Limits & billing · Costs & rewards · Settings) with a live card
+  preview, network/reward selection tiles, colour swatches, themed day/month pickers, a billing-cycle
+  explainer (next statement, pay-by date, interest-free days for a purchase today), ≈ yearly interest from the
+  monthly rate, reward estimate, and a summary before saving. New cards are checked step by step; when editing,
+  any step can be opened and saved. The card page's "Edit" buttons open the matching step.
+- **Card page** (`#/account/card/:id`): new overview — limit meter (billed / unbilled / available / limit, alert
+  marker), billing cycle with "Mark paid" on the latest statement, interest if only the minimum is paid,
+  fee-waiver progress, rewards worth and this-cycle estimate, benefit tags. Hero uses the card's colour.
+- **Cards page**: card faces in each card's colour (tap to open), usage meter, owed / available / unbilled
+  (hidden by default), free days today; summary shows owed now and available across cards.
+- **Notifications**: "N% of the limit used / Over the limit" reminder once a card crosses its alert level
+  (again only if usage climbs another 10%).
+- **Tests**: `card.model.spec.ts` (billing cycle incl. month-end clamping, billed/unbilled, refunds vs bill
+  payments, opening outstanding, limits, interest, waiver, rewards); rules tests for the new card fields.
+- **Deploy**: `firestore:rules` (new card fields are rejected until the new rules are live), then hosting.

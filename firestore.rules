@@ -175,7 +175,12 @@ service cloud.firestore {
       return d.keys().hasOnly(['userId', 'cardholderName', 'bankName', 'nickname', 'lastFourDigits',
                                'expiryMonth', 'expiryYear', 'statementDay', 'dueDay', 'status',
                                'autoMonitor', 'monitoredConnectionIds', 'dailySpendingLimit',
-                               'createdAt', 'lastUpdated', 'lastUpdateSource', 'lastReviewId'])
+                               'createdAt', 'lastUpdated', 'lastUpdateSource', 'lastReviewId',
+                               // Phase 2 — card details (all optional)
+                               'network', 'tier', 'art', 'creditLimit', 'cashLimit', 'openingOutstanding', 'openingAsOf',
+                               'interestMonthly', 'annualFee', 'feeWaiverSpend', 'lateFee', 'cashAdvanceFeePct', 'forexMarkupPct',
+                               'rewardType', 'rewardRate', 'rewardBalance', 'rewardValue', 'rewardsAsOf',
+                               'benefits', 'notes', 'autopay', 'utilAlertPct'])
         && d.keys().hasAll(['userId', 'cardholderName', 'bankName', 'lastFourDigits', 'expiryMonth',
                             'expiryYear', 'statementDay', 'dueDay', 'status',
                             'createdAt', 'lastUpdated', 'lastUpdateSource'])
@@ -191,9 +196,30 @@ service cloud.firestore {
         && (!('autoMonitor' in d) || d.autoMonitor is bool)            // legacy (Phase A)
         && (!('monitoredConnectionIds' in d) || (d.monitoredConnectionIds is list && d.monitoredConnectionIds.size() <= 10))
         && (!('dailySpendingLimit' in d) || money(d.dailySpendingLimit))
+        && isValidCardDetails(d)
         && d.createdAt is timestamp
         && d.lastUpdated == request.time
         && d.lastUpdateSource in ['manual', 'review'];
+    }
+    // Optional Phase 2 card details. Percentages are bounded to sane ranges; nothing here is a card number.
+    function pctIn(d, k, max) { return !(k in d) || ((d[k] is int || d[k] is float) && d[k] >= 0 && d[k] <= max); }
+    function optMoney(d, k) { return !(k in d) || money(d[k]); }
+    function optTs(d, k) { return !(k in d) || d[k] == null || d[k] is timestamp; }
+    function isValidCardDetails(d) {
+      return (!('network' in d) || d.network == null || d.network in ['visa', 'mastercard', 'rupay', 'amex', 'diners', 'other'])
+        && (!('tier' in d) || d.tier == null || d.tier in ['classic', 'gold', 'platinum', 'signature', 'infinite', 'select', 'business', 'other'])
+        && (!('art' in d) || d.art in ['indigo', 'teal', 'midnight', 'rose', 'amber', 'graphite'])
+        && optMoney(d, 'creditLimit') && optMoney(d, 'cashLimit') && optMoney(d, 'openingOutstanding')
+        && optTs(d, 'openingAsOf')
+        && pctIn(d, 'interestMonthly', 10) && pctIn(d, 'cashAdvanceFeePct', 10) && pctIn(d, 'forexMarkupPct', 10)
+        && optMoney(d, 'annualFee') && optMoney(d, 'feeWaiverSpend') && optMoney(d, 'lateFee')
+        && (!('rewardType' in d) || d.rewardType in ['points', 'cashback', 'miles', 'none'])
+        && pctIn(d, 'rewardRate', 1000) && optMoney(d, 'rewardBalance') && pctIn(d, 'rewardValue', 100)
+        && optTs(d, 'rewardsAsOf')
+        && (!('benefits' in d) || (d.benefits is list && d.benefits.size() <= 20))
+        && optStr(d, 'notes', 300)
+        && (!('autopay' in d) || d.autopay in ['none', 'minimum', 'full'])
+        && pctIn(d, 'utilAlertPct', 100);
     }
     match /cards/{cardId} {
       allow read: if ownerRead();

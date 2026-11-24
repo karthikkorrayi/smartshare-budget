@@ -289,3 +289,31 @@ table.table {
       &:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-strong); }
       &:disabled { opacity: .4; cursor: not-allowed; } } }
 }
+
+// ── Credit card face (form preview, Cards page, card detail) ────
+// data-art (or data-cardart where data-art is already used) picks the colour; the same gradients are used for the colour swatches in the card form.
+[data-art='indigo'], [data-cardart='indigo'] { --cf: linear-gradient(135deg, #1e1b4b 0%, #4338ca 60%, #818cf8 100%); }
+[data-art='teal'], [data-cardart='teal'] { --cf: linear-gradient(135deg, #042f2e 0%, #0f766e 55%, #2dd4bf 100%); }
+[data-art='midnight'], [data-cardart='midnight'] { --cf: linear-gradient(135deg, #020617 0%, #1e293b 60%, #475569 100%); }
+[data-art='rose'], [data-cardart='rose'] { --cf: linear-gradient(135deg, #4c0519 0%, #be123c 60%, #fb7185 100%); }
+[data-art='amber'], [data-cardart='amber'] { --cf: linear-gradient(135deg, #451a03 0%, #b45309 55%, #fbbf24 100%); }
+[data-art='graphite'], [data-cardart='graphite'] { --cf: linear-gradient(135deg, #18181b 0%, #3f3f46 55%, #a1a1aa 100%); }
+
+.face {
+  position: relative; overflow: hidden; aspect-ratio: 1.586; width: 100%; max-width: 340px; padding: 16px 18px;
+  border-radius: 16px; color: #fff; background: var(--cf, var(--art-card));
+  box-shadow: 0 18px 40px -18px rgba(15, 23, 42, .55), inset 0 1px 0 rgba(255, 255, 255, .18);
+  display: flex; flex-direction: column; justify-content: space-between; font-variant-numeric: tabular-nums;
+  transition: background .3s var(--ease);
+  &.closed { filter: grayscale(.9); opacity: .75; }
+  .shine { position: absolute; inset: 0; background: radial-gradient(circle at 85% -10%, rgba(255,255,255,.35), transparent 45%); pointer-events: none; }
+  .face-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; position: relative;
+    .bank { font-weight: 700; font-size: 14px; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tier { font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; opacity: .85; white-space: nowrap; } }
+  .chip { width: 38px; height: 28px; border-radius: 6px; background: linear-gradient(135deg, #fde68a, #d97706); opacity: .9; position: relative; }
+  .num { font-size: 17px; letter-spacing: .14em; position: relative; }
+  .face-bottom { display: flex; align-items: flex-end; gap: 10px; position: relative; font-size: 11.5px;
+    .holder { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .06em; opacity: .92; }
+    .exp { opacity: .9; }
+    .net { font-weight: 800; font-size: 13px; font-style: italic; letter-spacing: .02em; } }
+}

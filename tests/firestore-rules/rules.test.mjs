@@ -167,6 +167,40 @@ const approval = (cardId, targetId) => ({
   status: 'approved', cardId, targetId, edited: false, resolvedValues: {}, resolvedAt: serverTimestamp(),
 });
 
+describe('cards — Phase 2 details', () => {
+  const full = (o = {}) => newCard(ALICE, {
+    network: 'visa', tier: 'signature', art: 'teal', creditLimit: 200000, cashLimit: 80000,
+    openingOutstanding: 12500.5, openingAsOf: T('2026-11-20'), interestMonthly: 3.6, annualFee: 1000, feeWaiverSpend: 100000,
+    lateFee: 1300, cashAdvanceFeePct: 2.5, forexMarkupPct: 3.5, rewardType: 'points', rewardRate: 4, rewardBalance: 2400,
+    rewardValue: 0.25, rewardsAsOf: T('2026-11-20'), benefits: ['lounge', 'fuel', '5X on Swiggy'], notes: 'Use for groceries',
+    autopay: 'full', utilAlertPct: 50, ...o,
+  });
+  test('a card with every detail is accepted; older cards without them still are', async () => {
+    const c = collection(as(ALICE), 'cards');
+    await assertSucceeds(addDoc(c, full()));
+    await assertSucceeds(addDoc(c, full({ network: null, tier: null, openingAsOf: null, rewardsAsOf: null })));
+    await assertSucceeds(addDoc(c, newCard(ALICE)));
+  });
+  test('out-of-range or unknown values are rejected', async () => {
+    const c = collection(as(ALICE), 'cards');
+    await assertFails(addDoc(c, full({ network: 'unknown' })));
+    await assertFails(addDoc(c, full({ art: 'neon' })));
+    await assertFails(addDoc(c, full({ interestMonthly: 42 }))); // per MONTH, not per year
+    await assertFails(addDoc(c, full({ creditLimit: -1 })));
+    await assertFails(addDoc(c, full({ rewardType: 'crypto' })));
+    await assertFails(addDoc(c, full({ autopay: 'always' })));
+    await assertFails(addDoc(c, full({ utilAlertPct: 150 })));
+    await assertFails(addDoc(c, full({ openingAsOf: '2026-11-20' })));
+    await assertFails(addDoc(c, full({ benefits: Array.from({ length: 21 }, (_, i) => 'b' + i) })));
+    await assertFails(addDoc(c, full({ notes: 'x'.repeat(301) })));
+    await assertFails(addDoc(c, full({ cardNumber: '4111111111111111' })));
+  });
+  test('details can be edited later', async () => {
+    await seed('cards/k9', { ...newCard(ALICE), createdAt: T('2026-01-01'), lastUpdated: T('2026-01-01') });
+    await assertSucceeds(updateDoc(doc(as(ALICE), 'cards/k9'), { creditLimit: 150000, rewardBalance: 100, lastUpdated: serverTimestamp(), lastUpdateSource: 'manual' }));
+  });
+});
+
 describe('cards', () => {
   test('owner can create, update and delete a valid card', async () => {
     const db = as(ALICE);

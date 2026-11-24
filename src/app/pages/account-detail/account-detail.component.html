@@ -11,14 +11,14 @@
     </section>
   } @else {
     @let a = account()!;
-    <section class="hero" [attr.data-art]="a.art">
+    <section class="hero" [attr.data-art]="a.type === 'card' ? (a.cardArt || 'card') : a.art" [class.cardart]="a.type === 'card' && !!a.cardArt">
       <div class="hero-text">
         <span class="kind"><app-icon [name]="a.icon" [size]="16" />{{ a.type === 'bank' ? 'Bank account' : a.type === 'card' ? 'Credit card' : 'Wallet' }}@if (a.status === 'Closed') { · Closed }</span>
         <h1>{{ a.name }}</h1>
         <span class="sub">{{ a.subtitle }}</span>
       </div>
       <div class="hero-bal">
-        <span>{{ a.type === 'card' ? 'Outstanding on statements' : 'Current balance' }}</span>
+        <span>{{ a.type === 'card' ? 'Owed now (billed + unbilled)' : 'Current balance' }}</span>
         <b class="num"><app-amount [value]="a.balance" [privacyKey]="a.key" [decimals]="true" [label]="a.name + ' balance'" [iconSize]="18" /></b>
       </div>
       <div class="hero-actions">
@@ -30,6 +30,11 @@
         <button class="btn btn-sm glass btn-icon" (click)="edit()" aria-label="Edit account" title="Edit account"><app-icon name="settings" [size]="15" /></button>
       </div>
     </section>
+
+    @if (a.type === 'card') {
+      @if (cardData(); as cd) { <app-card-overview [d]="cd" (edit)="editCard($event)" /> }
+      @else { <app-skeleton variant="card" /> }
+    }
 
     <div class="bar">
       <div class="seg seg-scroll" role="radiogroup" aria-label="Period">

@@ -34,7 +34,7 @@ export interface AppNotification {
 /** A live, computed reminder (not stored). */
 export interface Reminder {
   key: string;
-  type: 'statement_upcoming' | 'payment_due' | 'payment_overdue' | 'card_expiring' | 'wallet_low' | 'bill_due' | 'bill_overdue' | 'lending_due';
+  type: 'statement_upcoming' | 'payment_due' | 'payment_overdue' | 'card_expiring' | 'card_usage' | 'wallet_low' | 'bill_due' | 'bill_overdue' | 'lending_due';
   tone: 'soon' | 'overdue';
   title: string;
   body: string;
@@ -55,6 +55,7 @@ export const NOTIFICATION_ICONS: Record<string, string> = {
   card_updated: 'square-pen',
   card_expiring: 'hourglass',
   wallet_low: 'wallet',
+  card_usage: 'target',
   review_pending: 'inbox',
   limit_exceeded: 'zap',
   bill_due: 'calendar-clock',

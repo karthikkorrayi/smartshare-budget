@@ -7,6 +7,7 @@ import { CardStatementsService } from './card-statements.service';
 import { ExpenseService } from './expense.service';
 import { IncomeService } from './income.service';
 import { CardTransactionsService } from './card-transactions.service';
+import { CardInsightsService } from './card-insights.service';
 import { TransfersService } from './transfers.service';
 import { UpcomingPaymentService } from './upcoming-payment.service';
 import { ReceivableService } from './receivable.service';
@@ -57,6 +58,7 @@ export class FinanceService {
   private expenses = inject(ExpenseService);
   private income = inject(IncomeService);
   private cardTxns = inject(CardTransactionsService);
+  private cardInsights = inject(CardInsightsService);
   private transfers = inject(TransfersService);
   private upcoming = inject(UpcomingPaymentService);
   private receivables = inject(ReceivableService);
@@ -82,11 +84,10 @@ export class FinanceService {
     this.banks.accounts$,
     this.wallets.views$,
     this.wallets.transactions$,
-    this.cards.cards$,
-    this.statements.statements$,
+    this.cardInsights.positions$,
     this.linked$,
   ]).pipe(
-    map(([banks, wallets, wtx, cards, stmts, linked]) => {
+    map(([banks, wallets, wtx, cardPositions, linked]) => {
       const lastOf = (ref: AccountRef, extra: Date[] = []): Date | null => {
         let last: Date | null = null;
         for (const t of linked) {
@@ -131,9 +132,10 @@ export class FinanceService {
           low: w.low,
         });
       }
-      for (const c of cards) {
+      for (const { card: c, pos, txns: ctx } of cardPositions) {
         const ref: AccountRef = { type: 'card', id: c.id };
-        const owed = stmts.filter(s => s.cardId === c.id && s.status !== 'Paid').reduce((s, x) => s + Math.max(0, x.totalDue - x.paidAmount), 0);
+        // What you owe now: unpaid statements + spends since the last statement (see cardPosition).
+        const owed = pos.used;
         out.push({
           ref,
           key: refKey(ref),
@@ -145,7 +147,9 @@ export class FinanceService {
           status: c.status,
           icon: 'credit-card',
           art: 'card',
-          lastActivity: c.lastUpdated,
+          cardArt: c.art,
+          lastActivity: ctx[0]?.txnDate ?? c.lastUpdated,
+          credit: pos.limit > 0 ? { limit: pos.limit, available: pos.available ?? 0, usedPct: pos.usedPct ?? 0, unbilled: pos.unbilled, billed: pos.billed } : undefined,
         });
       }
       return out;

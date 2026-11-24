@@ -1,94 +1,261 @@
-<div class="cc-dialog">
-  <div class="cc-dialog-head">
-    <span class="icon" aria-hidden="true"><app-icon name="credit-card" [size]="22" /></span>
+<div class="dlg card-dlg">
+  <!-- Head + live preview -->
+  <div class="dlg-head">
+    <span class="icon-tile accent"><app-icon name="credit-card" [size]="20" /></span>
     <div>
-      <h2>{{ isEdit ? 'Edit card' : 'Add credit card' }}</h2>
+      <h2>{{ isEdit ? 'Edit card' : 'Add a credit card' }}</h2>
       <p>Only the last 4 digits are stored — never the full number, CVV or PIN.</p>
+    </div>
+    <button type="button" class="btn btn-ghost btn-icon close" (click)="close()" aria-label="Close"><app-icon name="x" /></button>
+  </div>
+
+  <div class="preview-wrap" aria-hidden="true">
+    <div class="face" [attr.data-art]="form.art" [class.closed]="form.status === 'Closed'">
+      <span class="shine"></span>
+      <div class="face-top">
+        <span class="bank">{{ form.bankName || 'Your bank' }}</span>
+        @if (form.tier) { <span class="tier">{{ tierLabel[form.tier] }}</span> }
+      </div>
+      <span class="chip"></span>
+      <div class="num">•••• •••• •••• {{ form.lastFourDigits || '0000' }}</div>
+      <div class="face-bottom">
+        <span class="holder">{{ (form.cardholderName || 'Cardholder name').toUpperCase() }}</span>
+        <span class="exp">{{ form.expiryMonth ? (form.expiryMonth < 10 ? '0' + form.expiryMonth : form.expiryMonth) : 'MM' }}/{{ form.expiryYear ? (form.expiryYear + '').slice(-2) : 'YY' }}</span>
+        <span class="net">{{ form.network ? networkLabel[form.network] : (form.nickname || 'Credit') }}</span>
+      </div>
     </div>
   </div>
 
-  <form class="cc-dialog-body" (ngSubmit)="save()" novalidate>
-    <p class="cc-section-title">Card</p>
-    <label class="cc-field">
-      <span>Cardholder's name</span>
-      <input name="cardholderName" [(ngModel)]="form.cardholderName" maxlength="60" autocomplete="cc-name" placeholder="As printed on the card" />
-    </label>
-    <div class="cc-row">
-      <label class="cc-field">
-        <span>Bank</span>
-        <input name="bankName" [(ngModel)]="form.bankName" maxlength="60" placeholder="e.g. HDFC Bank" autocomplete="off" />
-      </label>
-      <label class="cc-field">
-        <span>Nickname <small>optional</small></span>
-        <input name="nickname" [(ngModel)]="form.nickname" maxlength="40" placeholder="e.g. Millennia" autocomplete="off" />
-      </label>
-    </div>
-    <div class="cc-row-3">
-      <label class="cc-field">
-        <span>Last 4 digits</span>
-        <input name="lastFourDigits" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="off"
-               [ngModel]="form.lastFourDigits" (ngModelChange)="onLastFour($event)" />
-      </label>
-      <label class="cc-field">
-        <span>Expiry month</span>
-        <select name="expiryMonth" [(ngModel)]="form.expiryMonth">
-          <option [ngValue]="0" disabled>MM</option>
-          @for (m of months; track m; let i = $index) { <option [ngValue]="i + 1">{{ m }}</option> }
-        </select>
-      </label>
-      <label class="cc-field">
-        <span>Expiry year</span>
-        <select name="expiryYear" [(ngModel)]="form.expiryYear">
-          <option [ngValue]="0" disabled>YYYY</option>
-          @for (y of years; track y) { <option [ngValue]="y">{{ y }}</option> }
-        </select>
-      </label>
-    </div>
+  <!-- Step bar -->
+  <nav class="steps" aria-label="Card setup steps">
+    <div class="track"><span class="fill" [style.width.%]="(step() / (steps.length - 1)) * 100"></span></div>
+    @for (s of steps; track s.id; let i = $index) {
+      <button type="button" class="st" [class.on]="i === step()" [class.done]="i < step() || (isEdit && i !== step())"
+              [disabled]="!isEdit && i > reached()" (click)="goTo(i)" [attr.aria-current]="i === step() ? 'step' : null">
+        <span class="dot">@if (i < step() && !isEdit) { <app-icon name="check" [size]="13" [stroke]="2.6" /> } @else { <app-icon [name]="s.icon" [size]="13" /> }</span>
+        <span class="lbl">{{ s.label }}</span>
+      </button>
+    }
+  </nav>
 
-    <p class="cc-section-title">Billing cycle</p>
-    <div class="cc-row">
-      <label class="cc-field">
-        <span>Statement generated on <small>day of month</small></span>
-        <select name="statementDay" [(ngModel)]="form.statementDay">
-          <option [ngValue]="0" disabled>Select day</option>
-          @for (d of days; track d) { <option [ngValue]="d">{{ d }}</option> }
-        </select>
-      </label>
-      <label class="cc-field">
-        <span>Payment due on <small>day of month</small></span>
-        <select name="dueDay" [(ngModel)]="form.dueDay">
-          <option [ngValue]="0" disabled>Select day</option>
-          @for (d of days; track d) { <option [ngValue]="d">{{ d }}</option> }
-        </select>
-      </label>
-    </div>
-    <div class="cc-row">
-      <label class="cc-field">
-        <span>Daily spending limit (₹) <small>0 = none</small></span>
-        <input name="dailySpendingLimit" type="number" min="0" step="1" inputmode="decimal" [(ngModel)]="form.dailySpendingLimit" />
-      </label>
-      <label class="cc-field">
-        <span>Status</span>
-        <select name="status" [(ngModel)]="form.status">
-          <option value="Active">Active</option>
-          <option value="Closed">Closed</option>
-        </select>
-      </label>
-    </div>
+  <form class="dlg-body" (ngSubmit)="step() === 3 || isEdit ? save() : next()" novalidate>
+    @switch (step()) {
+      <!-- ── 1. Card ─────────────────────────────────────────── -->
+      @case (0) {
+        <div class="form-grid">
+          <label class="field"><span>Bank</span>
+            <input name="bankName" [(ngModel)]="form.bankName" (ngModelChange)="touch()" maxlength="60" placeholder="e.g. HDFC Bank" autocomplete="off" /></label>
+          <label class="field"><span>Card name <small>optional</small></span>
+            <input name="nickname" [(ngModel)]="form.nickname" (ngModelChange)="touch()" maxlength="40" placeholder="e.g. Millennia, Regalia" autocomplete="off" /></label>
+        </div>
 
-    <p class="cc-hint">Want transactions and statements picked up from email? Connect Gmail in <strong>Gmail</strong> — everything found goes to the Review Center first.</p>
+        <div class="field">
+          <span id="net-label">Network</span>
+          <div class="tiles net-tiles" role="radiogroup" aria-labelledby="net-label">
+            @for (n of networks; track n) {
+              <button type="button" class="tile" role="radio" [attr.aria-checked]="form.network === n" [class.on]="form.network === n" (click)="setNetwork(n)">
+                <span class="net-mark" [attr.data-net]="n">{{ netShort[n] }}</span>
+                <span class="tile-l">{{ networkLabel[n] }}</span>
+                @if (form.network === n) { <app-icon class="tick" name="circle-check" [size]="16" /> }
+              </button>
+            }
+          </div>
+        </div>
 
-    @if (errors().length) {
-      <ul class="cc-errors" role="alert">
-        @for (e of errors(); track e) { <li>{{ e }}</li> }
-      </ul>
+        <div class="form-grid">
+          <div class="field"><span>Card type / tier</span>
+            <app-select name="tier" ariaLabel="Card tier" icon="award" [ngModel]="form.tier" (ngModelChange)="setTier($event)" [options]="tierOptions" /></div>
+          <label class="field"><span>Cardholder's name</span>
+            <input name="cardholderName" [(ngModel)]="form.cardholderName" (ngModelChange)="touch()" maxlength="60" autocomplete="cc-name" placeholder="As printed on the card" /></label>
+          <label class="field"><span>Last 4 digits</span>
+            <input name="lastFourDigits" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="off"
+                   [ngModel]="form.lastFourDigits" (ngModelChange)="onLastFour($event)" /></label>
+          <div class="field"><span>Valid till</span>
+            <div class="pair">
+              <app-select name="expiryMonth" ariaLabel="Expiry month" placeholder="Month" [search]="false" [(ngModel)]="form.expiryMonth" (ngModelChange)="touch()" [options]="monthOptions" />
+              <app-select name="expiryYear" ariaLabel="Expiry year" placeholder="Year" [search]="false" [(ngModel)]="form.expiryYear" (ngModelChange)="touch()" [options]="yearOptions" />
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <span id="art-label">Card colour</span>
+          <div class="swatches" role="radiogroup" aria-labelledby="art-label">
+            @for (a of arts; track a) {
+              <button type="button" class="swatch" role="radio" [attr.data-art]="a" [attr.aria-checked]="form.art === a" [class.on]="form.art === a"
+                      [attr.aria-label]="a" (click)="setArt(a)">@if (form.art === a) { <app-icon name="check" [size]="15" [stroke]="2.6" /> }</button>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ── 2. Limits & billing ─────────────────────────────── -->
+      @case (1) {
+        <div class="form-grid">
+          <label class="field"><span>Credit limit</span>
+            <span class="money-in"><i>₹</i><input name="creditLimit" type="number" min="0" step="1000" inputmode="decimal" placeholder="e.g. 200000" [(ngModel)]="form.creditLimit" (ngModelChange)="touch()" /></span>
+            <small>Used to show available and used limit.</small></label>
+          <label class="field"><span>Cash withdrawal limit <small>optional</small></span>
+            <span class="money-in"><i>₹</i><input name="cashLimit" type="number" min="0" step="1000" inputmode="decimal" placeholder="e.g. 80000" [(ngModel)]="form.cashLimit" /></span></label>
+        </div>
+
+        <div class="sub-panel">
+          <div class="sp-head"><app-icon name="hourglass" [size]="16" /><b>{{ isEdit ? 'Outstanding when you started tracking' : 'What you owe on this card today' }}</b></div>
+          <div class="form-grid">
+            <label class="field"><span>Outstanding <small>optional</small></span>
+              <span class="money-in"><i>₹</i><input name="openingOutstanding" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" [(ngModel)]="form.openingOutstanding" (ngModelChange)="touch()" /></span></label>
+            <div class="field"><span>As of</span>
+              <app-date name="openingAsOf" ariaLabel="Outstanding as of" [max]="today" [quick]="['today', 'yesterday']" [(ngModel)]="openingAsOfInput" /></div>
+          </div>
+          <small class="muted">Counts until you record this card's first statement. After that, statements + new spends are used.</small>
+        </div>
+
+        <div class="form-grid">
+          <div class="field"><span>Statement generated on</span>
+            <app-select name="statementDay" ariaLabel="Statement day" icon="file-text" placeholder="Pick a day" [(ngModel)]="form.statementDay" (ngModelChange)="touch()" [options]="dayOptions" /></div>
+          <div class="field"><span>Payment due on</span>
+            <app-select name="dueDay" ariaLabel="Payment due day" icon="alarm-clock" placeholder="Pick a day" [(ngModel)]="form.dueDay" (ngModelChange)="touch()" [options]="dayOptions" /></div>
+        </div>
+
+        @if (cycle(); as c) {
+          <div class="cycle" aria-live="polite">
+            <div class="cy-row">
+              <div><span class="k">Next statement</span><b>{{ c.nextStatement | date: 'EEE, d MMM' }}</b><small>in {{ c.daysToStatement }} day{{ c.daysToStatement === 1 ? '' : 's' }}</small></div>
+              <app-icon name="arrow-right" [size]="16" />
+              <div><span class="k">Pay by</span><b>{{ c.nextDue | date: 'EEE, d MMM' }}</b><small>{{ c.freeDays }} days from today</small></div>
+            </div>
+            <div class="bar"><span [style.width.%]="c.cycleProgress"></span></div>
+            <p><app-icon name="sparkles" [size]="14" /> A purchase today gets <b>{{ c.freeDays }} interest-free days</b>; one made on {{ c.cycleStart | date: 'd MMM' }} gets the maximum <b>{{ c.maxFreeDays }}</b>.</p>
+          </div>
+        }
+      }
+
+      <!-- ── 3. Costs & rewards ──────────────────────────────── -->
+      @case (2) {
+        <p class="section">Interest &amp; fees</p>
+        <div class="form-grid">
+          <label class="field"><span>Interest per month</span>
+            <span class="money-in pct"><input name="interestMonthly" type="number" min="0" max="10" step="0.01" inputmode="decimal" placeholder="e.g. 3.6" [(ngModel)]="form.interestMonthly" (ngModelChange)="touch()" /><i>%</i></span>
+            <small>@if (annualRate(); as r) { ≈ {{ r.simple }}% a year ({{ r.effective }}% compounded) } @else { On amounts carried past the due date. }</small></label>
+          <label class="field"><span>Annual fee</span>
+            <span class="money-in"><i>₹</i><input name="annualFee" type="number" min="0" step="1" inputmode="decimal" placeholder="0 if lifetime free" [(ngModel)]="form.annualFee" (ngModelChange)="touch()" /></span></label>
+          <label class="field"><span>Fee waived if yearly spend is over</span>
+            <span class="money-in"><i>₹</i><input name="feeWaiverSpend" type="number" min="0" step="1000" inputmode="decimal" placeholder="optional" [(ngModel)]="form.feeWaiverSpend" /></span></label>
+          <label class="field"><span>Late payment fee</span>
+            <span class="money-in"><i>₹</i><input name="lateFee" type="number" min="0" step="1" inputmode="decimal" placeholder="optional" [(ngModel)]="form.lateFee" /></span></label>
+          <label class="field"><span>Cash withdrawal fee</span>
+            <span class="money-in pct"><input name="cashAdvanceFeePct" type="number" min="0" max="10" step="0.1" inputmode="decimal" placeholder="e.g. 2.5" [(ngModel)]="form.cashAdvanceFeePct" /><i>%</i></span></label>
+          <label class="field"><span>Foreign currency markup</span>
+            <span class="money-in pct"><input name="forexMarkupPct" type="number" min="0" max="10" step="0.01" inputmode="decimal" placeholder="e.g. 3.5" [(ngModel)]="form.forexMarkupPct" /><i>%</i></span></label>
+        </div>
+
+        <p class="section">Rewards</p>
+        <div class="tiles reward-tiles" role="radiogroup" aria-label="Reward type">
+          @for (t of rewardTypes; track t) {
+            <button type="button" class="tile" role="radio" [attr.aria-checked]="form.rewardType === t" [class.on]="form.rewardType === t" (click)="setReward(t)">
+              <span class="icon-tile sm" [class.accent]="form.rewardType === t"><app-icon [name]="rewardInfo[t].icon" [size]="16" /></span>
+              <span class="tile-l">{{ rewardInfo[t].label }}</span>
+            </button>
+          }
+        </div>
+        @if (form.rewardType !== 'none') {
+          <div class="form-grid">
+            <label class="field"><span>{{ form.rewardType === 'cashback' ? 'Cashback rate' : unitTitle() + ' per ₹100 spent' }}</span>
+              <span class="money-in" [class.pct]="form.rewardType === 'cashback'">
+                <input name="rewardRate" type="number" min="0" step="0.01" inputmode="decimal" [placeholder]="form.rewardType === 'cashback' ? 'e.g. 1.5' : 'e.g. 4'" [(ngModel)]="form.rewardRate" (ngModelChange)="touch()" />
+                @if (form.rewardType === 'cashback') { <i>%</i> }
+              </span>
+              @if (rewardHint()) { <small>{{ rewardHint() }}</small> }</label>
+            @if (form.rewardType !== 'cashback') {
+              <label class="field"><span>Value of 1 {{ unitSingular() }}</span>
+                <span class="money-in"><i>₹</i><input name="rewardValue" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 0.25" [(ngModel)]="form.rewardValue" (ngModelChange)="touch()" /></span></label>
+              <label class="field"><span>Current balance</span>
+                <input name="rewardBalance" type="number" min="0" step="1" inputmode="numeric" placeholder="optional" [(ngModel)]="form.rewardBalance" (ngModelChange)="touch()" /></label>
+              <div class="field"><span>Balance as of</span>
+                <app-date name="rewardsAsOf" ariaLabel="Reward balance as of" [max]="today" [(ngModel)]="rewardsAsOfInput" /></div>
+            }
+          </div>
+        }
+
+        <p class="section">Benefits &amp; features</p>
+        <div class="tags" role="group" aria-label="Benefits">
+          @for (b of benefitList; track b.id) {
+            <button type="button" class="tag" [class.on]="hasBenefit(b.id)" [attr.aria-pressed]="hasBenefit(b.id)" (click)="toggleBenefit(b.id)">
+              <app-icon [name]="hasBenefit(b.id) ? 'check' : b.icon" [size]="14" />{{ b.label }}
+            </button>
+          }
+          @for (b of customBenefits(); track b) {
+            <button type="button" class="tag on" aria-pressed="true" (click)="toggleBenefit(b)" [attr.aria-label]="'Remove ' + b"><app-icon name="x" [size]="13" />{{ b }}</button>
+          }
+        </div>
+        <div class="add-tag input-icon">
+          <app-icon name="plus" [size]="15" />
+          <input class="input" name="customBenefit" maxlength="40" placeholder="Add your own (e.g. 5X on Swiggy)" [(ngModel)]="customBenefit"
+                 (keydown.enter)="$event.preventDefault(); addCustomBenefit()" />
+          <button type="button" class="btn btn-sm" (click)="addCustomBenefit()" [disabled]="!customBenefit.trim()">Add</button>
+        </div>
+      }
+
+      <!-- ── 4. Settings ─────────────────────────────────────── -->
+      @case (3) {
+        <div class="form-grid">
+          <label class="field"><span>Daily spending limit <small>optional</small></span>
+            <span class="money-in"><i>₹</i><input name="dailySpendingLimit" type="number" min="0" step="50" inputmode="decimal" placeholder="No limit" [(ngModel)]="form.dailySpendingLimit" /></span>
+            <small>Warns you the moment a day's spends on this card go over it.</small></label>
+          <div class="field"><span>Warn when usage crosses</span>
+            <div class="seg wide" role="radiogroup" aria-label="Usage alert">
+              @for (p of alertSteps; track p) {
+                <button type="button" role="radio" [attr.aria-checked]="form.utilAlertPct === p" [class.on]="form.utilAlertPct === p" (click)="form.utilAlertPct = p">{{ p ? p + '%' : 'Off' }}</button>
+              }
+            </div>
+            <small>{{ form.creditLimit ? 'Of your credit limit.' : 'Needs a credit limit (step 2).' }}</small>
+          </div>
+          <div class="field"><span>Autopay</span>
+            <div class="seg wide" role="radiogroup" aria-label="Autopay">
+              @for (m of autopayModes; track m) {
+                <button type="button" role="radio" [attr.aria-checked]="form.autopay === m" [class.on]="form.autopay === m" (click)="setAutopay(m)">{{ autopayLabel[m] }}</button>
+              }
+            </div>
+            <small>For your information — the app never pays bills itself.</small>
+          </div>
+          <div class="field"><span>Status</span>
+            <div class="seg wide" role="radiogroup" aria-label="Status">
+              <button type="button" role="radio" [attr.aria-checked]="form.status === 'Active'" [class.on]="form.status === 'Active'" (click)="form.status = 'Active'; touch()"><app-icon name="circle-check" [size]="14" />Active</button>
+              <button type="button" role="radio" [attr.aria-checked]="form.status === 'Closed'" [class.on]="form.status === 'Closed'" (click)="form.status = 'Closed'; touch()"><app-icon name="lock" [size]="14" />Closed</button>
+            </div>
+          </div>
+          <label class="field span-2"><span>Notes <small>optional</small></span>
+            <textarea name="notes" maxlength="300" rows="2" placeholder="Anything to remember about this card" [(ngModel)]="form.notes"></textarea></label>
+        </div>
+
+        <div class="review-list">
+          <p class="section">Summary</p>
+          <dl class="kv">
+            @for (r of summary(); track r.label) { <dt>{{ r.label }}</dt><dd>{{ r.value }}</dd> }
+          </dl>
+        </div>
+      }
     }
 
-    <div class="cc-dialog-actions">
-      <button type="button" class="cc-btn" (click)="close()" [disabled]="saving()">Cancel</button>
-      <button type="submit" class="cc-btn cc-btn--primary" [disabled]="saving()">
-        {{ saving() ? 'Saving…' : isEdit ? 'Update card' : 'Save card' }}
-      </button>
-    </div>
+    @if (errors().length) {
+      <div class="alert neg" role="alert"><app-icon name="circle-alert" [size]="16" /><ul>@for (e of errors(); track e) { <li>{{ e }}</li> }</ul></div>
+    }
   </form>
+
+  <div class="dlg-foot">
+    @if (step() > 0) { <button type="button" class="btn" (click)="back()" [disabled]="saving()"><app-icon name="chevron-left" [size]="16" />Back</button> }
+    <span class="spacer"></span>
+    @if (step() < 3) {
+      @if (isEdit) {
+        <button type="button" class="btn" (click)="next()" [disabled]="saving()">Next<app-icon name="chevron-right" [size]="16" /></button>
+      } @else {
+        <button type="button" class="btn btn-primary" (click)="next()">Continue<app-icon name="chevron-right" [size]="16" /></button>
+      }
+    }
+    @if (step() === 3 || isEdit) {
+      <button type="button" class="btn btn-primary" (click)="save()" [disabled]="saving()">
+        @if (saving()) { <span class="spinner"></span> Saving… } @else { <app-icon name="check" [size]="16" />{{ isEdit ? 'Save changes' : 'Add card' }} }
+      </button>
+    }
+  </div>
 </div>
